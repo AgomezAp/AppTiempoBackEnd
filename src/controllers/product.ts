@@ -12,7 +12,6 @@ export const registerProduct = async( req:Request, res: Response): Promise<any> 
           name: req.body.name,
           brand: req.body.brand,
           category:req.body.category,
-          price:req.body.price,
           quantity:req.body.quantity,
           status: 1,
         });

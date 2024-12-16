@@ -18,7 +18,6 @@ const registerProduct = (req, res) => __awaiter(void 0, void 0, void 0, function
             name: req.body.name,
             brand: req.body.brand,
             category: req.body.category,
-            price: req.body.price,
             quantity: req.body.quantity,
             status: 1,
         });

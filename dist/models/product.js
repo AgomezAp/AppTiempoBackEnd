@@ -11,7 +11,6 @@ exports.Product = connection_1.default.define("Product", {
     name: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     brand: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     category: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    price: { type: sequelize_1.DataTypes.FLOAT, allowNull: false },
     quantity: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     status: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     PcreatedAt: { type: sequelize_1.DataTypes.DATE, field: "Pcreated", defaultValue: sequelize_1.DataTypes.NOW, allowNull: false, },
