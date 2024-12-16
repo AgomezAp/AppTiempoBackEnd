@@ -88,7 +88,7 @@ import { User } from '../models/user';
     },
     process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS',
     {
-      expiresIn: '20m',
+      expiresIn: '30m',
     }
   );
 

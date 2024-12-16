@@ -86,7 +86,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         email: user.email,
         role: user.role.Rname, // Agregar nombre del rol al token
     }, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS', {
-        expiresIn: '20m',
+        expiresIn: '30m',
     });
     res.json({
         msg: 'Inicio de sesión exitoso',
