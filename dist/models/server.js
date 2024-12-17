@@ -13,7 +13,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
+const connection_1 = __importDefault(require("../database/connection"));
 const category_1 = __importDefault(require("../routes/category"));
 const product_1 = __importDefault(require("../routes/product"));
 const product_2 = __importDefault(require("../routes/product"));
@@ -21,18 +23,19 @@ const user_1 = __importDefault(require("../routes/user"));
 const product_3 = require("./product");
 const role_1 = require("./role");
 const user_2 = require("./user");
+dotenv_1.default.config();
 class Server {
     constructor() {
         this.app = (0, express_1.default)();
         this.port = process.env.PORT;
-        this.listen();
         this.middlewares();
         this.router();
         this.DBconnect();
+        this.listen();
     }
     listen() {
         this.app.listen(this.port, () => {
-            console.log("This execute froam port: " + this.port);
+            console.log("Server running on port: " + this.port);
         });
     }
     router() {
@@ -43,17 +46,21 @@ class Server {
     }
     middlewares() {
         this.app.use(express_1.default.json());
-        this.app.use((0, cors_1.default)());
+        this.app.use((0, cors_1.default)({
+            origin: '*', // Permite todas las solicitudes de origen cruzado
+            methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
     }
     DBconnect() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 /* {force: true}{alter: true} */
-                yield user_2.User.sync();
-                yield product_3.Product.sync();
-                yield role_1.Role.sync();
-                console.log('la tabla para el usuario fue creada');
-                console.log("Conexion exitosa");
+                yield connection_1.default.authenticate();
+                yield role_1.Role.sync({ alter: true });
+                yield user_2.User.sync({ alter: true });
+                yield product_3.Product.sync({ alter: true });
+                console.log('Tables have been created.');
             }
             catch (error) {
                 console.log("Error de conexion");

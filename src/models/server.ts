@@ -1,6 +1,8 @@
 import cors from 'cors';
+import dotenv from 'dotenv';
 import express, { Application } from 'express';
 
+import sequelize from '../database/connection';
 import Rcategory from '../routes/category';
 import Rproduct from '../routes/product';
 import RRole from '../routes/product';
@@ -9,6 +11,7 @@ import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
 
+dotenv.config();
 class Server{
 
     private app: Application;
@@ -16,16 +19,16 @@ class Server{
 
     constructor(){
         this.app = express();
-        this.port =process.env.PORT 
-        this.listen();
+        this.port = process.env.PORT;
         this.middlewares();
         this.router();
         this.DBconnect();
+        this.listen();
     }
     listen (){
-        this.app.listen(this.port, ()=>{
-            console.log("This execute froam port: "+this.port)
-        })
+        this.app.listen(this.port, () => {
+            console.log("Server running on port: " + this.port);
+        });
     }
     router(){
         this.app.use(rUser)
@@ -35,16 +38,21 @@ class Server{
     }
     middlewares(){
         this.app.use(express.json())
-        this.app.use(cors())
+        this.app.use(cors({
+            origin: '*', // Permite todas las solicitudes de origen cruzado
+            methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
     }
     async DBconnect(){
         try{
             /* {force: true}{alter: true} */
-            await User.sync();
-            await Product.sync();
-            await Role.sync();
-            console.log('la tabla para el usuario fue creada');
-            console.log("Conexion exitosa");
+            await sequelize.authenticate();
+            await Role.sync({alter: true} );
+            await User.sync({alter: true} );
+            await Product.sync({alter: true} );
+           
+            console.log('Tables have been created.');
         }catch (error){
             console.log("Error de conexion"); 
 
