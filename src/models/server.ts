@@ -48,9 +48,9 @@ class Server{
         try{
             /* {force: true}{alter: true} */
             await sequelize.authenticate();
-            await Role.sync({alter: true} );
-            await User.sync({alter: true} );
-            await Product.sync({alter: true} );
+            await Role.sync( );
+            await User.sync( );
+            await Product.sync( );
            
             console.log('Tables have been created.');
         }catch (error){

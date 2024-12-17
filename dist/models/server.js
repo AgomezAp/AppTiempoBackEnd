@@ -57,9 +57,9 @@ class Server {
             try {
                 /* {force: true}{alter: true} */
                 yield connection_1.default.authenticate();
-                yield role_1.Role.sync({ alter: true });
-                yield user_2.User.sync({ alter: true });
-                yield product_3.Product.sync({ alter: true });
+                yield role_1.Role.sync();
+                yield user_2.User.sync();
+                yield product_3.Product.sync();
                 console.log('Tables have been created.');
             }
             catch (error) {
