@@ -41,7 +41,7 @@ class Server{
         try{
             /* {force: true}{alter: true} */
             await User.sync();
-            await Product.sync({alter: true});
+            await Product.sync();
             await Role.sync();
             console.log('la tabla para el usuario fue creada');
             console.log("Conexion exitosa");

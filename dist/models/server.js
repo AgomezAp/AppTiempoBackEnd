@@ -50,7 +50,7 @@ class Server {
             try {
                 /* {force: true}{alter: true} */
                 yield user_2.User.sync();
-                yield product_3.Product.sync({ alter: true });
+                yield product_3.Product.sync();
                 yield role_1.Role.sync();
                 console.log('la tabla para el usuario fue creada');
                 console.log("Conexion exitosa");

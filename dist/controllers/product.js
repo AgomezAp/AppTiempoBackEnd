@@ -20,6 +20,7 @@ const registerProduct = (req, res) => __awaiter(void 0, void 0, void 0, function
             category: req.body.category,
             quantity: req.body.quantity,
             status: 1,
+            qrCode: req.body.qrCode
         });
         // Si la operación fue exitosa, devolveremos el mensaje de éxito.
         res.status(200).json({
