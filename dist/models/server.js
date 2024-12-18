@@ -48,7 +48,7 @@ class Server {
         this.app.use(express_1.default.json());
         this.app.use((0, cors_1.default)({
             origin: '*', // Permite todas las solicitudes de origen cruzado
-            methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Métodos permitidos
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
     }
@@ -60,7 +60,7 @@ class Server {
                 yield role_1.Role.sync();
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
-                console.log('Tables have been created.');
+                console.log('Conexión establecida correctamente');
             }
             catch (error) {
                 console.log("Error de conexion");
