@@ -98,3 +98,22 @@ import { User } from '../models/user';
     role: user.role.Rname
   });
 };
+export const resetPassword = async (req: Request, res: Response): Promise<any> => {
+  const { email, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    user.password = passwordHash;
+    await user.save();
+
+    res.status(200).json({ msg: 'Contraseña actualizada con éxito' });
+  } catch (error) {
+    res.status(500).json({ msg: 'Error al actualizar la contraseña', error });
+  }
+};

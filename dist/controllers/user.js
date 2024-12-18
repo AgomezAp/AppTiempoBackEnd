@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.login = exports.register = void 0;
+exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const role_1 = require("../models/role");
@@ -95,3 +95,20 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     });
 });
 exports.login = login;
+const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, newPassword } = req.body;
+    try {
+        const user = yield user_1.User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(404).json({ msg: 'Usuario no encontrado' });
+        }
+        const passwordHash = yield bcrypt_1.default.hash(newPassword, 10);
+        user.password = passwordHash;
+        yield user.save();
+        res.status(200).json({ msg: 'Contraseña actualizada con éxito' });
+    }
+    catch (error) {
+        res.status(500).json({ msg: 'Error al actualizar la contraseña', error });
+    }
+});
+exports.resetPassword = resetPassword;
