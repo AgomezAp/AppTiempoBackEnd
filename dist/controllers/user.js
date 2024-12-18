@@ -91,7 +91,8 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json({
         msg: 'Inicio de sesión exitoso',
         token,
-        role: user.role.Rname
+        role: user.role.Rname,
+        userId: user.Uid,
     });
 });
 exports.login = login;

@@ -95,7 +95,8 @@ import { User } from '../models/user';
   res.json({
     msg: 'Inicio de sesión exitoso',
     token,
-    role: user.role.Rname
+    role: user.role.Rname,
+    userId: user.Uid,
   });
 };
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {
