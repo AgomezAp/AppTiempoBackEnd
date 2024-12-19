@@ -6,6 +6,6 @@ const router = (0, express_1.Router)();
 router.post("/api/user/register", user_1.register);
 router.post("/api/user/login", user_1.login);
 router.patch('/api/user/reset-password', user_1.resetPassword);
-router.get('/api/user/update', user_1.getAllUsers);
+router.get('/api/user/AllUsers', user_1.getAllUsers);
 router.delete('/api/user/delete', user_1.deleteUserById);
 exports.default = router;

@@ -16,11 +16,19 @@ Permiso.init({
         primaryKey: true,
         autoIncrement: true,
     },
-    tipo: {
+    emailPersonal: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },
-    descripcion: {
+    emailLider: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+    },
+    nombre: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+    },
+    numeroDocumento: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },
@@ -32,9 +40,25 @@ Permiso.init({
         type: sequelize_1.DataTypes.DATE,
         allowNull: false,
     },
-    horas: {
-        type: sequelize_1.DataTypes.INTEGER,
+    tipo: {
+        type: sequelize_1.DataTypes.STRING,
         allowNull: false,
+    },
+    horaSalida: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+    },
+    horaRegreso: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+    },
+    observaciones: {
+        type: sequelize_1.DataTypes.TEXT,
+        allowNull: true,
+    },
+    soporte: {
+        type: sequelize_1.DataTypes.BLOB('long'),
+        allowNull: true,
     },
     Uid: {
         type: sequelize_1.DataTypes.INTEGER,

@@ -8,41 +8,69 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAllUsersWithPermisos = exports.getPermisosByUserId = exports.createPermiso = void 0;
+const multer_1 = __importDefault(require("multer"));
 const permisos_1 = require("../models/permisos");
 const user_1 = require("../models/user");
+const mailer_1 = require("../utils/mailer");
+const storage = multer_1.default.memoryStorage();
+const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { tipo, descripcion, fechaInicio, fechaFin, horas, Uid } = req.body;
-    // Verificar si el usuario existe
-    const user = yield user_1.User.findByPk(Uid);
-    if (!user) {
-        return res.status(400).json({
-            msg: `El usuario con ID ${Uid} no existe`,
-        });
-    }
-    try {
-        // Crear permiso asociado al usuario
-        const newPermiso = yield permisos_1.Permiso.create({
-            tipo,
-            descripcion,
-            fechaInicio,
-            fechaFin,
-            horas,
-            Uid,
-        });
-        res.status(200).json({
-            message: 'Permiso creado con éxito',
-            permiso: newPermiso,
-        });
-    }
-    catch (err) {
-        console.error(err);
-        res.status(500).json({
-            msg: 'Error al crear el permiso',
-            error: err,
-        });
-    }
+    upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
+        if (err) {
+            return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
+        }
+        const { emailPersonal, emailLider, nombre, numeroDocumento, fechaInicio, fechaFin, tipo, horaSalida, horaRegreso, observaciones } = req.body;
+        const soporte = req.file ? req.file.buffer : null;
+        const Uid = parseInt(req.body.Uid, 10);
+        // Verificar si todos los campos obligatorios están presentes
+        if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fechaInicio || !fechaFin || !tipo || !horaSalida || !horaRegreso || !Uid) {
+            return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
+        }
+        // Verificar si el usuario existe
+        const user = yield user_1.User.findByPk(Uid);
+        if (!user) {
+            return res.status(400).json({
+                msg: `El usuario con ID ${Uid} no existe`,
+            });
+        }
+        try {
+            // Crear permiso asociado al usuario
+            const newPermiso = yield permisos_1.Permiso.create({
+                emailPersonal,
+                emailLider,
+                nombre,
+                numeroDocumento,
+                fechaInicio,
+                fechaFin,
+                tipo,
+                horaSalida,
+                horaRegreso,
+                observaciones,
+                soporte,
+                Uid,
+            });
+            //Envía correo electrónico al lider 
+            const subject = 'Nuevo Permiso Solicitado';
+            const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fechaInicio}. Fecha de entrada: ${fechaFin}.`;
+            yield (0, mailer_1.sendMail)(emailLider, subject, text);
+            res.status(200).json({
+                message: 'Permiso creado con éxito',
+                permiso: newPermiso,
+            });
+        }
+        catch (err) {
+            console.error(err);
+            res.status(500).json({
+                msg: 'Error al crear el permiso',
+                error: err,
+            });
+        }
+    }));
 });
 exports.createPermiso = createPermiso;
 const getPermisosByUserId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -67,6 +95,7 @@ const getAllUsersWithPermisos = (req, res) => __awaiter(void 0, void 0, void 0, 
         res.status(200).json(users);
     }
     catch (error) {
+        console.error(error);
         res.status(500).json({ msg: 'Error al obtener los usuarios con permisos', error });
     }
 });

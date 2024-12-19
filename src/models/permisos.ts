@@ -8,11 +8,17 @@ import { User } from './user';
 
 export class Permiso extends Model {
   public id!: number;
-  public tipo!: string;
-  public descripcion!: string;
+  public emailPersonal!: string;
+  public emailLider!: string;
+  public nombre!: string;
+  public numeroDocumento!: string;
   public fechaInicio!: Date;
   public fechaFin!: Date;
-  public horas!: number;
+  public tipo!: string;
+  public horaSalida!: string;
+  public horaRegreso!: string;
+  public observaciones?: string;
+  public soporte?: Buffer;
   public Uid!: number; // Foreign key to User
 }
 
@@ -23,11 +29,19 @@ Permiso.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    tipo: {
+    emailPersonal: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    descripcion: {
+    emailLider: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    nombre: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    numeroDocumento: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -39,9 +53,25 @@ Permiso.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    horas: {
-      type: DataTypes.INTEGER,
+    tipo: {
+      type: DataTypes.STRING,
       allowNull: false,
+    },
+    horaSalida: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    horaRegreso: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    observaciones: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    soporte: {
+      type: DataTypes.BLOB('long'),
+      allowNull: true,
     },
     Uid: {
       type: DataTypes.INTEGER,
