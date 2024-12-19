@@ -133,10 +133,10 @@ export const getAllUsers = async (req: Request, res: Response): Promise<any> => 
 
 // Borrar usuario por ID
 export const deleteUserById = async (req: Request, res: Response): Promise<any> => {
-  const { id } = req.params;
+  const { Uid } = req.params;
 
   try {
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(Uid);
 
     if (!user) {
       return res.status(404).json({ msg: 'Usuario no encontrado' });

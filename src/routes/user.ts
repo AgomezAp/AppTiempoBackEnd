@@ -14,6 +14,6 @@ router.post("/api/user/register",register);
 router.post("/api/user/login",login)
 router.patch('/api/user/reset-password', resetPassword);
 router.get('/api/user/AllUsers', getAllUsers);
-router.delete('/api/user/delete', deleteUserById);
+router.delete('/api/user/delete/:Uid', deleteUserById);
 
 export default router

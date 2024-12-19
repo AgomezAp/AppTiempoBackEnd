@@ -128,9 +128,9 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.getAllUsers = getAllUsers;
 // Borrar usuario por ID
 const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
+    const { Uid } = req.params;
     try {
-        const user = yield user_1.User.findByPk(id);
+        const user = yield user_1.User.findByPk(Uid);
         if (!user) {
             return res.status(404).json({ msg: 'Usuario no encontrado' });
         }
