@@ -118,3 +118,34 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
     res.status(500).json({ msg: 'Error al actualizar la contraseña', error });
   }
 };
+
+// Obtener todos los usuarios
+export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const users = await User.findAll({
+      include: [{ model: Role, as: 'role' }], // Incluir rol en la consulta
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ msg: 'Error al obtener los usuarios', error });
+  }
+};
+
+// Borrar usuario por ID
+export const deleteUserById = async (req: Request, res: Response): Promise<any> => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    }
+
+    await user.destroy();
+    res.status(200).json({ msg: 'Usuario eliminado con éxito' });
+  } catch (error) {
+    res.status(500).json({ msg: 'Error al eliminar el usuario', error });
+  }
+};
+

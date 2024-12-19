@@ -4,9 +4,11 @@ import express, { Application } from 'express';
 
 import sequelize from '../database/connection';
 import Rcategory from '../routes/category';
+import RPermisos from '../routes/permisos';
 import Rproduct from '../routes/product';
 import RRole from '../routes/product';
 import rUser from '../routes/user';
+import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
@@ -35,6 +37,7 @@ class Server{
         this.app.use(Rproduct)
         this.app.use(Rcategory);
         this.app.use(RRole)
+        this.app.use(RPermisos)
     }
     middlewares(){
         this.app.use(express.json())
@@ -48,9 +51,11 @@ class Server{
         try{
             /* {force: true}{alter: true} */
             await sequelize.authenticate();
+            
             await Role.sync( );
             await User.sync( );
             await Product.sync( );
+            await Permiso.sync();
             console.log('Conexión establecida correctamente');
         }catch (error){
             console.log("Error de conexion"); 

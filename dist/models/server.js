@@ -17,9 +17,11 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const connection_1 = __importDefault(require("../database/connection"));
 const category_1 = __importDefault(require("../routes/category"));
+const permisos_1 = __importDefault(require("../routes/permisos"));
 const product_1 = __importDefault(require("../routes/product"));
 const product_2 = __importDefault(require("../routes/product"));
 const user_1 = __importDefault(require("../routes/user"));
+const permisos_2 = require("./permisos");
 const product_3 = require("./product");
 const role_1 = require("./role");
 const user_2 = require("./user");
@@ -43,6 +45,7 @@ class Server {
         this.app.use(product_1.default);
         this.app.use(category_1.default);
         this.app.use(product_2.default);
+        this.app.use(permisos_1.default);
     }
     middlewares() {
         this.app.use(express_1.default.json());
@@ -60,6 +63,7 @@ class Server {
                 yield role_1.Role.sync();
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
+                yield permisos_2.Permiso.sync();
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

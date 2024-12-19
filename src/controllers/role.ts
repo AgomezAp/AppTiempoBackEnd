@@ -29,7 +29,7 @@ export const leerRoleId = async (req:Request, res:Response):Promise<any> =>{
             msg:`Categoría con Id${Rid} encontrado exitosamente`,
             data: role
         })
-    }catch(error){
+    }catch(error){ 
         return res.status(500).json({
             msg:`Error al buscar el rol con el Id ${Rid}`
         })

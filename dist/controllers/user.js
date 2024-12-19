@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPassword = exports.login = exports.register = void 0;
+exports.deleteUserById = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const role_1 = require("../models/role");
@@ -113,3 +113,32 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.resetPassword = resetPassword;
+// Obtener todos los usuarios
+const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const users = yield user_1.User.findAll({
+            include: [{ model: role_1.Role, as: 'role' }], // Incluir rol en la consulta
+        });
+        res.status(200).json(users);
+    }
+    catch (error) {
+        res.status(500).json({ msg: 'Error al obtener los usuarios', error });
+    }
+});
+exports.getAllUsers = getAllUsers;
+// Borrar usuario por ID
+const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    try {
+        const user = yield user_1.User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({ msg: 'Usuario no encontrado' });
+        }
+        yield user.destroy();
+        res.status(200).json({ msg: 'Usuario eliminado con éxito' });
+    }
+    catch (error) {
+        res.status(500).json({ msg: 'Error al eliminar el usuario', error });
+    }
+});
+exports.deleteUserById = deleteUserById;

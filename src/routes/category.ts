@@ -28,4 +28,5 @@ router.patch("/api/rol/actualizar/:Rid",actualizarRol);
 
 router.delete("/api/rol/eliminarRol/:Rid",borrarRol);
 
+
 export default router
