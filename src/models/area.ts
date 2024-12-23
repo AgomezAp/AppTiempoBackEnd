@@ -7,7 +7,7 @@ import sequelize from '../database/connection';
 
 export class Area extends Model {
   public Aid!: number;
-  public name!: string;
+  public Aname!: string;
   public Uid!: number;
 }
 
@@ -26,12 +26,10 @@ Area.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
   },
   {
     sequelize,
-    tableName: 'areas',
+    tableName: "areas",
     timestamps: false,
   }
 );
-

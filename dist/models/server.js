@@ -64,7 +64,7 @@ class Server {
                 /* {force: true}{alter: true} */
                 yield connection_1.default.authenticate();
                 yield role_1.Role.sync();
-                yield area_2.Area.sync({ force: true });
+                yield area_2.Area.sync({ alter: true });
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync();

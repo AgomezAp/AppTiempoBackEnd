@@ -25,6 +25,6 @@ Area.init({
     },
 }, {
     sequelize: connection_1.default,
-    tableName: 'areas',
+    tableName: "areas",
     timestamps: false,
 });

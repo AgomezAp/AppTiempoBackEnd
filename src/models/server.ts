@@ -57,7 +57,7 @@ class Server{
             await sequelize.authenticate();
             
             await Role.sync();
-            await Area.sync({force: true});
+            await Area.sync({alter: true});
             await User.sync();
             await Product.sync();
             await Permiso.sync();

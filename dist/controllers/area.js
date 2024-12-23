@@ -30,7 +30,7 @@ const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         }
         return res.json({
             msg: `Area con Id${Aid} encontrado exitosamente`,
-            data: area
+            data: area,
         });
     }
     catch (error) {
@@ -39,40 +39,40 @@ const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAreaById = getAreaById;
 const createArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, correoLider } = req.body;
+    const { Aname, correoLider } = req.body;
     // Verificar si el área ya existe
-    const area = yield area_1.Area.findOne({ where: { name: name } });
+    const area = yield area_1.Area.findOne({ where: { Aname: Aname } });
     if (area) {
         return res.status(400).json({
-            msg: `Área ${name} ya existe`
+            msg: `Área ${Aname} ya existe`,
         });
     }
     try {
         yield area_1.Area.create({
-            name: name,
-            correoLider: correoLider
+            Aname: Aname,
+            correoLider: correoLider,
         });
         return res.json({
-            msg: `El área ${name} ha sido creada con éxito`
+            msg: `El área ${Aname} ha sido creada con éxito`,
         });
     }
     catch (error) {
         return res.status(500).json({
-            msg: `Error al crear el área ${name}`,
-            error
+            msg: `Error al crear el área ${Aname}`,
+            error,
         });
     }
 });
 exports.createArea = createArea;
 const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aid } = req.params;
-    const { name } = req.body;
+    const { Aname } = req.body;
     try {
         const area = yield area_1.Area.findByPk(Aid);
         if (!area) {
             return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }
-        area.name = name;
+        area.Aname = Aname;
         yield area.save();
         res.status(200).json(area);
     }
