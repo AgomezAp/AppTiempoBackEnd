@@ -21,6 +21,7 @@ const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
         if (err) {
             return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
         }
@@ -57,7 +58,8 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             //Envía correo electrónico al lider 
             const subject = 'Nuevo Permiso Solicitado';
             const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fechaInicio}. Fecha de entrada: ${fechaFin}.`;
-            yield (0, mailer_1.sendMail)(emailLider, subject, text);
+            const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
+            yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider], subject, text);
             res.status(200).json({
                 message: 'Permiso creado con éxito',
                 permiso: newPermiso,

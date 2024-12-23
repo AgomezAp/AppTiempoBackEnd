@@ -15,7 +15,7 @@ const transporter = nodemailer_1.default.createTransport({
 const sendMail = (to, subject, text) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
-        to,
+        to: to.join(','),
         subject,
         text,
     };
