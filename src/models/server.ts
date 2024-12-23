@@ -56,10 +56,10 @@ class Server{
             /* {force: true}{alter: true} */
             await sequelize.authenticate();
             
-            await Role.sync( );
-            await Area.sync({alter: true});
-            await User.sync( {alter: true});
-            await Product.sync( );
+            await Role.sync();
+            await Area.sync();
+            await User.sync();
+            await Product.sync();
             await Permiso.sync();
             console.log('Conexión establecida correctamente');
         }catch (error){

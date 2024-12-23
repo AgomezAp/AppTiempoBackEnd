@@ -33,7 +33,7 @@ const leerRoleId = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             });
         }
         return res.json({
-            msg: `Categoría con Id${Rid} encontrado exitosamente`,
+            msg: `Rol con Id${Rid} encontrado exitosamente`,
             data: role
         });
     }
@@ -99,9 +99,7 @@ const borrarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const role = yield role_1.Role.findOne({ where: { Rid: Rid } });
         if (!role) {
             console.log(role);
-            return res.status(404).json({
-                msg: `Rol con Id ${Rid} no existe`
-            });
+            return res.status(404).json({ msg: `Rol con Id ${Rid} no existe` });
         }
         yield role_1.Role.destroy({ where: { Rid: Rid } });
         return res.json({

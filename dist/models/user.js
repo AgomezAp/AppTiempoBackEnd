@@ -53,6 +53,5 @@ User.init({
 });
 User.belongsTo(role_1.Role, { foreignKey: "Rid", as: "role" });
 role_1.Role.hasMany(User, { foreignKey: "Rid", as: "users" });
-// Relación uno a muchos entre Area y User
 User.belongsTo(area_1.Area, { foreignKey: 'Aid', as: 'area' });
 area_1.Area.hasMany(User, { foreignKey: 'Aid', as: 'users' });

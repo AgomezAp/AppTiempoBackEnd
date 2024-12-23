@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteUserById = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const area_1 = require("../models/area");
 const role_1 = require("../models/role");
 const user_1 = require("../models/user");
 // Registro de usuario con asignación de rol
@@ -118,7 +119,7 @@ exports.resetPassword = resetPassword;
 const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const users = yield user_1.User.findAll({
-            include: [{ model: role_1.Role, as: 'role' }], // Incluir rol en la consulta
+            include: [{ model: role_1.Role, as: 'role' }, { model: area_1.Area, as: 'area' }], // Incluir rol en la consulta
         });
         res.status(200).json(users);
     }

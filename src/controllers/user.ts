@@ -5,6 +5,7 @@ import {
 } from 'express';
 import jwt from 'jsonwebtoken';
 
+import { Area } from '../models/area';
 import { Role } from '../models/role';
 import { User } from '../models/user';
 
@@ -124,7 +125,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
 export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
   try {
     const users = await User.findAll({
-      include: [{ model: Role, as: 'role' }], // Incluir rol en la consulta
+      include: [{ model: Role, as: 'role' },{model:Area, as:'area'}], // Incluir rol en la consulta
     });
     res.status(200).json(users);
   } catch (error) {

@@ -26,7 +26,7 @@ export const leerRoleId = async (req:Request, res:Response):Promise<any> =>{
             });
         }
         return res.json({
-            msg:`Categoría con Id${Rid} encontrado exitosamente`,
+            msg:`Rol con Id${Rid} encontrado exitosamente`,
             data: role
         })
     }catch(error){ 
@@ -98,10 +98,7 @@ export const borrarRol = async (req: Request, res:Response):Promise<any> =>{
         const role: any = await Role.findOne({where:{Rid:Rid}});
         if(!role){
             console.log(role)
-            return res.status(404).json({
-             
-                msg:`Rol con Id ${Rid} no existe`
-            });
+            return res.status(404).json({ msg:`Rol con Id ${Rid} no existe`});
         }
         await Role.destroy({where:{Rid:Rid}});
         return res.json({

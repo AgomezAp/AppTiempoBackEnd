@@ -22,13 +22,16 @@ const getAllAreas = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAllAreas = getAllAreas;
 const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
+    const { Aid } = req.params;
     try {
-        const area = yield area_1.Area.findByPk(id);
+        const area = yield area_1.Area.findOne({ where: { Aid: Aid } });
         if (!area) {
-            return res.status(404).json({ msg: `Área con ID ${id} no encontrada` });
+            return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }
-        res.status(200).json(area);
+        return res.json({
+            msg: `Area con Id${Aid} encontrado exitosamente`,
+            data: area
+        });
     }
     catch (error) {
         res.status(500).json({ msg: "Error al obtener el área", error });
@@ -37,25 +40,39 @@ const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.getAreaById = getAreaById;
 const createArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { name, correoLider } = req.body;
+    // Verificar si el área ya existe
+    const area = yield area_1.Area.findOne({ where: { name: name } });
+    if (area) {
+        return res.status(400).json({
+            msg: `Área ${name} ya existe`
+        });
+    }
     try {
-        const newArea = yield area_1.Area.create({ name, correoLider });
-        res.status(201).json(newArea);
+        yield area_1.Area.create({
+            name: name,
+            correoLider: correoLider
+        });
+        return res.json({
+            msg: `El área ${name} ha sido creada con éxito`
+        });
     }
     catch (error) {
-        res.status(500).json({ msg: "Error al crear el área", error });
+        return res.status(500).json({
+            msg: `Error al crear el área ${name}`,
+            error
+        });
     }
 });
 exports.createArea = createArea;
 const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const { name, description } = req.body;
+    const { Aid } = req.params;
+    const { name } = req.body;
     try {
-        const area = yield area_1.Area.findByPk(id);
+        const area = yield area_1.Area.findByPk(Aid);
         if (!area) {
-            return res.status(404).json({ msg: `Área con ID ${id} no encontrada` });
+            return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }
         area.name = name;
-        area.description = description;
         yield area.save();
         res.status(200).json(area);
     }
@@ -65,13 +82,13 @@ const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.updateArea = updateArea;
 const deleteArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
+    const { Aid } = req.params;
     try {
-        const area = yield area_1.Area.findByPk(id);
+        const area = yield area_1.Area.findOne({ where: { Aid: Aid } });
         if (!area) {
-            return res.status(404).json({ msg: `Área con ID ${id} no encontrada` });
+            return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }
-        yield area.destroy();
+        yield area.destroy({ where: { Aid: Aid } });
         res.status(200).json({ msg: "Área eliminada con éxito" });
     }
     catch (error) {

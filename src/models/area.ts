@@ -8,7 +8,6 @@ import sequelize from '../database/connection';
 export class Area extends Model {
   public Aid!: number;
   public name!: string;
-  public description!: string;
   public Uid!: number;
 }
 
@@ -31,8 +30,8 @@ Area.init(
   },
   {
     sequelize,
-    modelName: 'Area',
     tableName: 'areas',
+    timestamps: false,
   }
 );
 
