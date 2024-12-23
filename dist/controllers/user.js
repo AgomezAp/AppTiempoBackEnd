@@ -68,7 +68,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // Buscar usuario por email
     const user = yield user_1.User.findOne({
         where: { email },
-        include: [{ model: role_1.Role, as: 'role' }], // Incluir rol en la consulta
+        include: [{ model: role_1.Role, as: 'role' }, { model: area_1.Area, as: 'area' }], // Incluir rol en la consulta
     });
     if (!user) {
         return res.status(400).json({
@@ -87,6 +87,8 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         userId: user.Uid,
         email: user.email,
         role: user.role.Rname, // Agregar nombre del rol al token
+        area: user.area.Aname,
+        Aid: user.Aid
     }, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS', {
         expiresIn: '30m',
     });
@@ -95,6 +97,8 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         token,
         role: user.role.Rname,
         userId: user.Uid,
+        area: user.area.Aname,
+        Aid: user.Aid
     });
 });
 exports.login = login;

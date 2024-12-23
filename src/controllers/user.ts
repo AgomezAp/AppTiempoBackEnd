@@ -64,7 +64,7 @@ import { User } from '../models/user';
   // Buscar usuario por email
   const user: any = await User.findOne({
     where: { email },
-    include: [{ model: Role, as: 'role' }], // Incluir rol en la consulta
+    include: [{ model: Role, as: 'role' },{model:Area, as :'area'}], // Incluir rol en la consulta
   });
 
   if (!user) {
@@ -87,6 +87,8 @@ import { User } from '../models/user';
       userId: user.Uid,
       email: user.email,
       role: user.role.Rname, // Agregar nombre del rol al token
+      area: user.area.Aname,
+      Aid: user.Aid
     },
     process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS',
     {
@@ -99,6 +101,8 @@ import { User } from '../models/user';
     token,
     role: user.role.Rname,
     userId: user.Uid,
+    area: user.area.Aname,
+    Aid: user.Aid
   });
 };
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {
