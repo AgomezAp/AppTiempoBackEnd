@@ -3,11 +3,13 @@ import dotenv from 'dotenv';
 import express, { Application } from 'express';
 
 import sequelize from '../database/connection';
+import RArea from '../routes/area';
 import Rcategory from '../routes/category';
 import RPermisos from '../routes/permisos';
 import Rproduct from '../routes/product';
 import RRole from '../routes/product';
 import rUser from '../routes/user';
+import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
@@ -38,6 +40,8 @@ class Server{
         this.app.use(Rcategory);
         this.app.use(RRole)
         this.app.use(RPermisos)
+        this.app.use(RArea)
+
     }
     middlewares(){
         this.app.use(express.json())
@@ -53,7 +57,8 @@ class Server{
             await sequelize.authenticate();
             
             await Role.sync( );
-            await User.sync( );
+            await Area.sync({alter: true});
+            await User.sync( {alter: true});
             await Product.sync( );
             await Permiso.sync();
             console.log('Conexión establecida correctamente');

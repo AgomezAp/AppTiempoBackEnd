@@ -4,6 +4,7 @@ import {
 } from 'sequelize';
 
 import sequelize from '../database/connection';
+import { Area } from './area';
 import { Role } from './role';
 
 export class User extends Model {
@@ -14,8 +15,7 @@ export class User extends Model {
   public password!: string;
   public status!: number;
   public Rid!: number;
-
-  public role?: Role;
+  public Aid!: number;
 }
 
 User.init(
@@ -50,13 +50,21 @@ User.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    Aid: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    }
   },
   {
     sequelize,
-    tableName: 'users',
+    tableName: "users",
     timestamps: false,
   }
 );
 
-User.belongsTo(Role, { foreignKey: 'Rid', as: 'role' });
-Role.hasMany(User, { foreignKey: 'Rid', as: 'users' });
+User.belongsTo(Role, { foreignKey: "Rid", as: "role" });
+Role.hasMany(User, { foreignKey: "Rid", as: "users" });
+
+// Relación uno a muchos entre Area y User
+User.belongsTo(Area, {foreignKey: 'Aid',as: 'area'});
+Area.hasMany(User, {foreignKey: 'Aid',as: 'users'});

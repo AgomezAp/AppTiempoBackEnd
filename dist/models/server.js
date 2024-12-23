@@ -16,11 +16,13 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const connection_1 = __importDefault(require("../database/connection"));
+const area_1 = __importDefault(require("../routes/area"));
 const category_1 = __importDefault(require("../routes/category"));
 const permisos_1 = __importDefault(require("../routes/permisos"));
 const product_1 = __importDefault(require("../routes/product"));
 const product_2 = __importDefault(require("../routes/product"));
 const user_1 = __importDefault(require("../routes/user"));
+const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
 const role_1 = require("./role");
@@ -46,6 +48,7 @@ class Server {
         this.app.use(category_1.default);
         this.app.use(product_2.default);
         this.app.use(permisos_1.default);
+        this.app.use(area_1.default);
     }
     middlewares() {
         this.app.use(express_1.default.json());
@@ -61,7 +64,8 @@ class Server {
                 /* {force: true}{alter: true} */
                 yield connection_1.default.authenticate();
                 yield role_1.Role.sync();
-                yield user_2.User.sync();
+                yield area_2.Area.sync({ alter: true });
+                yield user_2.User.sync({ alter: true });
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync();
                 console.log('Conexión establecida correctamente');

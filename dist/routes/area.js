@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const area_1 = require("../controllers/area");
+const router = (0, express_1.Router)();
+router.get('/api/traerAreas', area_1.getAllAreas);
+router.get('/api/areaId/:id', area_1.getAreaById);
+router.post('/api/nuevaArea', area_1.createArea);
+router.put('/api/actualizarArea/:id', area_1.updateArea);
+router.delete('/api/BorrarArea/:id', area_1.deleteArea);
+exports.default = router;

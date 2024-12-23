@@ -9,14 +9,6 @@ import {
 } from '../controllers/role';
 
 const router = Router();
-/* 
-router.get("/api/categoria/traer",leerCategoria);
-router.get("/api/categoria/traerId/:Cid",leerCategoriaId);
-router.post("/api/categoria/crear",crearCategoria);
-router.patch("/api/categoria/actualizar/:Cid",actualizarCategoria);
-router.delete("/api/categoria/borrar/:Cid",borrarCategoria); */
-
-//RUTAS DE ROL 
 
 router.get("/api/rol/lectura",leerRole);
 

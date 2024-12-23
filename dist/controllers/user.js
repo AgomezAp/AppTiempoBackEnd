@@ -19,7 +19,7 @@ const role_1 = require("../models/role");
 const user_1 = require("../models/user");
 // Registro de usuario con asignación de rol
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, lastName, password, email, Rid } = req.body;
+    const { name, lastName, password, email, Rid, Aid } = req.body;
     // Verificar si el usuario ya existe
     const userOne = yield user_1.User.findOne({ where: { email: email } });
     if (userOne) {
@@ -45,6 +45,7 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             email,
             status: 1,
             Rid: Rid, // Asociar rol al usuario
+            Aid: Aid
         });
         res.status(200).json({
             message: 'Usuario registrado con éxito',

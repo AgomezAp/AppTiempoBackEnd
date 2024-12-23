@@ -10,7 +10,7 @@ import { User } from '../models/user';
 
 // Registro de usuario con asignación de rol
  export const register = async (req: Request, res: Response): Promise<any> => {
-  const { name, lastName, password, email, Rid } = req.body;
+  const { name, lastName, password, email, Rid, Aid} = req.body;
 
   // Verificar si el usuario ya existe
   const userOne = await User.findOne({ where: { email: email } });
@@ -40,6 +40,7 @@ import { User } from '../models/user';
       email,
       status: 1,
       Rid: Rid, // Asociar rol al usuario
+      Aid: Aid
     });
 
     res.status(200).json({
@@ -148,4 +149,3 @@ export const deleteUserById = async (req: Request, res: Response): Promise<any> 
     res.status(500).json({ msg: 'Error al eliminar el usuario', error });
   }
 };
-
