@@ -18,7 +18,7 @@ Area.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    name: {
+    Aname: {
       type: DataTypes.STRING,
       allowNull: false,
     },

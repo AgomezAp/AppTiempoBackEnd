@@ -15,7 +15,7 @@ Area.init({
         autoIncrement: true,
         primaryKey: true,
     },
-    name: {
+    Aname: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },
