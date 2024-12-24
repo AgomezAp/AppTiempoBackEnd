@@ -18,3 +18,5 @@ router.get("/api/horario/ObtenerHorario", validateToken, getHorario);
 router.get("/api/horario/ObtenerHorario/:id", validateToken, getHorarioById);
 //Ruta para actualizar salida 
 router.patch("/api/horario/ActualizarSalida/:id",validateToken, updateSalidaById);
+
+export default router

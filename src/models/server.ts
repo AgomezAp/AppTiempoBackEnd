@@ -9,11 +9,13 @@ import RPermisos from '../routes/permisos';
 import Rproduct from '../routes/product';
 import RRole from '../routes/product';
 import rUser from '../routes/user';
+import RTime from '../routes/time';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
+import { Registro } from './time'
 
 dotenv.config();
 class Server{
@@ -41,6 +43,7 @@ class Server{
         this.app.use(RRole)
         this.app.use(RPermisos)
         this.app.use(RArea)
+        this.app.use(RTime);
 
     }
     middlewares(){
@@ -61,6 +64,7 @@ class Server{
             await User.sync();
             await Product.sync();
             await Permiso.sync();
+            await Registro.sync();
             console.log('Conexión establecida correctamente');
         }catch (error){
             console.log("Error de conexion"); 
