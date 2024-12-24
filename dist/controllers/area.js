@@ -67,12 +67,16 @@ exports.createArea = createArea;
 const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aid } = req.params;
     const { Aname } = req.body;
+    const { correoLider } = req.body;
     try {
         const area = yield area_1.Area.findByPk(Aid);
         if (!area) {
             return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }
-        area.Aname = Aname;
+        if (Aname) {
+            area.Aname = Aname;
+        }
+        area.correoLider = correoLider;
         yield area.save();
         res.status(200).json(area);
     }

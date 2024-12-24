@@ -102,7 +102,8 @@ import { User } from '../models/user';
     role: user.role.Rname,
     userId: user.Uid,
     area: user.area.Aname,
-    Aid: user.Aid
+    Aid: user.Aid,
+    correoLider: user.area.correoLider
   });
 };
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {

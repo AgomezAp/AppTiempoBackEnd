@@ -98,7 +98,8 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         role: user.role.Rname,
         userId: user.Uid,
         area: user.area.Aname,
-        Aid: user.Aid
+        Aid: user.Aid,
+        correoLider: user.area.correoLider
     });
 });
 exports.login = login;

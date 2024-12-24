@@ -9,6 +9,7 @@ export class Area extends Model {
   public Aid!: number;
   public Aname!: string;
   public Uid!: number;
+  public correoLider!: string;
 }
 
 Area.init(

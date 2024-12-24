@@ -66,12 +66,16 @@ export const createArea = async (req: Request, res: Response): Promise<any> => {
 export const updateArea = async (req: Request, res: Response): Promise<any> => {
   const { Aid } = req.params;
   const { Aname } = req.body;
+  const { correoLider } = req.body; 
   try {
     const area = await Area.findByPk(Aid);
     if (!area) {
       return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
     }
-    area.Aname = Aname;
+    if (Aname) {
+      area.Aname = Aname;
+    }
+    area.correoLider = correoLider;
     await area.save();
     res.status(200).json(area);
   } catch (error) {
