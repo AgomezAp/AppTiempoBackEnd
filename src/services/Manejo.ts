@@ -1,53 +1,60 @@
 import moment, { Moment, Duration } from 'moment'
 const backendUrl = 'http://localhost:3000/api/data/guardar-datos'
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+dayjs.extend(duration)
+export async function processXML(): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+        const file = fileInput.files![0];
+        const reader = new FileReader();
 
+        reader.onload = function(event: ProgressEvent<FileReader>) {
+            try {
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(event.target!.result as string, 'application/xml');
+                const rows = xml.getElementsByTagName('Row');
+                const data: Array<{SN: string, ID: string, Name: string, Open_Time:string, Verify:string}> = [];
 
-export function processXML(): any {
-    const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-    const file = fileInput.files![0];
-    const reader = new FileReader();
-
-    reader.onload = function(event: ProgressEvent<FileReader>) {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(event.target!.result as string, 'application/xml');
-        const rows = xml.getElementsByTagName('Row');
-        const data: Array<{SN: string, ID: string, Name: string, Open_Time:string, Verify:string}> = [];
-
-        for (let i = 1; i < rows.length; i++) {  // Empezar desde 1 para saltar el primer elemento
-            const cells = rows[i].getElementsByTagName('Cell');
-            if (cells.length === 5) {
-                const id = cells[1].textContent!.trim();
-                if (id !== '' && !id.includes('User')) {  // Omitir elementos vacíos en el campo ID
-                    const entry = {
-                        "SN": cells[0].textContent!,
-                        "ID": id,
-                        "Name": cells[2].textContent!,
-                        "Open_Time": cells[3].textContent!,
-                        "Verify": cells[4].textContent!
-                    };
-                    data.push(entry);
+                for (let i = 1; i < rows.length; i++) {  // Empezar desde 1 para saltar el primer elemento
+                    const cells = rows[i].getElementsByTagName('Cell');
+                    if (cells.length === 5) {
+                        const id = cells[1].textContent!.trim();
+                        if (id !== '' && !id.includes('User')) {  // Omitir elementos vacíos en el campo ID
+                            const entry = {
+                                "SN": cells[0].textContent!,
+                                "ID": id,
+                                "Name": cells[2].textContent!,
+                                "Open_Time": cells[3].textContent!,
+                                "Verify": cells[4].textContent!
+                            };
+                            data.push(entry);
+                        }
+                    }
                 }
+                let jsonString = '{\n    "records": [\n';
+                data.forEach((entry, index)=>{
+                    jsonString += `        ${JSON.stringify(entry)}`;
+                    if (index < data.length - 1){
+                        jsonString += ',\n';
+                    } else {
+                        jsonString += '\n';
+                    }
+                    
+                });
+                jsonString += '     ]\n}'
+                const jsonObject = JSON.parse(jsonString);
+                const result = ordenarDatos(jsonObject.records);
+                resolve(result);
+            } catch (error) {
+                reject(error);
             }
         }
-        let jsonString = '{\n    "records": [\n';
-        data.forEach((entry, index)=>{
-            jsonString += `        ${JSON.stringify(entry)}`;
-            if (index < data.length - 1){
-                jsonString += ',\n';
-            } else {
-                jsonString += '\n';
-            }
-            
-        });
-        jsonString += '     ]\n}'
-        const jsonObject = JSON.parse(jsonString);
-        const result = ordenarDatos(jsonObject.records);
-        return result;
-    }
-    reader.readAsText(file);
+        reader.readAsText(file);
+    });
 }
 
-function ordenarDatos(data: any): any {
+function ordenarDatos(data: any): Array<{ ID: string; Name: string; Entrada: string; Salida: string ; Fecha: string; Extra: string }> {
     const dataf = filtrarProcesar(data);
     const datosp = procesarDatos(dataf);
     return datosp;
@@ -65,7 +72,7 @@ function filtrarProcesar(data: Array<{ ID: string; Name: string; Open_Time: stri
 
 function organizarTiempoMoment(data: Array<{ ID: string; Name: string; Open_Time: string; Fecha: string }>): void {
     data.forEach(item => {
-        const openTime: moment.Moment = moment(item.Open_Time, 'YYYY-MM-DD HH:mm:ss');
+        const openTime = dayjs(item.Open_Time, 'YYYY-MM-DD HH:mm:ss');
         item.Open_Time =openTime.format('YYYY-MM-DD HH:mm:ss');
         item.Fecha = openTime.format('YYYY-MM-DD');
     });
@@ -112,7 +119,7 @@ function formatoHora(tiempo: { horas: number; minutos: number }): string {
 
 function sinHuella(primero: {Fecha: string; ID: string; Open_Time: string; Name: string;}): {Fecha: string; ID: string; Open_Time: string; Name: string;}{
     const ultimo: {Open_Time: string} = { ...primero};
-    const adjustedTime: moment.Moment = moment(primero.Open_Time).hours(17).minutes(0).seconds(0).milliseconds(0);
+    const adjustedTime = dayjs(primero.Open_Time).hour(17).minute(0).second(0).millisecond(0);
     ultimo.Open_Time = adjustedTime.format('YYYY-MM-DD HH:mm:ss');
     return {
         ID: primero.ID,
@@ -123,9 +130,9 @@ function sinHuella(primero: {Fecha: string; ID: string; Open_Time: string; Name:
 }
 
 function diferenciaConMoment(entrada: {Fecha: string; ID: string; Open_Time: string; Name: string;}, salida: {Fecha: string; ID: string; Open_Time: string; Name: string;}): {horas: number; minutos: number}{
-    const entradaMoment: Moment = moment(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss');
-    const salidaMoment: Moment = moment(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss');
-    const duracion: Duration = moment.duration(salidaMoment.diff(entradaMoment))
+    const entradaMoment = dayjs(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss');
+    const salidaMoment = dayjs(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss');
+    const duracion = dayjs.duration(salidaMoment.diff(entradaMoment))
     duracion.subtract(9,'hours');
     duracion.subtract(30,'minutes');
     if(duracion.seconds()>30){

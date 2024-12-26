@@ -22,11 +22,13 @@ const permisos_1 = __importDefault(require("../routes/permisos"));
 const product_1 = __importDefault(require("../routes/product"));
 const product_2 = __importDefault(require("../routes/product"));
 const user_1 = __importDefault(require("../routes/user"));
+const time_1 = __importDefault(require("../routes/time"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
 const role_1 = require("./role");
 const user_2 = require("./user");
+const time_2 = require("./time");
 dotenv_1.default.config();
 class Server {
     constructor() {
@@ -49,6 +51,7 @@ class Server {
         this.app.use(product_2.default);
         this.app.use(permisos_1.default);
         this.app.use(area_1.default);
+        this.app.use(time_1.default);
     }
     middlewares() {
         this.app.use(express_1.default.json());
@@ -68,6 +71,7 @@ class Server {
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync();
+                yield time_2.Registro.sync();
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {
