@@ -11,6 +11,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteArea = exports.updateArea = exports.createArea = exports.getAreaById = exports.getAllAreas = void 0;
 const area_1 = require("../models/area");
+/**
+ * Obtiene todas las áreas.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const getAllAreas = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const areas = yield area_1.Area.findAll();
@@ -21,6 +28,13 @@ const getAllAreas = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.getAllAreas = getAllAreas;
+/**
+ * Obtiene un área por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aid } = req.params;
     try {
@@ -38,6 +52,13 @@ const getAreaById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.getAreaById = getAreaById;
+/**
+ * Crea una nueva área.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const createArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aname, correoLider } = req.body;
     // Verificar si el área ya existe
@@ -64,6 +85,13 @@ const createArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.createArea = createArea;
+/**
+ * Actualiza un área existente.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aid } = req.params;
     const { Aname } = req.body;
@@ -85,6 +113,13 @@ const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.updateArea = updateArea;
+/**
+ * Elimina un área existente.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const deleteArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Aid } = req.params;
     try {

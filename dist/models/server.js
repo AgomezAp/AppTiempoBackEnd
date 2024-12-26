@@ -28,7 +28,15 @@ const product_3 = require("./product");
 const role_1 = require("./role");
 const user_2 = require("./user");
 dotenv_1.default.config();
+/**
+ * Clase Server para configurar y ejecutar el servidor.
+ */
 class Server {
+    /**
+   * Constructor de la clase Server.
+   *
+   * @param {string} port - El puerto en el que el servidor escuchará las solicitudes.
+   */
     constructor() {
         this.app = (0, express_1.default)();
         this.port = process.env.PORT;
@@ -37,11 +45,17 @@ class Server {
         this.DBconnect();
         this.listen();
     }
+    /**
+     * Inicia el servidor.
+     */
     listen() {
         this.app.listen(this.port, () => {
             console.log("Server running on port: " + this.port);
         });
     }
+    /**
+     * Configura las rutas del servidor.
+     */
     router() {
         this.app.use(user_1.default);
         this.app.use(product_1.default);
@@ -50,6 +64,9 @@ class Server {
         this.app.use(permisos_1.default);
         this.app.use(area_1.default);
     }
+    /**
+    * Configura los middlewares del servidor.
+    */
     middlewares() {
         this.app.use(express_1.default.json());
         this.app.use((0, cors_1.default)({
@@ -58,6 +75,11 @@ class Server {
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
     }
+    /**
+     * Conecta a la base de datos y sincroniza los modelos.
+     *
+     * @returns {Promise<void>} - Una promesa que se resuelve si la conexión y sincronización son exitosas.
+     */
     DBconnect() {
         return __awaiter(this, void 0, void 0, function* () {
             try {

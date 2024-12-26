@@ -11,6 +11,14 @@ import { sendMail } from '../utils/mailer';
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage }).single('soporte');
 
+/**
+ * Crea un nuevo permiso.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const createPermiso = async (req: Request, res: Response): Promise<any> => {
   upload(req, res, async (err) => {
     if (err) {
@@ -70,6 +78,13 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     }
   });
 };
+/**
+ * Obtiene un permiso por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 
 export const getPermisosByUserId = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
@@ -87,6 +102,14 @@ export const getPermisosByUserId = async (req: Request, res: Response): Promise<
     res.status(500).json({ msg: 'Error al obtener los permisos del usuario', error: errorMessage });
   }
 };
+
+/**
+ * Obtiene todos los permisos.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 
 export const getAllUsersWithPermisos = async (req: Request, res: Response): Promise<any> => {
   try {

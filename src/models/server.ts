@@ -16,10 +16,21 @@ import { Role } from './role';
 import { User } from './user';
 
 dotenv.config();
+
+/**
+ * Clase Server para configurar y ejecutar el servidor.
+ */
+
 class Server{
 
     private app: Application;
     private port?: string;
+
+      /**
+     * Constructor de la clase Server.
+     * 
+     * @param {string} port - El puerto en el que el servidor escuchará las solicitudes.
+     */
 
     constructor(){
         this.app = express();
@@ -29,11 +40,22 @@ class Server{
         this.DBconnect();
         this.listen();
     }
+
+    /**
+     * Inicia el servidor.
+     */
+    
     listen (){
         this.app.listen(this.port, () => {
             console.log("Server running on port: " + this.port);
         });
     }
+
+    
+    /**
+     * Configura las rutas del servidor.
+     */
+
     router(){
         this.app.use(rUser)
         this.app.use(Rproduct)
@@ -43,6 +65,11 @@ class Server{
         this.app.use(RArea)
 
     }
+
+     /**
+     * Configura los middlewares del servidor.
+     */
+
     middlewares(){
         this.app.use(express.json())
         this.app.use(cors({
@@ -51,6 +78,13 @@ class Server{
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
     }
+
+    /**
+     * Conecta a la base de datos y sincroniza los modelos.
+     * 
+     * @returns {Promise<void>} - Una promesa que se resuelve si la conexión y sincronización son exitosas.
+     */
+
     async DBconnect(){
         try{
             /* {force: true}{alter: true} */

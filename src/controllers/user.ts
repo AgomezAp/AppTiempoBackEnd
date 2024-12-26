@@ -10,6 +10,20 @@ import { Role } from '../models/role';
 import { User } from '../models/user';
 
 // Registro de usuario con asignación de rol
+
+/**
+ * Registra un nuevo usuario.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/register
+ * register(req, res);
+ */
+
  export const register = async (req: Request, res: Response): Promise<any> => {
   const { name, lastName, password, email, Rid, Aid} = req.body;
 
@@ -56,6 +70,19 @@ import { User } from '../models/user';
     });
   }
 };
+
+/**
+ * Inicia sesión con validación de rol.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/login
+ * login(req, res);
+ */
 
 // Login con validación de rol
  export const login = async (req: Request, res: Response): Promise<any> => {
@@ -106,6 +133,20 @@ import { User } from '../models/user';
     correoLider: user.area.correoLider
   });
 };
+
+/**
+ * Restablece la contraseña de un usuario.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/reset-password
+ * resetPassword(req, res);
+ */
+
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {
   const { email, newPassword } = req.body;
 
@@ -126,6 +167,20 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
   }
 };
 
+
+/**
+ * Obtiene todos los usuarios.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/users
+ * getAllUsers(req, res);
+ */
+
 // Obtener todos los usuarios
 export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -137,6 +192,19 @@ export const getAllUsers = async (req: Request, res: Response): Promise<any> => 
     res.status(500).json({ msg: 'Error al obtener los usuarios', error });
   }
 };
+
+/**
+ * Elimina un usuario por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // DELETE /api/users/:Uid
+ * deleteUserById(req, res);
+ */
 
 // Borrar usuario por ID
 export const deleteUserById = async (req: Request, res: Response): Promise<any> => {

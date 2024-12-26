@@ -19,6 +19,13 @@ const user_1 = require("../models/user");
 const mailer_1 = require("../utils/mailer");
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
+/**
+ * Crea un nuevo permiso.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
@@ -75,6 +82,13 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }));
 });
 exports.createPermiso = createPermiso;
+/**
+ * Obtiene un permiso por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const getPermisosByUserId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     if (!id) {
@@ -91,6 +105,13 @@ const getPermisosByUserId = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getPermisosByUserId = getPermisosByUserId;
+/**
+ * Obtiene todos los permisos.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const getAllUsersWithPermisos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const users = yield user_1.User.findAll({ include: [{ model: permisos_1.Permiso, as: 'permisos' }] });

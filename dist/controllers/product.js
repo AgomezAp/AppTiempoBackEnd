@@ -43,6 +43,13 @@ const getInventario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     res.json(listaInventario);
 });
 exports.getInventario = getInventario;
+/**
+ * Obtiene un producto por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const getProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
@@ -66,6 +73,13 @@ const getProductById = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.getProductById = getProductById;
+/**
+ * Elimina un producto por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const deleteProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
@@ -89,6 +103,13 @@ const deleteProductById = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.deleteProductById = deleteProductById;
+/**
+ * Actualiza un producto por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 const updateProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { name, category, brand, price, quantity, status } = req.body;

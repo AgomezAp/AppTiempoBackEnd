@@ -5,6 +5,18 @@ import {
 
 import { Role } from '../models/role';
 
+/**
+ * Obtiene todos los roles.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/roles
+ * leerRole(req, res);
+ */
 export const leerRole = async(req:Request, res:Response):Promise<any>=>{
     try{
         const listRole = await Role.findAll();
@@ -15,6 +27,19 @@ export const leerRole = async(req:Request, res:Response):Promise<any>=>{
         });
     }
 }
+
+/**
+ * Obtiene un rol por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/roles/:Rid
+ * leerRoleId(req, res);
+ */
 
 export const leerRoleId = async (req:Request, res:Response):Promise<any> =>{
     const {Rid} = req.params;
@@ -35,6 +60,19 @@ export const leerRoleId = async (req:Request, res:Response):Promise<any> =>{
         })
     }
 }
+
+/**
+ * Crea un nuevo rol.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/roles
+ * crearRol(req, res);
+ */
 
 export const crearRol = async (req:Request, res:Response):Promise<any> =>{
     const {Rname}= req.body
@@ -59,6 +97,19 @@ export const crearRol = async (req:Request, res:Response):Promise<any> =>{
         })
     }
 }
+
+/**
+ * Actualiza un rol por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // PUT /api/roles/:Rid
+ * actualizarRol(req, res);
+ */
 
 export const actualizarRol = async (req:Request, res:Response):Promise<any> =>{
     const {Rname} = req.body
@@ -90,6 +141,20 @@ export const actualizarRol = async (req:Request, res:Response):Promise<any> =>{
         })
     }
 };
+
+
+/**
+ * Elimina un rol por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // DELETE /api/roles/:Rid
+ * borrarRol(req, res);
+ */
 
 export const borrarRol = async (req: Request, res:Response):Promise<any> =>{
     const {Rid} = req.params

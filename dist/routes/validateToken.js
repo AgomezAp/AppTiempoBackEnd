@@ -4,6 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+/**
+ * Middleware para validar el token JWT.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @param {NextFunction} next - La función para pasar al siguiente middleware.
+ * @returns {void}
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // app.use(validateToken);
+ */
 const validateToken = (req, res, next) => {
     const headersToken = req.headers['authorization'];
     console.log(headersToken);

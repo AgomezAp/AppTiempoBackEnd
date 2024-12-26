@@ -5,6 +5,14 @@ import {
 
 import { Area } from '../models/area';
 
+/**
+ * Obtiene todas las áreas.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const getAllAreas = async (
   req: Request,
   res: Response
@@ -17,6 +25,13 @@ export const getAllAreas = async (
   }
 };
 
+/**
+ * Obtiene un área por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 export const getAreaById = async (
   req: Request,
   res: Response
@@ -36,6 +51,13 @@ export const getAreaById = async (
   }
 };
 
+/**
+ * Crea una nueva área.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 export const createArea = async (req: Request, res: Response): Promise<any> => {
   const { Aname, correoLider } = req.body;
 
@@ -63,6 +85,14 @@ export const createArea = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
+/**
+ * Actualiza un área existente.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const updateArea = async (req: Request, res: Response): Promise<any> => {
   const { Aid } = req.params;
   const { Aname } = req.body;
@@ -82,6 +112,14 @@ export const updateArea = async (req: Request, res: Response): Promise<any> => {
     res.status(500).json({ msg: "Error al actualizar el área", error });
   }
 };
+
+/**
+ * Elimina un área existente.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
 
 export const deleteArea = async (req: Request, res: Response): Promise<any> => {
   const { Aid } = req.params;

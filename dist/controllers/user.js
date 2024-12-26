@@ -19,6 +19,18 @@ const area_1 = require("../models/area");
 const role_1 = require("../models/role");
 const user_1 = require("../models/user");
 // Registro de usuario con asignación de rol
+/**
+ * Registra un nuevo usuario.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/register
+ * register(req, res);
+ */
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { name, lastName, password, email, Rid, Aid } = req.body;
     // Verificar si el usuario ya existe
@@ -62,6 +74,18 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.register = register;
+/**
+ * Inicia sesión con validación de rol.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/login
+ * login(req, res);
+ */
 // Login con validación de rol
 const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { password, email } = req.body;
@@ -103,6 +127,18 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     });
 });
 exports.login = login;
+/**
+ * Restablece la contraseña de un usuario.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/users/reset-password
+ * resetPassword(req, res);
+ */
 const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, newPassword } = req.body;
     try {
@@ -120,6 +156,18 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.resetPassword = resetPassword;
+/**
+ * Obtiene todos los usuarios.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/users
+ * getAllUsers(req, res);
+ */
 // Obtener todos los usuarios
 const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -133,6 +181,18 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.getAllUsers = getAllUsers;
+/**
+ * Elimina un usuario por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // DELETE /api/users/:Uid
+ * deleteUserById(req, res);
+ */
 // Borrar usuario por ID
 const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Uid } = req.params;

@@ -38,6 +38,14 @@ export const getInventario = async (req:Request, res:Response): Promise<any>=>{
     res.json(listaInventario)
 }
 
+/**
+ * Obtiene un producto por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const getProductById = async (req: Request, res: Response): Promise<any>=> {
   const { id } = req.params;
 
@@ -62,6 +70,15 @@ export const getProductById = async (req: Request, res: Response): Promise<any>=
     });
   }
 };
+
+/**
+ * Elimina un producto por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const deleteProductById = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
 
@@ -87,6 +104,15 @@ export const deleteProductById = async (req: Request, res: Response): Promise<an
     });
   }
 };
+
+/**
+ * Actualiza un producto por su ID.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ */
+
 export const updateProductById = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
   const { name, category, brand,price, quantity,status } = req.body;

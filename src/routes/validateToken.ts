@@ -5,6 +5,19 @@ import {
 } from 'express';
 import jwt from 'jsonwebtoken';
 
+/**
+ * Middleware para validar el token JWT.
+ * 
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @param {NextFunction} next - La función para pasar al siguiente middleware.
+ * @returns {void}
+ * 
+ * @example
+ * // Ejemplo de uso:
+ * // app.use(validateToken);
+ */
+
 const validateToken = (req: Request, res: Response, next:NextFunction)=>{
     const headersToken  = req.headers['authorization']
 

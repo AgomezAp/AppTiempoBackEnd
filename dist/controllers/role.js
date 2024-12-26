@@ -11,6 +11,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.borrarRol = exports.actualizarRol = exports.crearRol = exports.leerRoleId = exports.leerRole = void 0;
 const role_1 = require("../models/role");
+/**
+ * Obtiene todos los roles.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/roles
+ * leerRole(req, res);
+ */
 const leerRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const listRole = yield role_1.Role.findAll();
@@ -23,6 +35,18 @@ const leerRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.leerRole = leerRole;
+/**
+ * Obtiene un rol por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // GET /api/roles/:Rid
+ * leerRoleId(req, res);
+ */
 const leerRoleId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Rid } = req.params;
     try {
@@ -44,6 +68,18 @@ const leerRoleId = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.leerRoleId = leerRoleId;
+/**
+ * Crea un nuevo rol.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // POST /api/roles
+ * crearRol(req, res);
+ */
 const crearRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Rname } = req.body;
     const rol = yield role_1.Role.findOne({ where: { Rname: Rname } });
@@ -68,6 +104,18 @@ const crearRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.crearRol = crearRol;
+/**
+ * Actualiza un rol por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // PUT /api/roles/:Rid
+ * actualizarRol(req, res);
+ */
 const actualizarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Rname } = req.body;
     const { Rid } = req.params;
@@ -93,6 +141,18 @@ const actualizarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.actualizarRol = actualizarRol;
+/**
+ * Elimina un rol por su ID.
+ *
+ * @param {Request} req - La solicitud HTTP.
+ * @param {Response} res - La respuesta HTTP.
+ * @returns {Promise<any>} - Una promesa que resuelve con la respuesta HTTP.
+ *
+ * @example
+ * // Ejemplo de uso:
+ * // DELETE /api/roles/:Rid
+ * borrarRol(req, res);
+ */
 const borrarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Rid } = req.params;
     try {
