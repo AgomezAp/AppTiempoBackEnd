@@ -14,7 +14,8 @@ export const registerProduct = async( req:Request, res: Response): Promise<any> 
           category:req.body.category,
           quantity:req.body.quantity,
           status: 1,
-          qrCode: req.body.qrCode
+          estado: req.body.estado,
+          qrCode: req.body.qrCode,
         });
       
         // Si la operación fue exitosa, devolveremos el mensaje de éxito.
@@ -115,7 +116,7 @@ export const deleteProductById = async (req: Request, res: Response): Promise<an
 
 export const updateProductById = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
-  const { name, category, brand,price, quantity,status } = req.body;
+  const { name, category, brand,price, quantity,estado } = req.body;
 
   try {
     const product = await Product.findByPk(id);
@@ -127,7 +128,7 @@ export const updateProductById = async (req: Request, res: Response): Promise<an
     }
 
     await Product.update(
-      { name:name, brand:brand,category:category, price:price, quantity:quantity },
+      { name:name, brand:brand,category:category, price:price, quantity:quantity,estado:estado },
       { where: { id } }
     );
 

@@ -20,7 +20,8 @@ const registerProduct = (req, res) => __awaiter(void 0, void 0, void 0, function
             category: req.body.category,
             quantity: req.body.quantity,
             status: 1,
-            qrCode: req.body.qrCode
+            estado: req.body.estado,
+            qrCode: req.body.qrCode,
         });
         // Si la operación fue exitosa, devolveremos el mensaje de éxito.
         res.status(200).json({
@@ -112,7 +113,7 @@ exports.deleteProductById = deleteProductById;
  */
 const updateProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const { name, category, brand, price, quantity, status } = req.body;
+    const { name, category, brand, price, quantity, estado } = req.body;
     try {
         const product = yield product_1.Product.findByPk(id);
         if (!product) {
@@ -120,7 +121,7 @@ const updateProductById = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 message: `Producto con ID ${id} no encontrado`,
             });
         }
-        yield product_1.Product.update({ name: name, brand: brand, category: category, price: price, quantity: quantity }, { where: { id } });
+        yield product_1.Product.update({ name: name, brand: brand, category: category, price: price, quantity: quantity, estado: estado }, { where: { id } });
         res.status(200).json({
             message: `Producto con ID ${id} actualizado exitosamente`,
         });

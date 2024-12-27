@@ -13,7 +13,11 @@ exports.Product = connection_1.default.define("Product", {
     category: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     quantity: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     status: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    qrCode: { type: sequelize_1.DataTypes.TEXT('long'), allowNull: false },
+    estado: {
+        type: sequelize_1.DataTypes.ENUM('excelente', 'bueno', 'defectuoso', 'dañado', 'en arreglo'),
+        allowNull: false
+    },
+    qrCode: { type: sequelize_1.DataTypes.TEXT('long'), allowNull: true },
     PcreatedAt: { type: sequelize_1.DataTypes.DATE, field: "Pcreated", defaultValue: sequelize_1.DataTypes.NOW, allowNull: false, },
     PupdatedAt: { type: sequelize_1.DataTypes.DATE, field: "Pupdated", defaultValue: sequelize_1.DataTypes.NOW, allowNull: false, },
     PdeletedAt: { type: sequelize_1.DataTypes.DATE, field: "Pdeleted", defaultValue: sequelize_1.DataTypes.NOW, allowNull: false, },

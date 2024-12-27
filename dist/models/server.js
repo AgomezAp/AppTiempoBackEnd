@@ -63,6 +63,11 @@ class Server {
         this.app.use(product_2.default);
         this.app.use(permisos_1.default);
         this.app.use(area_1.default);
+        this.app.get('/api/test-timeout', (req, res) => {
+            setTimeout(() => {
+                res.send('This request should timeout if the timeout middleware is working.');
+            }, 70000); // 70 segundos (más de 1 minuto)
+        });
     }
     /**
     * Configura los middlewares del servidor.
@@ -74,6 +79,13 @@ class Server {
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Métodos permitidos
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
+        this.app.use((req, res, next) => {
+            res.setTimeout(60000, () => {
+                console.log('Request has timed out.');
+                res.status(408).send('Request has timed out.');
+            });
+            next();
+        });
     }
     /**
      * Conecta a la base de datos y sincroniza los modelos.
@@ -88,7 +100,7 @@ class Server {
                 yield role_1.Role.sync();
                 yield area_2.Area.sync({ alter: true });
                 yield user_2.User.sync();
-                yield product_3.Product.sync();
+                yield product_3.Product.sync({ alter: true });
                 yield permisos_2.Permiso.sync();
                 console.log('Conexión establecida correctamente');
             }

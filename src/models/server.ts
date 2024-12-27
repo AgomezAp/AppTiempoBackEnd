@@ -1,6 +1,10 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express, { Application } from 'express';
+import express, {
+  Application,
+  Request,
+  Response,
+} from 'express';
 
 import sequelize from '../database/connection';
 import RArea from '../routes/area';
@@ -63,7 +67,11 @@ class Server{
         this.app.use(RRole)
         this.app.use(RPermisos)
         this.app.use(RArea)
-
+        this.app.get('/api/test-timeout', (req: Request, res: Response) => {
+            setTimeout(() => {
+                res.send('This request should timeout if the timeout middleware is working.');
+            }, 70000); // 70 segundos (más de 1 minuto)
+        });
     }
 
      /**
@@ -77,6 +85,13 @@ class Server{
             methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'], // Métodos permitidos
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
+        this.app.use((req, res, next) => {
+            res.setTimeout(60000, () => { // 2 minutos
+                console.log('Request has timed out.');
+                res.status(408).send('Request has timed out.');
+            });
+            next();
+        });
     }
 
     /**
@@ -93,7 +108,7 @@ class Server{
             await Role.sync();
             await Area.sync({alter: true});
             await User.sync();
-            await Product.sync();
+            await Product.sync({alter: true});
             await Permiso.sync();
             console.log('Conexión establecida correctamente');
         }catch (error){
