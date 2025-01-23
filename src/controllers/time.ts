@@ -3,120 +3,555 @@ import {
     Response,
   } from 'express';
 
-import {processXML} from '../services/Manejo'
-import { Registro } from '../models/time';
+import {diferenciaUpdate, formatoHora, processXML, convertTimeToMinutes, convertMinutesToTime, informePersonal, informeNovedades, diferenciaConMoment, informeRiesgo} from '../services/Manejo'
+import { Registro, Sumatoria, Novedad} from '../models/time';
 import multer from 'multer';
+import { parseStringPromise } from 'xml2js';
+import dayjs from 'dayjs';
+import { Op, json, literal } from 'sequelize';
+import e from 'cors';
+import { resolveContent } from 'nodemailer/lib/shared';
 
 
-// Controlador para convertir XML a JSON
-export const convertXml = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { xml }: {xml: string} = req.body.xml;
-        if (!xml) {
-            res.status(400).json({ success: false, message: 'XML data is required' });
-            return;
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage }).single('xml');
+
+export const handleUploadAndConvert = async (req: Request, res: Response): Promise<any> => {
+    upload(req, res, async (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al subir el archivo', details: err });
         }
-        const jsonData = await processXML();
-        res.status(200).json({ success: true, data: jsonData });
-    } catch (error: any) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se ha subido ningún archivo' });
+        }
+        try {
+            const xmlContent = req.file.buffer.toString();
+            const [jsonData, jsonDataExtra] = await processXML(xmlContent);
+
+            if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                throw new Error('Los datos procesados no son válidos o están vacíos');
+            }
+            
+            jsonData.forEach((record, index) => {
+                if (!record.Hid || !record.Name || !record.Entrada || !record.Salida || !record.Fecha || !record.Extra) {
+                    throw new Error(`Registro ${index} no tiene todos los campos requeridos`);
+                }
+            });
+            jsonData.forEach(record => {
+                record.Entrada = dayjs.tz(record.Entrada, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+                record.Salida = dayjs.tz(record.Salida, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+                record.Fecha = dayjs.tz(record.Fecha,'YYYY-MM-DD', 'America/Bogota').format('YYYY-MM-DD');
+            });
+            const horario = await Registro.bulkCreate(jsonData);
+            const listaExtras = await Sumatoria.findAll();
+            let Extra;
+            if(Object.keys(listaExtras).length === 0){
+                Extra = await Sumatoria.bulkCreate(jsonDataExtra)
+            } else {
+                const resultado = listaExtras.map(record => ({
+                    Sid: record.dataValues.Sid.toString(),
+                    Name: record.dataValues.Name,
+                    Acumulado: record.dataValues.Acumulado
+                }));
+                const resultadoActualizado = resultado.map(res => {
+                    const matchingExtra = jsonDataExtra.find((extra: {Sid: string; Name: string; Acumulado: string}) => extra.Sid === res.Sid);
+                    if(matchingExtra) {
+
+                        const [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
+                        const [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
+                        const totalMinutos = mintosRes + mintosExtra;
+                        const totalHoras = horasRes + horasExtra + Math.floor(totalMinutos / 60);
+                        const mintosFinales = totalMinutos % 60;
+    
+                        res.Acumulado = formatoHora({ horas: totalHoras, minutos: mintosFinales});
+                        return {
+                            Sid: res.Sid,
+                            Name: res.Name,
+                            Acumulado: res.Acumulado
+                        };
+                    }
+                    return res;
+                })
+                for(const data of resultadoActualizado) {
+                   Extra = await Sumatoria.update(
+                    {Acumulado: data.Acumulado},
+                    {where: { Sid: data.Sid}}
+                   );
+                }
+            }
+            return res.status(200).json({ message: 'Archivo procesado exitosamente', Extra, horario });
+        } catch (error) {
+            console.error('Error al procesar el archivo:', error);
+            return res.status(500).json({  'Error al procesar el archivo':error });
+        }
+    });
 };
 
-// const storage = multer.memoryStorage();
-// const upload = multer({ storage: storage }).single('xml');
-// export const horarios = async (req: Request, res: Response): Promise<any> => {
-//   upload(req, res, async (err) => {
-//     if (err) {
-//       return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
-//     }
-//     const datos = processXML();
-//     try {
-//       // Crear permiso asociado al usuario
-//       const horario = await Registro.create(datos);
-//       res.status(200).json({
-//         message: 'Permiso creado con éxito',
-//         horario,
-//       });
-      
-//     } catch (err: any) {
-//       console.error(err);
-//       res.status(500).json({
-//         msg: 'Error al crear el permiso',
-//         error: err,
-//       });
-//     }
-//   });
-// };
-
-export const registrarHorarios = async( req: Request, res: Response): Promise<any> => {
+ export const getHorario = async (req: Request, res: Response): Promise<any> => {
     try {
-        const datos = await processXML();
-        const horario = await Registro.create(datos);
-        res.status(200).json({
-            message: "Registros añadidos",
-            horario,
-        });
-    } catch (error: any) {
-        console.log(error);
-        res.status(500).json({
-            error: "Problemas al agregar los registros",
-            message: error.message || error,
-        });
-    }
-};
+        const listahorario = await Registro.findAll();
+        // const listaExtras = await Sumatoria.findAll();
+        
+        const convertirAHorarioLocal = (fechaUTC: string | null) => {
+            if (!fechaUTC) {
+                return null;
+            }
+            return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+        }
 
-export const getHorario = async (req: Request, res: Response): Promise<any> => {
-    const listahorario = await Registro.findAll();
-    res.json(listahorario);
+        const datosConvertidos = listahorario.map(registro => {
+            const registroConvertido = registro.toJSON();
+            return {
+                ...registroConvertido,
+                Entrada: dayjs.utc(convertirAHorarioLocal(registroConvertido.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs.utc(convertirAHorarioLocal(registroConvertido.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+            };
+        });
+        res.json(datosConvertidos);
+    } catch (error) {
+        console.error('Error al obtener los registros:', error);
+        res.status(500).json({ error: 'Error al obtener los registros' });
+        
+    }
+}
+export const getExtra = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const listaextra = await Sumatoria.findAll();
+        // const listaExtras = await Sumatoria.findAll();
+        
+
+        res.json(listaextra);
+    } catch (error) {
+        console.error('Error al obtener los registros:', error);
+        res.status(500).json({ error: 'Error al obtener los registros' });
+        
+    }
 }
 
+export const getExtraById = async (req: Request, res: Response): Promise<any> => {
+    const { Sid } = req.params;
+    try {
+        const listaextra = await Sumatoria.findAll({
+            where: {Sid: Sid}
+        });
+        if (!listaextra) {
+            return res.status(404).json({
+                message: `Empleado con ID ${Sid} no encontrado`,
+            });
+        }
+        res.status(200).json(listaextra);
+    } catch (error) {
+        console.error('Error al obtener los registros:', error);
+        res.status(500).json({ error: 'Error al obtener los registros' });
+    }
+}
 export const getHorarioById = async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
+
+    const convertirAHorarioLocal = (fechaUTC: string | null) => {
+        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+    };
+
     try {
-        const registro = await Registro.findByPk(id);
-        if(!registro) {
+        const registro = await Registro.findAll({
+            where: { Hid: id },
+        });
+        if (!registro) {
             return res.status(404).json({
                 message: `Empleado con ID ${id} no encontrado`,
             });
         }
-        res.status(200).json({
-            message: `Empleado con ID ${id} encontrado`,
-            registro,
+        const registrosConvertidos = registro.map(registro => {
+            const registroJSON = registro.toJSON();
+            return {
+                ...registroJSON,
+                Entrada: dayjs.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+            };
         });
+        res.status(200).json(registrosConvertidos);
     } catch (error: any) {
-        console.error(error);
+        console.error('Error al obtener empleado por ID:', error);
         res.status(500).json({
             message: `Error al obtener empleado con ID ${id}`,
             error: error.message || error,
         });
     }
 };
-
-export const updateSalidaById = async (req: Request, res: Response): Promise<any> => {
-    const { id } = req.params;
-    const {salida} = req.body;
-
+export const getHorarioByIdFecha = async (req: Request, res: Response): Promise<any> => {
+    const { id, fecha } = req.params;
+    const convertirAHorarioLocal = (fechaUTC: string | null) => {
+        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+    }; 
+    const fechaactual = dayjs.utc(fecha).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
-        const registro = await Registro.findByPk(id);
-
+        const registro = await Registro.findOne({
+            where: { Hid: id , Fecha: fechaactual},
+        });
         if (!registro) {
             return res.status(404).json({
-                message: `Empleado con ID ${id} no encontrado`,
+                message: `Empleado con ID ${id} en la fecha ${fecha} no encontrado`,
             });
         }
-        await Registro.update(
-            {Salida:salida},
-            {where: {id}}
-        );
-        res.status(200).json({
-            message: `Hora de salida del empleado con ID ${id} actualizado correctamente`
-        });
-    } catch (error:any) {
-        console.error(error);
+        const registroJSON = registro.toJSON(); 
+        const registrosConvertidos = {
+            ...registroJSON,
+            Entrada: dayjs.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+            Salida: dayjs.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+            Fecha: dayjs.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+        }
+        res.status(200).json(registrosConvertidos);
+    } catch (error: any) {
+        console.error('Error al obtener empleado por ID y Fecha:', error);
         res.status(500).json({
-            message: `Error al actualizar el producto con ID ${id}`,
+            message: `Error al obtener empleado con ID ${id} en la fecha ${fecha}`,
             error: error.message || error,
         });
+    }
+};
+export const getHorarioByFecha = async (req: Request, res: Response): Promise<any> => {
+    const { fecha } = req.params;
+    const convertirAHorarioLocal = (fechaUTC: string | null) => {
+        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+    }; 
+    const fechaactual = dayjs.utc(fecha).format('YYYY-MM-DDTHH:mm:ss[Z]');
+    try {
+        const registro = await Registro.findAll({
+            where: {Fecha: fechaactual},
+        });
+        if (!registro) {
+            return res.status(404).json({
+                message: `Registros en la fecha ${fecha} no encontrado`,
+            });
+        }
+        const registrosConvertidos = registro.map(registro => {
+            const registroJSON = registro.toJSON();
+            return {
+                ...registroJSON,
+                Entrada: dayjs.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+            };
+        });
+        res.status(200).json(registrosConvertidos);
+    } catch (error: any) {
+        console.error('Error al obtener registros1 por Fecha:', error);
+        res.status(500).json({
+            message: `Error al obtener registros en la fecha ${fecha}`,
+            error: error.message || error,
+        });
+    }
+};
+
+export const updateSalidaById = async (req: Request, res: Response): Promise<any> => {
+    const { id, fecha, salida } = req.body;
+    try {
+        if (!fecha || !salida) {
+            return res.status(400).json({
+                message: 'Fecha y hora de salida son requeridas',
+            });
+        }
+        const salidacompleta = `${fecha} ${salida}`
+        const fechaformateada = dayjs(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
+        const salidaformateada = dayjs.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+        // Buscar el registro por ID y Fecha
+
+        const registro = await Registro.findOne({
+            where: {
+                Hid: id,
+                Fecha: fechaformateada}
+        });
+        if (!registro) {
+            return res.status(404).json({
+                message: `Empleado con ID ${id} no encontrado para la fecha ${fecha}`,
+            });
+        }
+        // Actualizar el campo Salida
+        await Registro.update(
+            { Salida: salidaformateada},
+            {
+                where: {
+                    Hid: id,
+                    Fecha: fechaformateada,
+                },
+            }
+        );
+        var entradaactual = dayjs(registro.getDataValue('Entrada'));
+        var salidaactual = dayjs(salidaformateada);
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual);
+        const extraactualformato = formatoHora(extraactual);
+        await Registro.update(
+            { Extra: extraactualformato},
+            {
+                where: {
+                    Hid: id,
+                    Fecha: fechaformateada,
+                },
+            }
+        );
+        res.status(200).json({
+            message: `Hora de salida del empleado con ID ${id} actualizada correctamente like`,
+        });
+    } catch (error: any) {
+        res.status(500).json({
+            error: 'Error al actualizar la hora de salida ajaj',
+            details: error.message,
+        });
+    }
+};
+
+export const updateEntradaById = async (req: Request, res: Response): Promise<any> => {
+    const { id, fecha, entrada } = req.body;
+    try {
+        if (!fecha || !entrada) {
+            return res.status(400).json({
+                message: 'Fecha y hora de salida son requeridas',
+            });
+        }
+        const entradacompleta = `${fecha} ${entrada}`
+        const fechaformateada = dayjs(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
+        const entradaformateada = dayjs.tz(entradacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+        // Buscar el registro por ID y Fecha
+
+        const registro = await Registro.findOne({
+            where: {
+                Hid: id,
+                Fecha: fechaformateada}
+        });
+        if (!registro) {
+            return res.status(404).json({
+                message: `Empleado con ID ${id} no encontrado para la fecha ${fecha}`,
+            });
+        }
+        // Actualizar el campo Salida
+        await Registro.update(
+            { Entrada: entradaformateada},
+            {
+                where: {
+                    Hid: id,
+                    Fecha: fechaformateada,
+                },
+            }
+        );
+        var salidaactual = dayjs(registro.getDataValue('Salida'));
+        var entradaactual = dayjs(entradaformateada);
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual);
+        const extraactualformato = formatoHora(extraactual);
+        await Registro.update(
+            { Extra: extraactualformato},
+            {
+                where: {
+                    Hid: id,
+                    Fecha: fechaformateada,
+                },
+            }
+        );
+        res.status(200).json({
+            message: `Hora de entrada del empleado con ID ${id} actualizada correctamente`,
+        });
+    } catch (error: any) {
+        res.status(500).json({
+            error: 'Error al actualizar la hora de salida ajaj',
+            details: error.message,
+        });
+    }
+};
+
+export const agregarRegistro = async (req: Request, res: Response): Promise<any> => {
+    let primero:{Fecha: string; Hid: string; Open_Time: string; Name: string;} = {Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Entrada, Name: req.body.Name};
+    let segundo:{Fecha: string; Hid: string; Open_Time: string; Name: string;} = {Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name};
+    const ext = diferenciaConMoment(primero, segundo);
+    const extH = formatoHora(ext);
+    try {
+        const horario = await Registro.create({
+            Hid:  req.body.Hid,
+            Name:  req.body.Name,
+            Entrada:  req.body.Entrada,
+            Salida:  req.body.Salida,
+            Fecha:  req.body.Fecha,
+            Extra: extH,
+        });
+        res.status(200).json({
+            mesagge: "Registro añadido con exito",
+            horario,
+        });
+    } catch (err:any) {
+        console.error("error ", err);
+        res.status(500).json({
+            error: "Problemas al agregar el registro",
+            mesagge: err.mesagge | err,
+        });    
+    }
+};
+
+export const informePersonalById = async (req: Request, res: Response): Promise<any> => {
+    const {id, fechaInicial, fechaFinal} = req.body;
+    console.log("llegamos1");
+    const convertirAHorarioLocal = (fechaUTC: string | null) => {
+        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+    };
+    const startofDay = (fecha:string) => new Date(new Date(fecha).setHours(0,0,0,0));
+    try {
+        const horario = await Registro.findAll({
+            where: {
+                Hid: {
+                    [Op.in]: id
+                },
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), fechaFinal],
+                },
+            },
+            order: [
+                ['Name', 'ASC']
+            ]
+        });
+        console.log("llegamos2");
+        
+        if(!horario || horario.length === 0){
+            res.status(404).json({message:"No se encuentran Registros."});
+            return;
+        }
+        // const horarioPlain = horario.map(record => record.toJSON() as { ID: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string });
+        const horarioPlain2 = horario.map(record => {
+            const obj = record.toJSON() as {Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string};
+            return {
+                ...obj,
+                Entrada: dayjs.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs.utc(obj.Fecha).format('YYYY-MM-DD'), 
+            }
+        });
+        const pdfBuffer = await informePersonal(horarioPlain2);
+        console.log("llegamos3");
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "attachment; filename=informe_personal.pdf");
+        res.send(pdfBuffer);
+    } catch (error) {
+        console.error("Error al generar el informe", error);
+        res.status(500).json({ message: "Error interno al generar el informe."})
+    }
+};
+
+export const AgregarNovedad = async (req:Request, res:Response): Promise<any> => {
+    try {
+        const novedad = await Novedad.create({
+            Nid: req.body.Nid,
+            Name: req.body.Name,
+            type: req.body.type,
+            description: req.body.description,
+            Fecha: req.body.Fecha,
+        });
+
+        res.status(200).json({
+            message: "Novedad añadida con éxito",
+            novedad, // Aquí puedes devolver el producto creado si lo deseas
+        });
+    } catch (err:any) {
+        // Si ocurrió un error, devolvemos el error y el mensaje
+        console.error("este error", err); // Esto es útil para depurar el error en consola
+      
+        res.status(500).json({
+          error: "Problemas al agregar la novedad",
+          message: err.message || err, // Aquí se agrega el mensaje del error para mayor claridad
+        });
+      }
+};
+
+export const getNovedad = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const listaNovedades = await Novedad.findAll();
+        const datosConvertidos = listaNovedades.map(registro => {
+            const registroConvertido = registro.toJSON();
+            return {
+                ...registroConvertido,
+                Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+            };
+        });
+        res.json(datosConvertidos);
+    } catch (error) {
+        console.error('Error al obtener las novedades:', error);
+        res.status(500).json({ error: 'Error al obtener las novedades' });        
+    }
+}
+
+export const informeNovedad = async (req: Request, res: Response): Promise<any> => {
+    const {fechaInicial, fechaFinal} = req.body;
+    const startofDay = (fecha:string) => new Date(new Date(fecha).setHours(0,0,0,0));
+    try {
+        const novedades = await Novedad.findAll({
+            where: {
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), fechaFinal]
+                }
+            }
+        });
+        if(!novedades || novedades.length === 0){
+            res.status(404).json({message:"No se encuentran novedades."});
+            return;
+        }
+
+        const novedadesPlain = novedades.map(novedad => {
+            const obj = novedad.toJSON() as {Nid: number; Name: string; type: string; description: string};
+            return{...obj}
+        })
+        console.log(novedadesPlain)
+        const pdfBuffer = await informeNovedades(novedadesPlain);
+        res.setHeader("Content-Type", "application/pdf");
+        res.send(pdfBuffer);
+    } catch (error) {
+        console.error("Error al generar el informe", error);
+        res.status(500).json({ message: "Error interno al generar el informe."})
+    }
+}
+
+export const informePeligro = async (req: Request, res: Response): Promise<any> => {
+    const {fechaInicial, fechaFinal} = req.body;
+    console.log("llegamos1");
+    const convertirAHorarioLocal = (fechaUTC: string | null) => {
+        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+    };
+    const startofDay = (fecha:string) => new Date(new Date(fecha).setHours(0,0,0,0));
+    try {
+        const horario = await Registro.findAll({
+            where: {
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), fechaFinal],
+                },
+            },
+            order: [
+                ['Name', 'ASC']
+            ]
+        });
+        console.log("llegamos2");
+        
+        if(!horario || horario.length === 0){
+            res.status(404).json({message:"No se encuentran Registros."});
+            return;
+        }
+        // const horarioPlain = horario.map(record => record.toJSON() as { ID: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string });
+        const horarioPlain = horario.map(record => {
+            const obj = record.toJSON() as {Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string};
+            return {
+                ...obj,
+                Entrada: dayjs.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs.utc(obj.Fecha).format('YYYY-MM-DD'), 
+            }
+        });
+        const pdfBuffer = await informeRiesgo(horarioPlain);
+        console.log("llegamos3");
+        res.setHeader("Content-Type", "application/pdf");
+        res.send(pdfBuffer);
+    } catch (error) {
+        console.error("Error al generar el informe", error);
+        res.status(500).json({ message: "Error interno al generar el informe."})
     }
 };

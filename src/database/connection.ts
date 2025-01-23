@@ -12,7 +12,9 @@ if (!databaseUrl) {
 const sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     protocol: 'postgres',
+    timezone: '-05:00',
     dialectOptions: {
+        useUTC: false,
         ssl: {
             require: true,
             rejectUnauthorized: false // Esto es necesario para algunas configuraciones de PostgreSQL en Render
