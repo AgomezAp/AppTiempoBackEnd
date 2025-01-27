@@ -36,8 +36,12 @@ exports.Novedad = connection_1.default.define("Novedad", {
     Nid: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, references: { model: user_1.User, key: "Uid" } },
     Name: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     type: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    description: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    Fecha: { type: sequelize_1.DataTypes.DATE, allowNull: false }
+    Fecha: { type: sequelize_1.DataTypes.DATE, allowNull: false },
+    HoraEntrada: { type: sequelize_1.DataTypes.DATE, allowNull: true }, //revisar el allow
+    HoraSalida: { type: sequelize_1.DataTypes.DATE, allowNull: true }, //revisar el allow
+    description: { type: sequelize_1.DataTypes.STRING, allowNull: true }, //revisar el allow
+    horas: { type: sequelize_1.DataTypes.INTEGER, allowNull: true }, //revisar el allow
+    aceptacion: { type: sequelize_1.DataTypes.BOOLEAN, allowNull: true } //revisar el allow
 }, {
     timestamps: false,
     paranoid: false,
