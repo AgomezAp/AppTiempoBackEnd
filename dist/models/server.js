@@ -23,6 +23,7 @@ const product_1 = __importDefault(require("../routes/product"));
 const product_2 = __importDefault(require("../routes/product"));
 const user_1 = __importDefault(require("../routes/user"));
 const time_1 = __importDefault(require("../routes/time"));
+const novedad_1 = __importDefault(require("../routes/novedad"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -52,6 +53,7 @@ class Server {
         this.app.use(permisos_1.default);
         this.app.use(area_1.default);
         this.app.use(time_1.default);
+        this.app.use(novedad_1.default);
     }
     middlewares() {
         this.app.use(express_1.default.json());

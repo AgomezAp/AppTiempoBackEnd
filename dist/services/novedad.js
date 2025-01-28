@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.defineDescuento = defineDescuento;
 exports.descuenta = descuenta;
+exports.diferenciaHora = diferenciaHora;
 function defineDescuento(tipo) {
     switch (tipo) {
         case ('Permiso personal todo el dia'): {
@@ -46,5 +47,14 @@ function defineDescuento(tipo) {
 function descuenta(dato) {
     console.log(dato);
     switch (dato) {
+        case 'Si se descuenta NH': {
+        }
     }
+}
+function diferenciaHora(horaSalida, horaRegreso) {
+    const hora1 = new Date(horaSalida);
+    const hora2 = new Date(horaRegreso);
+    const diff = Math.abs(hora2.getTime() - hora1.getTime());
+    const diffHoras = Math.ceil(diff / (1000 * 60 * 60));
+    return diffHoras;
 }

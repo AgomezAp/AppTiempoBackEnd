@@ -44,6 +44,19 @@ export function defineDescuento(tipo: string) {
 export function descuenta(dato: string) {
     console.log(dato);
     switch (dato) {
+        case 'Si se descuenta NH': {
+            
+        }
 
     }
+}
+
+
+
+export function diferenciaHora(horaSalida: string, horaRegreso: string) {
+    const hora1 = new Date(horaSalida);
+    const hora2 = new Date(horaRegreso);
+    const diff = Math.abs(hora2.getTime() - hora1.getTime());
+    const diffHoras = Math.ceil(diff / (1000 * 60 * 60));
+    return diffHoras;
 }

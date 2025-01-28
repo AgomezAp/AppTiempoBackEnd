@@ -32,11 +32,7 @@ Permiso.init({
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },
-    fechaInicio: {
-        type: sequelize_1.DataTypes.DATE,
-        allowNull: false,
-    },
-    fechaFin: {
+    fecha: {
         type: sequelize_1.DataTypes.DATE,
         allowNull: false,
     },
@@ -48,7 +44,7 @@ Permiso.init({
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },
-    horaRegreso: {
+    horaEntrada: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
     },

@@ -26,10 +26,6 @@ router.put("/api/horario/ActualizarEntrada", time_1.updateEntradaById);
 router.post("/api/horario/agregarRegistro", time_1.agregarRegistro);
 //Ruta para informe personal
 router.post("/api/horario/informePersonal", time_1.informePersonalById);
-//Ruta para agregar novedad
-router.post("/api/horario/NuevaNovedad", time_1.AgregarNovedad);
-//Ruta para ver novedades
-router.get("/api/horario/ObtenerNovedad", time_1.getNovedad);
 //Ruta para informe novedades
 router.post("/api/horario/informeNovedad", time_1.informeNovedad);
 //Ruta para informe de peligro

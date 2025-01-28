@@ -45,11 +45,7 @@ Permiso.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    fechaInicio: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    fechaFin: {
+    fecha: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -61,7 +57,7 @@ Permiso.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    horaRegreso: {
+    horaEntrada: {
       type: DataTypes.STRING,
       allowNull: false,
     },

@@ -439,47 +439,47 @@ export const informePersonalById = async (req: Request, res: Response): Promise<
     }
 };
 
-export const AgregarNovedad = async (req:Request, res:Response): Promise<any> => {
-    try {
-        const novedad = await Novedad.create({
-            Nid: req.body.Nid,
-            Name: req.body.Name,
-            type: req.body.type,
-            description: req.body.description,
-            Fecha: req.body.Fecha,
-        });
+// export const AgregarNovedad = async (req:Request, res:Response): Promise<any> => {
+//     try {
+//         const novedad = await Novedad.create({
+//             Nid: req.body.Nid,
+//             Name: req.body.Name,
+//             type: req.body.type,
+//             description: req.body.description,
+//             Fecha: req.body.Fecha,
+//         });
 
-        res.status(200).json({
-            message: "Novedad añadida con éxito",
-            novedad, // Aquí puedes devolver el producto creado si lo deseas
-        });
-    } catch (err:any) {
-        // Si ocurrió un error, devolvemos el error y el mensaje
-        console.error("este error", err); // Esto es útil para depurar el error en consola
+//         res.status(200).json({
+//             message: "Novedad añadida con éxito",
+//             novedad, // Aquí puedes devolver el producto creado si lo deseas
+//         });
+//     } catch (err:any) {
+//         // Si ocurrió un error, devolvemos el error y el mensaje
+//         console.error("este error", err); // Esto es útil para depurar el error en consola
       
-        res.status(500).json({
-          error: "Problemas al agregar la novedad",
-          message: err.message || err, // Aquí se agrega el mensaje del error para mayor claridad
-        });
-      }
-};
+//         res.status(500).json({
+//           error: "Problemas al agregar la novedad",
+//           message: err.message || err, // Aquí se agrega el mensaje del error para mayor claridad
+//         });
+//       }
+// };
 
-export const getNovedad = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const listaNovedades = await Novedad.findAll();
-        const datosConvertidos = listaNovedades.map(registro => {
-            const registroConvertido = registro.toJSON();
-            return {
-                ...registroConvertido,
-                Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
-            };
-        });
-        res.json(datosConvertidos);
-    } catch (error) {
-        console.error('Error al obtener las novedades:', error);
-        res.status(500).json({ error: 'Error al obtener las novedades' });        
-    }
-}
+// export const getNovedad = async (req: Request, res: Response): Promise<any> => {
+//     try {
+//         const listaNovedades = await Novedad.findAll();
+//         const datosConvertidos = listaNovedades.map(registro => {
+//             const registroConvertido = registro.toJSON();
+//             return {
+//                 ...registroConvertido,
+//                 Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+//             };
+//         });
+//         res.json(datosConvertidos);
+//     } catch (error) {
+//         console.error('Error al obtener las novedades:', error);
+//         res.status(500).json({ error: 'Error al obtener las novedades' });        
+//     }
+// }
 
 export const informeNovedad = async (req: Request, res: Response): Promise<any> => {
     const {fechaInicial, fechaFinal} = req.body;

@@ -11,8 +11,8 @@ import {
     getExtra,
     getExtraById,
     informePersonalById,
-    AgregarNovedad,
-    getNovedad,
+    // AgregarNovedad,
+    // getNovedad,
     informeNovedad,
     updateEntradaById,
     agregarRegistro,
@@ -46,10 +46,7 @@ router.put("/api/horario/ActualizarEntrada", updateEntradaById);
 router.post("/api/horario/agregarRegistro", agregarRegistro);
 //Ruta para informe personal
 router.post("/api/horario/informePersonal", informePersonalById);
-//Ruta para agregar novedad
-router.post("/api/horario/NuevaNovedad", AgregarNovedad);
-//Ruta para ver novedades
-router.get("/api/horario/ObtenerNovedad", getNovedad);
+
 //Ruta para informe novedades
 router.post("/api/horario/informeNovedad", informeNovedad);
 //Ruta para informe de peligro

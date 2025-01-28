@@ -43,13 +43,13 @@ Sumatoria.belongsTo(User, {foreignKey: "Sid", as: "usuario" });
 export const Novedad = sequelize.define(
     "Novedad",
     {
-        unique_key: {type:DataTypes.INTEGER, primaryKey:true, autoIncrement:true},
+        id: {type:DataTypes.INTEGER, primaryKey:true},
         Nid: {type: DataTypes.INTEGER, allowNull: false, references: {model: User, key: "Uid"} },
         Name: {type: DataTypes.STRING, allowNull: false},
         type: {type: DataTypes.STRING, allowNull: false},
         Fecha: {type: DataTypes.DATE, allowNull: false},
-        HoraEntrada: {type: DataTypes.DATE, allowNull: true},           //revisar el allow
-        HoraSalida: {type: DataTypes.DATE, allowNull: true},            //revisar el allow
+        HoraEntrada: {type: DataTypes.STRING, allowNull: true},           //revisar el allow
+        HoraSalida: {type: DataTypes.STRING, allowNull: true},            //revisar el allow
         description: {type: DataTypes.STRING, allowNull: true},         //revisar el allow
         horas: {type: DataTypes.INTEGER, allowNull: true},          //revisar el allow
         aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          //revisar el allow

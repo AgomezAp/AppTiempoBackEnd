@@ -10,6 +10,7 @@ import Rproduct from '../routes/product';
 import RRole from '../routes/product';
 import rUser from '../routes/user';
 import RTime from '../routes/time';
+import RNovedad from '../routes/novedad';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -44,6 +45,7 @@ class Server{
         this.app.use(RPermisos)
         this.app.use(RArea)
         this.app.use(RTime);
+        this.app.use(RNovedad);
 
     }
     middlewares(){

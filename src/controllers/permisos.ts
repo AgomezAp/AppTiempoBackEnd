@@ -17,12 +17,12 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
     }
 
-    const { emailPersonal, emailLider, nombre, numeroDocumento, fechaInicio, fechaFin, tipo, horaSalida, horaRegreso, observaciones } = req.body;
+    const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, tipo, horaEntrada, horaSalida, observaciones } = req.body;
     const soporte = req.file ? req.file.buffer : null;
     const Uid = parseInt(req.body.Uid, 10);
 
     // Verificar si todos los campos obligatorios están presentes
-    if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fechaInicio || !fechaFin || !tipo || !horaSalida || !horaRegreso || !Uid) {
+    if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fecha || !tipo || !horaEntrada || !horaSalida || !Uid) {
       return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
     }
 
@@ -41,18 +41,17 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         emailLider,
         nombre,
         numeroDocumento,
-        fechaInicio,
-        fechaFin,
+        fecha,
         tipo,
         horaSalida,
-        horaRegreso,
+        horaEntrada,
         observaciones,
         soporte,
         Uid,
       });
       //Envía correo electrónico al lider 
       const subject = 'Nuevo Permiso Solicitado';
-      const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fechaInicio}. Fecha de entrada: ${fechaFin}.`;
+      const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fecha}. Hora de salida: ${horaSalida}. Hora de regreso: ${horaEntrada}. Observaciones: ${observaciones}`;
       const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
       await sendMail([...fixedRecipients, emailLider], subject, text);
 
