@@ -88,7 +88,10 @@ import { User } from '../models/user';
       email: user.email,
       role: user.role.Rname, // Agregar nombre del rol al token
       area: user.area.Aname,
-      Aid: user.Aid
+      Aid: user.Aid,
+      name: user.name,
+      lastname: user.lastName,
+      correolider: user.area.correolider
     },
     process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS',
     {
@@ -102,7 +105,10 @@ import { User } from '../models/user';
     role: user.role.Rname,
     userId: user.Uid,
     area: user.area.Aname,
-    Aid: user.Aid
+    Aid: user.Aid,
+    name: user.name,
+    lastname: user.lastName,
+    correolider: user.area.correoLider
   });
 };
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {

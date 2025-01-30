@@ -7,33 +7,17 @@ import { Novedad } from '../models/time';
 import { Permiso } from '../models/permisos';
 import dayjs from 'dayjs';
 import { convertTimeToMinutes } from '../services/Manejo';
+import { permisoToNovedad , descontando } from '../services/novedad';
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
       const permisos = await Permiso.findAll();
       const novedad = await Novedad.findAll();
+      // console.log('permisos:', permisos);
       const novedadJS = novedad.map(nv => nv.toJSON());
-      const transicion = permisos.map(permiso => permiso.toJSON());
-      const idsNovedades = new Set(novedadJS.map(nv => nv.id));
-      const transicionFiltrada = transicion.filter(permiso => !idsNovedades.has(permiso.id));
-      const novedades = transicionFiltrada.map(item => {
-        const horas = convertTimeToMinutes(item.horaSalida);
-        console.log('Horas:', horas, 'tipo', typeof(horas));
-        const enHoras = horas / (1000 * 60 * 60);
-        console.log('enHoras:', enHoras, 'tipo', typeof(enHoras));
-        return {
-          id: item.id,
-          Nid: item.Uid,
-          Name: item.nombre,
-          type: item.tipo,
-          Fecha: item.fechaInicio,
-          HoraEntrada: item.horaRegreso,
-          HoraSalida: item.horaSalida,
-          description: item.observaciones,
-          horas: enHoras,
-          aceptacion: false
-        };
-      });
+      const novedades = permisoToNovedad(permisos, novedadJS);
+      // const sumatorias = descontando(novedades)
+      // console.log(novedades)
       const newNovedades = await Novedad.bulkCreate(novedades); 
       res.status(200).json(newNovedades);          
     } catch (error) {

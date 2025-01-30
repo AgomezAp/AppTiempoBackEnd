@@ -1,7 +1,44 @@
-export function defineDescuento(tipo: string) {
+import { Permiso } from '../models/permisos';
+import type { Novedad } from '../models/time';
+import { convertTimeToMinutes } from './Manejo';
+export function permisoToNovedad(permisos: Permiso[], novedad: Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada: string, HoraSalida: string, description: string, horas: number, aceptacion: boolean|null}>): Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada: string|null, HoraSalida: string|null, description: string, horas: number, aceptacion: boolean|null}> {
+    const transicion = permisos.map(permiso => permiso.toJSON());
+    console.log('Transicion:', transicion);
+    const idsNovedades = new Set(novedad.map(nv => nv.id));
+    console.log('IdsNovedades:', idsNovedades);
+    const transicionFiltrada = transicion.filter(permiso => !idsNovedades.has(permiso.id));
+    console.log('TransicionFiltrada:', transicionFiltrada);
+    const novedades = transicionFiltrada.map(item => {
+        const desc = defineDescuento(item.tipo, item.horaEntrada, item.horaSalida);
+        // const horas = convertTimeToMinutes(item.horaSalida);
+        // console.log('Horas:', horas, 'tipo', typeof(horas));
+        // console.log('Horas:', item.horaSalida, 'tipo', typeof(item.horaSalida));
+        return {
+            id: item.id,
+            Nid: item.Uid,
+            Name: item.nombre,
+            type: item.tipo,
+            Fecha: item.fecha,
+            HoraEntrada: desc[0].entrada || item.horaEntrada,
+            HoraSalida: desc[0].salida || item.horaSalida,
+            description: item.observaciones,
+            horas: desc[0].horas ? parseFloat(desc[0].horas) : 0,
+            aceptacion: desc[0].acp ?? null,
+        };
+        });
+    console.log('Novedades:', novedades);
+    return novedades;
+}
+
+
+export function defineDescuento(tipo: string, entrada?: string, salida?: string): Array<{acp?: boolean | null, horas?: string, salida?: string, entrada?: string}>  {
+    let acp: boolean | null;
+    let horas: string;
     switch (tipo) {
         case('Permiso personal todo el dia'): {
-            descuenta('Si se descuenta NH')
+            acp = true;
+            horas = '-8:30';
+            return [{acp, horas}];
         }
         case 'Incapacidad médica':
         case 'Día de la familia':
@@ -12,31 +49,59 @@ export function defineDescuento(tipo: string) {
         case 'Jurado de votacion':    
         case 'Incapacidad laboral':
         case 'Vacaciones': {
-            descuenta('No se descuenta NH')
+            acp = false;
+            horas = '0:0';
+            return [{acp, horas}];
         }
         case 'calamidad':
         case 'Urgencia medica': {
-            descuenta('depende NH')
+            acp = null;
+            horas = '0:0';
+            return [{acp, horas}];
         }
         case 'salida temprano': {
-            descuenta('Si se descuenta HS')
+            acp = true;
+            entrada = '17:00';
+            horas = '-(entrada - salida)';
+            //calcular el tiempo entre las 5pm y la hora de salida
+            return [{acp, horas, entrada}];
         }
         case 'llegada tarde por factores externos': {
-            descuenta('No se descuenta HE')
-
+            acp = false;
+            horas = '0:0';
+            return [{acp, horas}];
         }
         case 'Entrada luego de la jornada': {
-            descuenta('Si se descuenta HE')
+            acp = true;
+            salida = '7:30';
+            horas = '-(entrada - salida)'
+            //se descuenta entre la hora de entrada y las 7:30am
+            return [{acp, horas, salida}];
         }
         case 'cita medica':
         case 'cita odontologica': {
-            descuenta('depende HS y HE')
+            acp = null;
+            horas = '-(entrada - salida)';
+            //calcular el tiempo entre la hora de entrada y de salida
+            return [{acp, horas}];
         }
         case 'movimiento de horario': {
-            descuenta('No se descuenta HE y HS')
+            acp = false;
+            horas = '0:0';
+            return [{acp, horas}];
         }
         case 'Horas extras': {
-            descuenta('depende HE Y HS')
+            acp = null;
+            horas = 'salida - entrada';
+            //calcular el tiempo entre la hora de entrada y de salida
+            return [{acp, horas}];
+
+        }
+        default :{
+            horas = '0:0';
+            acp = null
+            return [{acp, horas}];
+
         }
     }
 }
@@ -52,11 +117,12 @@ export function descuenta(dato: string) {
 }
 
 
-
-export function diferenciaHora(horaSalida: string, horaRegreso: string) {
-    const hora1 = new Date(horaSalida);
-    const hora2 = new Date(horaRegreso);
-    const diff = Math.abs(hora2.getTime() - hora1.getTime());
-    const diffHoras = Math.ceil(diff / (1000 * 60 * 60));
-    return diffHoras;
+export function descontando(novedad: Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada: string, HoraSalida: string, description: string, horas: number, aceptacion: boolean|null}>): Array<{Nid: number, horas: number}> {
+    const descuento = novedad.filter(item => item.aceptacion === true).map(item => (
+        {
+            Nid: item.Nid,
+            horas: item.horas,
+        }
+    ));
+    return descuento;
 }

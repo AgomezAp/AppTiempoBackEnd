@@ -72,7 +72,7 @@ class Server {
                 yield area_2.Area.sync({ alter: true });
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
-                yield permisos_2.Permiso.sync();
+                yield permisos_2.Permiso.sync({ alter: true });
                 yield time_2.Registro.sync();
                 yield time_2.Sumatoria.sync();
                 yield time_2.Novedad.sync({ alter: true });

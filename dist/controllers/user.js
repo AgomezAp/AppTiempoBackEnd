@@ -88,7 +88,10 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         email: user.email,
         role: user.role.Rname, // Agregar nombre del rol al token
         area: user.area.Aname,
-        Aid: user.Aid
+        Aid: user.Aid,
+        name: user.name,
+        lastname: user.lastName,
+        correolider: user.area.correolider
     }, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS', {
         expiresIn: '30m',
     });
@@ -98,7 +101,10 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         role: user.role.Rname,
         userId: user.Uid,
         area: user.area.Aname,
-        Aid: user.Aid
+        Aid: user.Aid,
+        name: user.name,
+        lastname: user.lastName,
+        correolider: user.area.correoLider
     });
 });
 exports.login = login;

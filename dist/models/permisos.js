@@ -42,11 +42,11 @@ Permiso.init({
     },
     horaSalida: {
         type: sequelize_1.DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     horaEntrada: {
         type: sequelize_1.DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     observaciones: {
         type: sequelize_1.DataTypes.TEXT,

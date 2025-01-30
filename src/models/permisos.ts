@@ -55,11 +55,11 @@ Permiso.init(
     },
     horaSalida: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     horaEntrada: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     observaciones: {
       type: DataTypes.TEXT,

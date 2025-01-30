@@ -16,33 +16,16 @@ exports.deleteNovedad = exports.getNovedad = exports.convertNovedad = void 0;
 const time_1 = require("../models/time");
 const permisos_1 = require("../models/permisos");
 const dayjs_1 = __importDefault(require("dayjs"));
-const Manejo_1 = require("../services/Manejo");
+const novedad_1 = require("../services/novedad");
 const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const permisos = yield permisos_1.Permiso.findAll();
         const novedad = yield time_1.Novedad.findAll();
+        // console.log('permisos:', permisos);
         const novedadJS = novedad.map(nv => nv.toJSON());
-        const transicion = permisos.map(permiso => permiso.toJSON());
-        const idsNovedades = new Set(novedadJS.map(nv => nv.id));
-        const transicionFiltrada = transicion.filter(permiso => !idsNovedades.has(permiso.id));
-        const novedades = transicionFiltrada.map(item => {
-            const horas = (0, Manejo_1.convertTimeToMinutes)(item.horaSalida);
-            console.log('Horas:', horas, 'tipo', typeof (horas));
-            const enHoras = horas / (1000 * 60 * 60);
-            console.log('enHoras:', enHoras, 'tipo', typeof (enHoras));
-            return {
-                id: item.id,
-                Nid: item.Uid,
-                Name: item.nombre,
-                type: item.tipo,
-                Fecha: item.fechaInicio,
-                HoraEntrada: item.horaRegreso,
-                HoraSalida: item.horaSalida,
-                description: item.observaciones,
-                horas: enHoras,
-                aceptacion: false
-            };
-        });
+        const novedades = (0, novedad_1.permisoToNovedad)(permisos, novedadJS);
+        // const sumatorias = descontando(novedades)
+        // console.log(novedades)
         const newNovedades = yield time_1.Novedad.bulkCreate(novedades);
         res.status(200).json(newNovedades);
     }
