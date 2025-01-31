@@ -51,7 +51,7 @@ export const Novedad = sequelize.define(
         HoraEntrada: {type: DataTypes.STRING, allowNull: true},           //revisar el allow
         HoraSalida: {type: DataTypes.STRING, allowNull: true},            //revisar el allow
         description: {type: DataTypes.STRING, allowNull: true},         //revisar el allow
-        horas: {type: DataTypes.INTEGER, allowNull: true},          //revisar el allow
+        horas: {type: DataTypes.STRING, allowNull: true},          //revisar el allow
         aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          //revisar el allow
     },
     {

@@ -40,7 +40,7 @@ exports.Novedad = connection_1.default.define("Novedad", {
     HoraEntrada: { type: sequelize_1.DataTypes.STRING, allowNull: true }, //revisar el allow
     HoraSalida: { type: sequelize_1.DataTypes.STRING, allowNull: true }, //revisar el allow
     description: { type: sequelize_1.DataTypes.STRING, allowNull: true }, //revisar el allow
-    horas: { type: sequelize_1.DataTypes.INTEGER, allowNull: true }, //revisar el allow
+    horas: { type: sequelize_1.DataTypes.STRING, allowNull: true }, //revisar el allow
     aceptacion: { type: sequelize_1.DataTypes.BOOLEAN, allowNull: true } //revisar el allow
 }, {
     timestamps: false,

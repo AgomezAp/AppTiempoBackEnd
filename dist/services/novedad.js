@@ -2,15 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.permisoToNovedad = permisoToNovedad;
 exports.defineDescuento = defineDescuento;
-exports.descuenta = descuenta;
-exports.descontando = descontando;
 function permisoToNovedad(permisos, novedad) {
     const transicion = permisos.map(permiso => permiso.toJSON());
-    console.log('Transicion:', transicion);
     const idsNovedades = new Set(novedad.map(nv => nv.id));
-    console.log('IdsNovedades:', idsNovedades);
     const transicionFiltrada = transicion.filter(permiso => !idsNovedades.has(permiso.id));
-    console.log('TransicionFiltrada:', transicionFiltrada);
     const novedades = transicionFiltrada.map(item => {
         var _a;
         const desc = defineDescuento(item.tipo, item.horaEntrada, item.horaSalida);
@@ -26,7 +21,7 @@ function permisoToNovedad(permisos, novedad) {
             HoraEntrada: desc[0].entrada || item.horaEntrada,
             HoraSalida: desc[0].salida || item.horaSalida,
             description: item.observaciones,
-            horas: desc[0].horas ? parseFloat(desc[0].horas) : 0,
+            horas: desc[0].horas || '0:00',
             aceptacion: (_a = desc[0].acp) !== null && _a !== void 0 ? _a : null,
         };
     });
@@ -52,19 +47,23 @@ function defineDescuento(tipo, entrada, salida) {
         case 'Incapacidad laboral':
         case 'Vacaciones': {
             acp = false;
-            horas = '0:0';
+            horas = '0:00';
             return [{ acp, horas }];
         }
         case 'calamidad':
         case 'Urgencia medica': {
             acp = null;
-            horas = '0:0';
+            horas = '0:00';
             return [{ acp, horas }];
         }
-        case 'salida temprano': {
+        case 'Salida Temprano': {
             acp = true;
             entrada = '17:00';
-            horas = '-(entrada - salida)';
+            const entradaMin = convertirHora(entrada);
+            const salidaMin = convertirHora(salida);
+            console.log('Entrada:', entradaMin, 'Salida:', salidaMin);
+            const dif = convertirMinuto(entradaMin - salidaMin);
+            horas = `-${dif}`;
             //calcular el tiempo entre las 5pm y la hora de salida
             return [{ acp, horas, entrada }];
         }
@@ -76,14 +75,20 @@ function defineDescuento(tipo, entrada, salida) {
         case 'Entrada luego de la jornada': {
             acp = true;
             salida = '7:30';
-            horas = '-(entrada - salida)';
+            const entradaMin = convertirHora(entrada);
+            const salidaMin = convertirHora(salida);
+            const dif = convertirMinuto(entradaMin - salidaMin);
+            horas = `-${dif}`;
             //se descuenta entre la hora de entrada y las 7:30am
             return [{ acp, horas, salida }];
         }
         case 'cita medica':
-        case 'cita odontologica': {
+        case 'Cita odontológica': {
             acp = null;
-            horas = '-(entrada - salida)';
+            const entradaMin = convertirHora(entrada);
+            const salidaMin = convertirHora(salida);
+            const dif = convertirMinuto(entradaMin - salidaMin);
+            horas = `-${dif}`;
             //calcular el tiempo entre la hora de entrada y de salida
             return [{ acp, horas }];
         }
@@ -92,30 +97,33 @@ function defineDescuento(tipo, entrada, salida) {
             horas = '0:0';
             return [{ acp, horas }];
         }
-        case 'Horas extras': {
+        case 'Horas extras (en casa, fuera de las instalaciones y viajes)': {
             acp = null;
-            horas = 'salida - entrada';
+            const entradaMin = convertirHora(entrada);
+            const salidaMin = convertirHora(salida);
+            const dif = convertirMinuto(salidaMin - entradaMin);
+            horas = dif;
             //calcular el tiempo entre la hora de entrada y de salida
             return [{ acp, horas }];
         }
         default: {
-            horas = '0:0';
+            horas = '0:00';
             acp = null;
             return [{ acp, horas }];
         }
     }
 }
-function descuenta(dato) {
-    console.log(dato);
-    switch (dato) {
-        case 'Si se descuenta NH': {
-        }
+function convertirHora(hora) {
+    if (!hora) {
+        return 0;
     }
+    const [hh, mm] = hora.split(':').map(Number);
+    const sum = (hh * 60) + mm;
+    return sum;
 }
-function descontando(novedad) {
-    const descuento = novedad.filter(item => item.aceptacion === true).map(item => ({
-        Nid: item.Nid,
-        horas: item.horas,
-    }));
-    return descuento;
+function convertirMinuto(hora) {
+    const hh = Math.floor(hora / 60);
+    let mm = hora % 60;
+    const formataoHora = (num) => num.toString().padStart(2, '0');
+    return `${formataoHora(hh)}:${formataoHora(mm)}`;
 }

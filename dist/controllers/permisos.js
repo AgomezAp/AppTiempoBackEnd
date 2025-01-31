@@ -16,12 +16,10 @@ exports.getAllUsersWithPermisos = exports.getPermisosByUserId = exports.createPe
 const multer_1 = __importDefault(require("multer"));
 const permisos_1 = require("../models/permisos");
 const user_1 = require("../models/user");
-const mailer_1 = require("../utils/mailer");
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
         if (err) {
             return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
         }
@@ -55,10 +53,10 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 Uid,
             });
             //Envía correo electrónico al lider 
-            const subject = 'Nuevo Permiso Solicitado';
-            const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fecha}. Hora de salida: ${horaSalida}. Hora de regreso: ${horaEntrada}. Observaciones: ${observaciones}`;
-            const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
-            yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider], subject, text);
+            // const subject = 'Nuevo Permiso Solicitado';
+            // const text = `Se ha solicitado un nuevo permiso para ${nombre}. Tipo de permiso: ${tipo}. Fecha de salida: ${fecha}. Hora de salida: ${horaSalida}. Hora de regreso: ${horaEntrada}. Observaciones: ${observaciones}`;
+            // const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
+            // await sendMail([...fixedRecipients, emailLider], subject, text);
             res.status(200).json({
                 message: 'Permiso creado con éxito',
                 permiso: newPermiso,

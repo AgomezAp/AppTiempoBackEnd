@@ -24,8 +24,6 @@ const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
         // console.log('permisos:', permisos);
         const novedadJS = novedad.map(nv => nv.toJSON());
         const novedades = (0, novedad_1.permisoToNovedad)(permisos, novedadJS);
-        // const sumatorias = descontando(novedades)
-        // console.log(novedades)
         const newNovedades = yield time_1.Novedad.bulkCreate(novedades);
         res.status(200).json(newNovedades);
     }
@@ -49,6 +47,8 @@ const getNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.getNovedad = getNovedad;
+// export const updateNovedad = async (req: Request, res: Response): Promise<any> =>{
+// }
 const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield time_1.Novedad.destroy({ where: {} });
