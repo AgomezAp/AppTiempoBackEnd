@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
 const Manejo_1 = require("../services/Manejo");
+const novedad_1 = require("../services/novedad");
 const time_1 = require("../models/time");
 const multer_1 = __importDefault(require("multer"));
 const dayjs_1 = __importDefault(require("dayjs"));
@@ -350,9 +351,26 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
             Fecha: req.body.Fecha,
             Extra: extH,
         });
+        const listaExtras = yield time_1.Sumatoria.findAll({ where: { Sid: req.body.Hid } });
+        if (!listaExtras) {
+            yield time_1.Sumatoria.create({
+                Sid: req.body.Hid,
+                Name: req.body.Name,
+                Acumulado: extH
+            });
+        }
+        else {
+            const acum = listaExtras.map(ls => ls.toJSON());
+            const suma = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(acum[0].Acumulado) + (0, novedad_1.convertirHora)(extH));
+            yield time_1.Sumatoria.update({ Extra: suma }, {
+                where: {
+                    Sid: req.body.Hid
+                },
+            });
+        }
+        ;
         res.status(200).json({
-            mesagge: "Registro añadido con exito",
-            horario,
+            message: `Registro agregado`,
         });
     }
     catch (err) {
@@ -409,44 +427,6 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.informePersonalById = informePersonalById;
-// export const AgregarNovedad = async (req:Request, res:Response): Promise<any> => {
-//     try {
-//         const novedad = await Novedad.create({
-//             Nid: req.body.Nid,
-//             Name: req.body.Name,
-//             type: req.body.type,
-//             description: req.body.description,
-//             Fecha: req.body.Fecha,
-//         });
-//         res.status(200).json({
-//             message: "Novedad añadida con éxito",
-//             novedad, // Aquí puedes devolver el producto creado si lo deseas
-//         });
-//     } catch (err:any) {
-//         // Si ocurrió un error, devolvemos el error y el mensaje
-//         console.error("este error", err); // Esto es útil para depurar el error en consola
-//         res.status(500).json({
-//           error: "Problemas al agregar la novedad",
-//           message: err.message || err, // Aquí se agrega el mensaje del error para mayor claridad
-//         });
-//       }
-// };
-// export const getNovedad = async (req: Request, res: Response): Promise<any> => {
-//     try {
-//         const listaNovedades = await Novedad.findAll();
-//         const datosConvertidos = listaNovedades.map(registro => {
-//             const registroConvertido = registro.toJSON();
-//             return {
-//                 ...registroConvertido,
-//                 Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
-//             };
-//         });
-//         res.json(datosConvertidos);
-//     } catch (error) {
-//         console.error('Error al obtener las novedades:', error);
-//         res.status(500).json({ error: 'Error al obtener las novedades' });        
-//     }
-// }
 const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { fechaInicial, fechaFinal } = req.body;
     const startofDay = (fecha) => new Date(new Date(fecha).setHours(0, 0, 0, 0));

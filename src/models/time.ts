@@ -62,6 +62,25 @@ export const Novedad = sequelize.define(
 User.hasMany(Novedad, {foreignKey: "Nid", as: "novedades" });
 Novedad.belongsTo(User,{foreignKey: "Nid", as: "usuario" });
 
+export const CopiaNovedad = sequelize.define(
+    "CopiaNovedad",
+    {
+        Cid: {type:DataTypes.INTEGER},
+        Nid: {type: DataTypes.INTEGER, allowNull: true},
+        Name: {type: DataTypes.STRING, allowNull: true},
+        type: {type: DataTypes.STRING, allowNull: true},
+        Fecha: {type: DataTypes.DATE, allowNull: true},
+        HoraEntrada: {type: DataTypes.STRING, allowNull: true},           
+        HoraSalida: {type: DataTypes.STRING, allowNull: true},            
+        description: {type: DataTypes.STRING, allowNull: true},         
+        horas: {type: DataTypes.STRING, allowNull: true},          
+        aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          
+    },
+    {
+        timestamps: false,
+        paranoid: false,
+    }
+)
 
 
 

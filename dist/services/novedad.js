@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.permisoToNovedad = permisoToNovedad;
 exports.defineDescuento = defineDescuento;
+exports.convertirHora = convertirHora;
+exports.convertirMinuto = convertirMinuto;
 function permisoToNovedad(permisos, novedad) {
     const transicion = permisos.map(permiso => permiso.toJSON());
     const idsNovedades = new Set(novedad.map(nv => nv.id));
@@ -9,9 +11,6 @@ function permisoToNovedad(permisos, novedad) {
     const novedades = transicionFiltrada.map(item => {
         var _a;
         const desc = defineDescuento(item.tipo, item.horaEntrada, item.horaSalida);
-        // const horas = convertTimeToMinutes(item.horaSalida);
-        // console.log('Horas:', horas, 'tipo', typeof(horas));
-        // console.log('Horas:', item.horaSalida, 'tipo', typeof(item.horaSalida));
         return {
             id: item.id,
             Nid: item.Uid,
@@ -25,14 +24,13 @@ function permisoToNovedad(permisos, novedad) {
             aceptacion: (_a = desc[0].acp) !== null && _a !== void 0 ? _a : null,
         };
     });
-    console.log('Novedades:', novedades);
     return novedades;
 }
 function defineDescuento(tipo, entrada, salida) {
     let acp;
     let horas;
     switch (tipo) {
-        case ('Permiso personal todo el dia'): {
+        case ('Permiso personal de todo el día'): {
             acp = true;
             horas = '-8:30';
             return [{ acp, horas }];
@@ -40,18 +38,18 @@ function defineDescuento(tipo, entrada, salida) {
         case 'Incapacidad médica':
         case 'Día de la familia':
         case 'Día extralegal':
-        case 'Suspension por proceso disciplinario':
+        case 'Suspensión por proceso disciplinario':
         case 'Licencia de luto':
-        case 'media jornada por votación':
-        case 'Jurado de votacion':
+        case 'Media jornada por votación':
+        case 'Jurado de votación':
         case 'Incapacidad laboral':
         case 'Vacaciones': {
             acp = false;
             horas = '0:00';
             return [{ acp, horas }];
         }
-        case 'calamidad':
-        case 'Urgencia medica': {
+        case 'Calamidad':
+        case 'Urgencia médica': {
             acp = null;
             horas = '0:00';
             return [{ acp, horas }];
@@ -61,13 +59,11 @@ function defineDescuento(tipo, entrada, salida) {
             entrada = '17:00';
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
-            console.log('Entrada:', entradaMin, 'Salida:', salidaMin);
             const dif = convertirMinuto(entradaMin - salidaMin);
             horas = `-${dif}`;
-            //calcular el tiempo entre las 5pm y la hora de salida
             return [{ acp, horas, entrada }];
         }
-        case 'llegada tarde por factores externos': {
+        case 'Llegada tarde por factores externos': {
             acp = false;
             horas = '0:0';
             return [{ acp, horas }];
@@ -79,20 +75,18 @@ function defineDescuento(tipo, entrada, salida) {
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
             horas = `-${dif}`;
-            //se descuenta entre la hora de entrada y las 7:30am
             return [{ acp, horas, salida }];
         }
-        case 'cita medica':
+        case 'Cita médica':
         case 'Cita odontológica': {
             acp = null;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
             horas = `-${dif}`;
-            //calcular el tiempo entre la hora de entrada y de salida
             return [{ acp, horas }];
         }
-        case 'movimiento de horario': {
+        case 'Movimiento de horario': {
             acp = false;
             horas = '0:0';
             return [{ acp, horas }];
@@ -103,7 +97,6 @@ function defineDescuento(tipo, entrada, salida) {
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(salidaMin - entradaMin);
             horas = dif;
-            //calcular el tiempo entre la hora de entrada y de salida
             return [{ acp, horas }];
         }
         default: {

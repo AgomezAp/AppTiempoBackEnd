@@ -9,4 +9,8 @@ router.post("/api/novedad/NuevaNovedad", novedad_1.convertNovedad);
 router.get("/api/novedad/ObtenerNovedad", novedad_1.getNovedad);
 // eliminar novedades
 router.delete("/api/novedad/eliminarNovedad", novedad_1.deleteNovedad);
+// editar horas novedad
+router.put("/api/novedad/editarNovedadHora", novedad_1.updateNovedadHora);
+//editar estado novedad
+router.put("/api/novedad/editarNovedadEstado", novedad_1.updateNovedadEstado);
 exports.default = router;

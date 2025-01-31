@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { 
     convertNovedad, 
-    getNovedad, deleteNovedad
+    getNovedad, deleteNovedad,updateNovedadHora, updateNovedadEstado
  } from '../controllers/novedad';
 import validateToken  from './validateToken';
 
@@ -14,5 +14,10 @@ router.post("/api/novedad/NuevaNovedad", convertNovedad);
 router.get("/api/novedad/ObtenerNovedad", getNovedad);
 // eliminar novedades
 router.delete("/api/novedad/eliminarNovedad", deleteNovedad);
+// editar horas novedad
+router.put("/api/novedad/editarNovedadHora",  updateNovedadHora);
+//editar estado novedad
+router.put("/api/novedad/editarNovedadEstado",  updateNovedadEstado);
+
 
 export default router
