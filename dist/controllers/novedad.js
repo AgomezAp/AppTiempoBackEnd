@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aceptarTODO = exports.deleteNovedad = exports.updateNovedadEstado = exports.updateNovedadHora = exports.getNovedad = exports.convertNovedad = void 0;
+exports.aceptarTodo = exports.deleteNovedad = exports.updateNovedadEstado = exports.updateNovedadHora = exports.getNovedad = exports.convertNovedad = void 0;
 const time_1 = require("../models/time");
 const permisos_1 = require("../models/permisos");
 const dayjs_1 = __importDefault(require("dayjs"));
@@ -100,30 +100,76 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.deleteNovedad = deleteNovedad;
-const aceptarTODO = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const novedades = yield time_1.Novedad.findAll();
-        const novedadJS = novedades.map(nv => nv.toJSON());
-        novedadJS.forEach(item => {
-            if (item.aceptacion === null) {
-                return res.status(400).json({ error: `la novedad de ${item.name} en la fecha ${item.fecha} no ha sido aceptada` });
+        var novedades = yield time_1.Novedad.findAll({
+            where: {
+                aceptacion: null
             }
         });
-        const soloTrue = novedadJS.filter(nv => nv.aceptacion === true);
-        const extras = yield time_1.Sumatoria.findAll();
-        const extrasJS = extras.map(ex => ex.toJSON());
+        var novedadJS = novedades.map(nv => nv.toJSON());
+        if (novedadJS.length > 0) {
+            const item = novedadJS[0];
+            const fechaobj = new Date(item.Fecha);
+            const soloFecha = fechaobj.toISOString().split('T')[0];
+            return res.status(400).json({ error: `la novedad de ${item.Name} en la fecha ${soloFecha} no ha sido aceptada o rechazada` });
+        }
+        novedades = yield time_1.Novedad.findAll({
+            where: {
+                aceptacion: true
+            }
+        });
+        novedadJS = novedades.map(nv => nv.toJSON());
+        if (novedadJS.length <= 0) {
+            return res.status(200).json({ message: 'Aceptado o rechazado todo' });
+        }
+        else {
+            const sum = novedadJS.map(nv => ({
+                Uid: nv.Nid,
+                hora: (0, novedad_1.convertirHora)(nv.horas),
+                nombre: nv.Name
+            }));
+            const agrupado = {};
+            sum.forEach(item => {
+                if (agrupado[item.Uid]) {
+                    agrupado[item.Uid] += item.hora;
+                }
+                else {
+                    agrupado[item.Uid] = item.hora;
+                }
+            });
+            for (const uid in agrupado) {
+                const minutosAcumulados = agrupado[uid];
+                const sumatoria = yield time_1.Sumatoria.findOne({ where: { Sid: uid } });
+                if (sumatoria) {
+                    const actual = (0, novedad_1.convertirHora)(sumatoria.dataValues.Acumulado);
+                    const minutosTotales = actual + minutosAcumulados;
+                    yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: uid } });
+                }
+                else {
+                    yield time_1.Sumatoria.create({ Sid: uid,
+                        Name: agrupado.Name,
+                        Acumulado: (0, novedad_1.convertirMinuto)(minutosAcumulados) });
+                }
+                yield time_1.Novedad.update({ aceptacion: false }, { where: {
+                        Nid: uid,
+                    } });
+            }
+            return res.status(200).json({ message: 'Aceptado o rechazado todo este' });
+        }
     }
     catch (error) {
+        console.error('Error al aceptar las novedades:', error);
+        res.status(500).json({ error: 'Error al aceptar las novedades' });
     }
-    /*
-    1. recibir todos los datos de NOVEDADES ✔️✔️
-    2. Verificar que en todos los registros aceptacion sea true o false ✔️✔️
-    3. Si alguno es null debe revisar de nuevo cada registro (el usuario) ✔️✔️
-    4. Si todos los registros son true o false, se obtienen solamente los registros con aceptacion true
-    5. se suman las horas en la tabla SUMATORIA.
-    6. se pasan todos los datos en la tabla COPIANOVEDAD
-    7 se deja la tabla NOVEDAD vacia
-  
-    */
-});
-exports.aceptarTODO = aceptarTODO;
+}); /*
+  1. recibir todos los datos de NOVEDADES ✔️✔️
+  2. Verificar que en todos los registros aceptacion sea true o false ✔️✔️
+  3. Si alguno es null debe revisar de nuevo cada registro (el usuario) ✔️✔️
+  4. Si todos los registros son true o false, se obtienen solamente los registros con aceptacion true
+  5. se suman las horas en la tabla SUMATORIA.
+  6. se pasan todos los datos en la tabla COPIANOVEDAD
+  7 se deja la tabla NOVEDAD vacia
+
+  */
+exports.aceptarTodo = aceptarTodo;

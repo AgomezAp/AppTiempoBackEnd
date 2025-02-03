@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUserById = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
+exports.deleteUserById = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const area_1 = require("../models/area");
@@ -138,6 +138,22 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.getAllUsers = getAllUsers;
+const getListUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const user = yield user_1.User.findAll({
+            attributes: ['Uid', 'name', 'lastName']
+        });
+        const userJS = user.map(us => ({
+            Uid: us.Uid,
+            nombre: `${us.name} ${us.lastName}`
+        }));
+        res.status(200).json(userJS);
+    }
+    catch (error) {
+        res.status(500).json({ msg: 'Error al obtener los usuarios0', error });
+    }
+});
+exports.getListUser = getListUser;
 // Borrar usuario por ID
 const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Uid } = req.params;

@@ -109,17 +109,36 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
 
 
 export function convertirHora(hora: string | undefined): number {
+    var sum: number = 0;
     if (!hora) {
         return 0;
     }
-    const [hh, mm] = hora.split(':').map(Number);      
-    const sum = (hh * 60) + mm;
+    const [hh, mm] = hora.split(':').map(Number);
+    if(hh < 0){
+        sum = (hh * 60) - mm;
+    } else {
+        sum = (hh * 60) + mm;
+    }
+    
     return sum;
 }
 
 export function convertirMinuto(hora: number): string {
-    const hh = Math.floor(hora / 60);
-    let mm = hora % 60;
+    // if(hora<60 && hora>-60){
+    //     const hh = 0;
+    //     let mm = hora;
+    //     const formataoHora = (num: number) => num.toString().padStart(2, '0');
+    //     return `${formataoHora(hh)}:${formataoHora(mm)}`;
+    // } else {
+    //     const hh = Math.floor(hora / 60);
+    //     let mm = hora % 60;
+    //     const formataoHora = (num: number) => num.toString().padStart(2, '0');
+    //     return `${formataoHora(hh)}:${formataoHora(mm)}`;
+    // }
+    const absHora = Math.abs(hora);
+    const hh = Math.floor(absHora / 60);
+    const mm = absHora % 60;
     const formataoHora = (num: number) => num.toString().padStart(2, '0');
-    return `${formataoHora(hh)}:${formataoHora(mm)}`;
+    const signo = hora < 0 ? '-' : '';
+    return `${signo}${formataoHora(hh)}:${formataoHora(mm)}`;
 }

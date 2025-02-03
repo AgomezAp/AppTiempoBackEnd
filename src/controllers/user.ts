@@ -143,6 +143,20 @@ export const getAllUsers = async (req: Request, res: Response): Promise<any> => 
   }
 };
 
+export const getListUser = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const user = await User.findAll({
+      attributes: ['Uid', 'name', 'lastName']
+    });
+    const userJS = user.map(us => ({
+      Uid: us.Uid,
+      nombre: `${us.name} ${us.lastName}`
+    }));
+    res.status(200).json(userJS);
+  } catch (error) {
+    res.status(500).json({msg: 'Error al obtener los usuarios0', error})
+  }
+};
 // Borrar usuario por ID
 export const deleteUserById = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;

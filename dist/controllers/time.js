@@ -89,8 +89,9 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
 exports.handleUploadAndConvert = handleUploadAndConvert;
 const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const listahorario = yield time_1.Registro.findAll();
-        // const listaExtras = await Sumatoria.findAll();
+        const listahorario = yield time_1.Registro.findAll({
+            order: [['unique_key', 'ASC']]
+        });
         const convertirAHorarioLocal = (fechaUTC) => {
             if (!fechaUTC) {
                 return null;
@@ -111,7 +112,9 @@ const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.getHorario = getHorario;
 const getExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const listaextra = yield time_1.Sumatoria.findAll();
+        const listaextra = yield time_1.Sumatoria.findAll({
+            order: [['Sid', 'ASC']]
+        });
         // const listaExtras = await Sumatoria.findAll();
         res.json(listaextra);
     }
@@ -125,7 +128,7 @@ const getExtraById = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     const { Sid } = req.params;
     try {
         const listaextra = yield time_1.Sumatoria.findAll({
-            where: { Sid: Sid }
+            where: { Sid: Sid },
         });
         if (!listaextra) {
             return res.status(404).json({
@@ -263,6 +266,7 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 Fecha: fechaformateada,
             },
         });
+        const extra = registro.getDataValue('Extra');
         var entradaactual = (0, dayjs_1.default)(registro.getDataValue('Entrada'));
         var salidaactual = (0, dayjs_1.default)(salidaformateada);
         const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual);
@@ -272,6 +276,17 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 Hid: id,
                 Fecha: fechaformateada,
             },
+        });
+        var sum = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extraactualformato) - (0, novedad_1.convertirHora)(extra));
+        const sumatoria = yield time_1.Sumatoria.findOne({
+            where: {
+                Sid: id
+            }
+        });
+        yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
+            where: {
+                Sid: id,
+            }
         });
         res.status(200).json({
             message: `Hora de salida del empleado con ID ${id} actualizada correctamente like`,
@@ -315,6 +330,7 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 Fecha: fechaformateada,
             },
         });
+        const extra = registro.getDataValue('Extra');
         var salidaactual = (0, dayjs_1.default)(registro.getDataValue('Salida'));
         var entradaactual = (0, dayjs_1.default)(entradaformateada);
         const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual);
@@ -324,6 +340,17 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 Hid: id,
                 Fecha: fechaformateada,
             },
+        });
+        var sum = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extraactualformato) - (0, novedad_1.convertirHora)(extra));
+        const sumatoria = yield time_1.Sumatoria.findOne({
+            where: {
+                Sid: id
+            }
+        });
+        yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
+            where: {
+                Sid: id
+            }
         });
         res.status(200).json({
             message: `Hora de entrada del empleado con ID ${id} actualizada correctamente`,
@@ -343,7 +370,7 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
     const ext = (0, Manejo_1.diferenciaConMoment)(primero, segundo);
     const extH = (0, Manejo_1.formatoHora)(ext);
     try {
-        const horario = yield time_1.Registro.create({
+        yield time_1.Registro.create({
             Hid: req.body.Hid,
             Name: req.body.Name,
             Entrada: req.body.Entrada,
@@ -352,7 +379,7 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
             Extra: extH,
         });
         const listaExtras = yield time_1.Sumatoria.findAll({ where: { Sid: req.body.Hid } });
-        if (!listaExtras) {
+        if (listaExtras.length === 0) {
             yield time_1.Sumatoria.create({
                 Sid: req.body.Hid,
                 Name: req.body.Name,
@@ -384,7 +411,6 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
 exports.agregarRegistro = agregarRegistro;
 const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id, fechaInicial, fechaFinal } = req.body;
-    console.log("llegamos1");
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
             return null; // Manejar fechas nulas o no definidas

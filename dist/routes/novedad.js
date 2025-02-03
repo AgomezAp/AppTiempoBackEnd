@@ -13,4 +13,6 @@ router.delete("/api/novedad/eliminarNovedad", novedad_1.deleteNovedad);
 router.put("/api/novedad/editarNovedadHora", novedad_1.updateNovedadHora);
 //editar estado novedad
 router.put("/api/novedad/editarNovedadEstado", novedad_1.updateNovedadEstado);
+// aceptar todas las novedades
+router.post("/api/novedad/aceptacion", novedad_1.aceptarTodo);
 exports.default = router;

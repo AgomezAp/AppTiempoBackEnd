@@ -7,7 +7,7 @@ import { Novedad, Sumatoria } from '../models/time';
 import { Permiso } from '../models/permisos';
 import dayjs from 'dayjs';
 import { convertTimeToMinutes } from '../services/Manejo';
-import { permisoToNovedad } from '../services/novedad';
+import { permisoToNovedad, convertirHora, convertirMinuto } from '../services/novedad';
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -91,22 +91,76 @@ export const deleteNovedad = async (req: Request, res: Response): Promise<any> =
 }
 
 
-export const aceptarTODO = async (req: Request, res: Response): Promise<any> => {
+export const aceptarTodo = async (req: Request, res: Response): Promise<any> => {
   try {
-    const novedades = await Novedad.findAll();
-    const novedadJS = novedades.map(nv => nv.toJSON());
-    novedadJS.forEach(item => {
-      if (item.aceptacion === null) {
-        return res.status(400).json({ error: `la novedad de ${item.name} en la fecha ${item.fecha} no ha sido aceptada` });
-      }});
-    const soloTrue = novedadJS.filter(nv => nv.aceptacion === true);
-    const extras = await Sumatoria.findAll();
-    const extrasJS = extras.map(ex => ex.toJSON());
+    var novedades = await Novedad.findAll({
+      where: {
+        aceptacion: null
+      }
+    });
+    var novedadJS = novedades.map(nv => nv.toJSON());
+    if(novedadJS.length>0){
+      const item= novedadJS[0];
+      const fechaobj = new Date(item.Fecha);
+      const soloFecha = fechaobj.toISOString().split('T')[0]
+      return res.status(400).json({ error: `la novedad de ${item.Name} en la fecha ${soloFecha} no ha sido aceptada o rechazada` })
+    }
+    novedades = await Novedad.findAll({
+      where: {
+        aceptacion: true
+      }
+    });
+    novedadJS = novedades.map(nv => nv.toJSON());
+    if(novedadJS.length <= 0){
+      return res.status(200).json({message : 'Aceptado o rechazado todo'});
+    } else {
+      const sum = novedadJS.map(nv =>({
+        Uid : nv.Nid,
+        hora : convertirHora(nv.horas),
+        nombre: nv.Name
+      }),
+    );
+    const agrupado: { [key: string]: number }= {};
+    sum.forEach(item => {
+      if (agrupado[item.Uid]){
+        agrupado[item.Uid] += item.hora;
+      } else {
+        agrupado[item.Uid] = item.hora;
+      }
+    });
+    for (const uid in agrupado) {
+      const minutosAcumulados = agrupado[uid];
+      const sumatoria = await Sumatoria.findOne({ where: {Sid: uid}});
+      if (sumatoria) {
+        const actual = convertirHora(sumatoria.dataValues.Acumulado);
+        const minutosTotales = actual + minutosAcumulados;
+        await Sumatoria.update(
+          {Acumulado: convertirMinuto(minutosTotales)},
+          {where: {Sid: uid}}
+        );
+      } else {
+        await Sumatoria.create(
+          {Sid: uid,
+          Name: agrupado.Name,
+          Acumulado: convertirMinuto(minutosAcumulados) }
+        );
+      }
+      await Novedad.update(
+        {aceptacion: false},
+        {where: {
+          Nid: uid,
+        }}
+      );
+    }
+    return res.status(200).json({message : 'Aceptado o rechazado todo este'});
     
+    }
   } catch (error) {
-    
+    console.error('Error al aceptar las novedades:', error);
+    res.status(500).json({ error: 'Error al aceptar las novedades' });
   }
-  /*
+ 
+} /*
   1. recibir todos los datos de NOVEDADES ✔️✔️
   2. Verificar que en todos los registros aceptacion sea true o false ✔️✔️
   3. Si alguno es null debe revisar de nuevo cada registro (el usuario) ✔️✔️
@@ -116,4 +170,3 @@ export const aceptarTODO = async (req: Request, res: Response): Promise<any> => 
   7 se deja la tabla NOVEDAD vacia
 
   */
-}

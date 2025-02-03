@@ -9,7 +9,7 @@ import { Registro, Sumatoria, Novedad} from '../models/time';
 import multer from 'multer';
 import { parseStringPromise } from 'xml2js';
 import dayjs from 'dayjs';
-import { Op, json, literal } from 'sequelize';
+import { Op, json, literal, where } from 'sequelize';
 import e from 'cors';
 import { resolveContent } from 'nodemailer/lib/shared';
 
@@ -91,16 +91,15 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
 
  export const getHorario = async (req: Request, res: Response): Promise<any> => {
     try {
-        const listahorario = await Registro.findAll();
-        // const listaExtras = await Sumatoria.findAll();
-        
+        const listahorario = await Registro.findAll({
+          order: [['unique_key', 'ASC']]
+        });        
         const convertirAHorarioLocal = (fechaUTC: string | null) => {
             if (!fechaUTC) {
                 return null;
             }
             return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         }
-
         const datosConvertidos = listahorario.map(registro => {
             const registroConvertido = registro.toJSON();
             return {
@@ -119,7 +118,9 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
 }
 export const getExtra = async (req: Request, res: Response): Promise<any> => {
     try {
-        const listaextra = await Sumatoria.findAll();
+        const listaextra = await Sumatoria.findAll({
+          order: [['Sid', 'ASC']]
+        });
         // const listaExtras = await Sumatoria.findAll();
         
 
@@ -135,7 +136,7 @@ export const getExtraById = async (req: Request, res: Response): Promise<any> =>
     const { Sid } = req.params;
     try {
         const listaextra = await Sumatoria.findAll({
-            where: {Sid: Sid}
+            where: {Sid: Sid},
         });
         if (!listaextra) {
             return res.status(404).json({
@@ -258,7 +259,7 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
                 message: 'Fecha y hora de salida son requeridas',
             });
         }
-        const salidacompleta = `${fecha} ${salida}`
+        const salidacompleta = `${fecha} ${salida}`;
         const fechaformateada = dayjs(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const salidaformateada = dayjs.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         // Buscar el registro por ID y Fecha
@@ -283,6 +284,7 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
                 },
             }
         );
+        const extra = registro.getDataValue('Extra');
         var entradaactual = dayjs(registro.getDataValue('Entrada'));
         var salidaactual = dayjs(salidaformateada);
         const extraactual = diferenciaUpdate(entradaactual, salidaactual);
@@ -294,6 +296,20 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
                     Hid: id,
                     Fecha: fechaformateada,
                 },
+            }
+        );
+        var sum = convertirMinuto(convertirHora(extraactualformato) - convertirHora(extra));
+        const sumatoria = await Sumatoria.findOne({
+            where: {
+                Sid: id
+            }
+        }); 
+        await Sumatoria.update(
+            {Acumulado: convertirMinuto(convertirHora(sumatoria?.getDataValue('Acumulado')) + convertirHora(sum))},
+            {
+                where: {
+                    Sid: id,
+                }
             }
         );
         res.status(200).json({
@@ -340,6 +356,7 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
                 },
             }
         );
+        const extra = registro.getDataValue('Extra');
         var salidaactual = dayjs(registro.getDataValue('Salida'));
         var entradaactual = dayjs(entradaformateada);
         const extraactual = diferenciaUpdate(entradaactual, salidaactual);
@@ -351,6 +368,20 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
                     Hid: id,
                     Fecha: fechaformateada,
                 },
+            }
+        );
+        var sum = convertirMinuto(convertirHora(extraactualformato) - convertirHora(extra));
+        const sumatoria = await Sumatoria.findOne({
+            where: {
+                Sid: id
+            }
+        });
+        await Sumatoria.update(
+            {Acumulado: convertirMinuto(convertirHora(sumatoria?.getDataValue('Acumulado')) + convertirHora(sum))},
+            {
+                where: {
+                    Sid: id
+                }
             }
         );
         res.status(200).json({
@@ -370,7 +401,7 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
     const ext = diferenciaConMoment(primero, segundo);
     const extH = formatoHora(ext);
     try {
-        const horario = await Registro.create({
+        await Registro.create({
             Hid:  req.body.Hid,
             Name:  req.body.Name,
             Entrada:  req.body.Entrada,
@@ -379,7 +410,7 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
             Extra: extH,
         });
         const listaExtras = await Sumatoria.findAll({ where: {Sid: req.body.Hid}});
-        if(!listaExtras){
+        if(listaExtras.length === 0){
             await Sumatoria.create({
                 Sid: req.body.Hid,
                 Name: req.body.Name,
@@ -411,7 +442,6 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
 
 export const informePersonalById = async (req: Request, res: Response): Promise<any> => {
     const {id, fechaInicial, fechaFinal} = req.body;
-    console.log("llegamos1");
     const convertirAHorarioLocal = (fechaUTC: string | null) => {
         if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
         return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
