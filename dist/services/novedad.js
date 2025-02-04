@@ -121,17 +121,6 @@ function convertirHora(hora) {
     return sum;
 }
 function convertirMinuto(hora) {
-    // if(hora<60 && hora>-60){
-    //     const hh = 0;
-    //     let mm = hora;
-    //     const formataoHora = (num: number) => num.toString().padStart(2, '0');
-    //     return `${formataoHora(hh)}:${formataoHora(mm)}`;
-    // } else {
-    //     const hh = Math.floor(hora / 60);
-    //     let mm = hora % 60;
-    //     const formataoHora = (num: number) => num.toString().padStart(2, '0');
-    //     return `${formataoHora(hh)}:${formataoHora(mm)}`;
-    // }
     const absHora = Math.abs(hora);
     const hh = Math.floor(absHora / 60);
     const mm = absHora % 60;

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-
 import { 
     convertNovedad, 
     getNovedad, deleteNovedad,updateNovedadHora, updateNovedadEstado, aceptarTodo

@@ -102,33 +102,41 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 exports.deleteNovedad = deleteNovedad;
 const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        //Obtiene en Novedad las que tengan aceptacion === null
         var novedades = yield time_1.Novedad.findAll({
             where: {
                 aceptacion: null
             }
         });
-        var novedadJS = novedades.map(nv => nv.toJSON());
+        //Mapea las novedades obtenidas en formato json
+        let novedadJS = novedades.map(nv => nv.toJSON());
+        //Verifica que no haya ninguna novedad sin rechazar o sin aceptar
         if (novedadJS.length > 0) {
+            //Se obtienen los datos para mostrar el mensaje de error
             const item = novedadJS[0];
             const fechaobj = new Date(item.Fecha);
             const soloFecha = fechaobj.toISOString().split('T')[0];
             return res.status(400).json({ error: `la novedad de ${item.Name} en la fecha ${soloFecha} no ha sido aceptada o rechazada` });
         }
+        //Obtiene en Novedad las que tengan aceptacion === true
         novedades = yield time_1.Novedad.findAll({
             where: {
                 aceptacion: true
             }
         });
+        //Mapea las novedades obtenidas en formato json
         novedadJS = novedades.map(nv => nv.toJSON());
+        // Si no existe algun registro con aceptacion === true retorna mensaje de aceptacion
         if (novedadJS.length <= 0) {
             return res.status(200).json({ message: 'Aceptado o rechazado todo' });
         }
-        else {
+        else { // si existe, mapeo todos los registros sacando Uid, Hora(en minutos), nombre
             const sum = novedadJS.map(nv => ({
                 Uid: nv.Nid,
                 hora: (0, novedad_1.convertirHora)(nv.horas),
                 nombre: nv.Name
             }));
+            //Si se repide el Uid se agrupa sumando los minutos
             const agrupado = {};
             sum.forEach(item => {
                 if (agrupado[item.Uid]) {
@@ -138,29 +146,40 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                     agrupado[item.Uid] = item.hora;
                 }
             });
+            //recorre agrupado buscando por UID
             for (const uid in agrupado) {
+                //minutos acumulados en novedades
                 const minutosAcumulados = agrupado[uid];
+                //busca en sumatoria por id
                 const sumatoria = yield time_1.Sumatoria.findOne({ where: { Sid: uid } });
+                //Si existe el registro
                 if (sumatoria) {
+                    // asigna a actual la cantidad de horas (minutos) extras que tiene el usuario
                     const actual = (0, novedad_1.convertirHora)(sumatoria.dataValues.Acumulado);
+                    // Hace la suma de tiempo extra y minutos acumulados en novedades 
                     const minutosTotales = actual + minutosAcumulados;
+                    //busca por id y actualiza el acumulado (convirtiendo al formato)
                     yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: uid } });
                 }
                 else {
+                    //Si el registro no existe. lo crea agregandole los datos de sum
                     yield time_1.Sumatoria.create({ Sid: uid,
                         Name: agrupado.Name,
                         Acumulado: (0, novedad_1.convertirMinuto)(minutosAcumulados) });
                 }
+                //Actualiza la aceptacion de la tabla novedades, poniendo en falso
                 yield time_1.Novedad.update({ aceptacion: false }, { where: {
                         Nid: uid,
                     } });
             }
+            // Cuando termina de recorrer retorna el mensaje de aceptacion
             return res.status(200).json({ message: 'Aceptado o rechazado todo este' });
         }
     }
     catch (error) {
+        //En caso de error retorna mensaje de error
         console.error('Error al aceptar las novedades:', error);
-        res.status(500).json({ error: 'Error al aceptar las novedades' });
+        return res.status(500).json({ error: 'Error al aceptar las novedades' });
     }
 }); /*
   1. recibir todos los datos de NOVEDADES ✔️✔️
