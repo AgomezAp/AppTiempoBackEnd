@@ -107,6 +107,7 @@ function procesarDatos(data) {
         let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         let opentimeSalida = dayjs_1.default.tz(ultimo.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         var ext = diferenciaConMoment(primero, ultimo);
+        console.log(opentimeEntrada, "<<<>>>", opentimeSalida);
         const extH = formatoHora(ext);
         // Unir los registros en uno solo
         const procesado = {
@@ -141,16 +142,35 @@ function diferenciaConMoment(entrada, salida) {
     const entradaMoment = dayjs_1.default.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
     const salidaMoment = dayjs_1.default.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
     let duracion = dayjs_1.default.duration(salidaMoment.diff(entradaMoment));
-    duracion = duracion.subtract(9, 'hours');
-    duracion = duracion.subtract(30, 'minutes');
-    if (duracion.seconds() > 30) {
-        duracion = duracion.add(1, 'minutes');
-        duracion = duracion.subtract(duracion.seconds(), 'seconds');
+    var horas = 0;
+    var minutos = 0;
+    if (entradaMoment.day() !== 6) {
+        duracion = duracion.subtract(9, 'hours');
+        duracion = duracion.subtract(30, 'minutes');
+        if (duracion.seconds() > 30) {
+            duracion = duracion.add(1, 'minutes');
+            duracion = duracion.subtract(duracion.seconds(), 'seconds');
+        }
+        horas = duracion.hours();
+        minutos = duracion.minutes();
+        if (horas == 0 && minutos >= 0) {
+            minutos = 0;
+        }
+        console.log(`${entrada.Hid} ---> ${horas}:${minutos}`);
     }
-    const horas = duracion.hours();
-    var minutos = duracion.minutes();
-    if (horas == 0 && minutos >= 0) {
-        minutos = 0;
+    else if (entradaMoment.day() === 6) {
+        duracion = duracion.subtract(4, 'hours');
+        duracion = duracion.subtract(0, 'minutes');
+        if (duracion.seconds() > 30) {
+            duracion = duracion.add(1, 'minutes');
+            duracion = duracion.subtract(duracion.seconds(), 'seconds');
+        }
+        horas = duracion.hours();
+        minutos = duracion.minutes();
+        if (horas == 0 && minutos >= 0) {
+            minutos = 0;
+        }
+        console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
     }
     return { horas, minutos };
 }
