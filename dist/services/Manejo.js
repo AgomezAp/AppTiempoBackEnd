@@ -98,16 +98,14 @@ function procesarDatos(data) {
     });
     const datosProcesados = [];
     const datosExtraProcesados = [];
+    console.log(agrupados);
     for (const clave in agrupados) {
         const grupo = agrupados[clave];
         let primero = grupo[0];
         let ultimo = grupo.length > 1 ? grupo[grupo.length - 1] : sinHuella(primero);
-        // primero.Open_Time = dayjs(primero.Open_Time).subtract(15, 'hours').format('YYYY-MM-DD HH:mm:ss');
-        // ultimo.Open_Time = dayjs(ultimo.Open_Time).subtract(15, 'hours').format('YYYY-MM-DD HH:mm:ss');
         let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         let opentimeSalida = dayjs_1.default.tz(ultimo.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         var ext = diferenciaConMoment(primero, ultimo);
-        console.log(opentimeEntrada, "<<<>>>", opentimeSalida);
         const extH = formatoHora(ext);
         // Unir los registros en uno solo
         const procesado = {
@@ -139,8 +137,22 @@ function sinHuella(primero) {
     };
 }
 function diferenciaConMoment(entrada, salida) {
-    const entradaMoment = dayjs_1.default.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
-    const salidaMoment = dayjs_1.default.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+    let entradaMoment = dayjs_1.default.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let entradaMinutos = entradaMoment.minute();
+    let salidaMoment = dayjs_1.default.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let salidaMinutos = salidaMoment.minute();
+    if (entradaMinutos <= 30 && entradaMinutos > 0) {
+        entradaMoment = entradaMoment.set('minute', 30);
+    }
+    else if (entradaMinutos > 30 && entradaMinutos <= 59) {
+        entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
+    }
+    if (salidaMinutos <= 30 && salidaMinutos > 0) {
+        salidaMoment = salidaMoment.set('minute', 0);
+    }
+    else if (salidaMinutos > 30 && salidaMinutos <= 59) {
+        salidaMoment = salidaMoment.set('minute', 30);
+    }
     let duracion = dayjs_1.default.duration(salidaMoment.diff(entradaMoment));
     var horas = 0;
     var minutos = 0;
@@ -170,7 +182,7 @@ function diferenciaConMoment(entrada, salida) {
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
+        // console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
     }
     return { horas, minutos };
 }

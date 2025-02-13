@@ -8,6 +8,7 @@ import { text } from 'express';
 import PdfPrinter from 'pdfmake';
 import { register } from '../controllers/user';
 import { resolveContent } from 'nodemailer/lib/shared';
+import { parseNumbers } from 'xml2js/lib/processors';
 dayjs.extend(duration);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -82,18 +83,14 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
     });
     const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string }> = [];
     const datosExtraProcesados: Array<{Hid: string; Name: string; Extras: string}> = [];
+    console.log(agrupados);
     for (const clave in agrupados) {
         const grupo: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> = agrupados[clave];
         let primero = grupo[0];
         let ultimo = grupo.length > 1 ? grupo[grupo.length - 1] : sinHuella(primero);
-
-        // primero.Open_Time = dayjs(primero.Open_Time).subtract(15, 'hours').format('YYYY-MM-DD HH:mm:ss');
-        // ultimo.Open_Time = dayjs(ultimo.Open_Time).subtract(15, 'hours').format('YYYY-MM-DD HH:mm:ss');
-
         let opentimeEntrada = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         let opentimeSalida = dayjs.tz(ultimo.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         var ext = diferenciaConMoment(primero, ultimo);
-        console.log(opentimeEntrada,"<<<>>>" ,opentimeSalida)
         const extH = formatoHora(ext);
         // Unir los registros en uno solo
         const procesado = {
@@ -128,8 +125,22 @@ function sinHuella(primero: {Fecha: string; Hid: string; Open_Time: string; Name
 }
 
 export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_Time: string; Name: string;}, salida: {Fecha: string; Hid: string; Open_Time: string; Name: string;}): {horas: number; minutos: number}{
-    const entradaMoment = dayjs.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
-    const salidaMoment = dayjs.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+    let entradaMoment = dayjs.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let entradaMinutos = entradaMoment.minute();
+    let salidaMoment = dayjs.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let salidaMinutos = salidaMoment.minute();
+
+    if (entradaMinutos <= 30 && entradaMinutos > 0 )  {
+        entradaMoment = entradaMoment.set('minute', 30);
+    } else if (entradaMinutos > 30 && entradaMinutos <= 59 ) {
+        entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
+    }
+    if (salidaMinutos <= 30 && salidaMinutos > 0 )  {
+        salidaMoment = salidaMoment.set('minute', 0);
+    } else if (salidaMinutos > 30 && salidaMinutos <= 59 ) {
+        salidaMoment = salidaMoment.set('minute', 30);
+    }
+
     let duracion = dayjs.duration(salidaMoment.diff(entradaMoment));
     var horas: number = 0
     var minutos: number = 0
@@ -158,7 +169,7 @@ export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_T
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
+        // console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
         
     }
     return { horas, minutos };
