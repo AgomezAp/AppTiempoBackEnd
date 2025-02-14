@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processXML = processXML;
 exports.formatoHora = formatoHora;
+exports.difereciaConMoment2 = difereciaConMoment2;
 exports.diferenciaConMoment = diferenciaConMoment;
 exports.diferenciaUpdate = diferenciaUpdate;
 exports.convertTimeToMinutes = convertTimeToMinutes;
@@ -96,11 +97,24 @@ function procesarDatos(data) {
         }
         agrupados[clave].push(item);
     });
+    console.log(agrupados);
+    const agrupadosLimpios = removeDuplicate(agrupados);
+    console.log(agrupadosLimpios);
     const datosProcesados = [];
     const datosExtraProcesados = [];
-    console.log(agrupados);
+    // console.log(agrupados);
     for (const clave in agrupados) {
         const grupo = agrupados[clave];
+        for (let i = 0; i <= grupo.length; i = i + 2) {
+            let primero = grupo[i];
+            let ultimo = !grupo[i + 1] ? sinHuella(primero) : grupo[i + 1];
+            var total = formatoHora(difereciaConMoment2(primero, ultimo));
+            console.log(`${primero.Open_Time} >>> ${ultimo.Open_Time}`);
+            console.log(`Cantidad de horas trabajadas por segmento: ${total}\n`);
+            if (i === 0) {
+                const entradaOriginal = grupo[i];
+            }
+        }
         let primero = grupo[0];
         let ultimo = grupo.length > 1 ? grupo[grupo.length - 1] : sinHuella(primero);
         let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
@@ -120,6 +134,25 @@ function procesarDatos(data) {
     }
     return datosProcesados;
 }
+function removeDuplicate(data) {
+    const cleanedData = {};
+    for (const datakey in data) {
+        const entries = data[datakey];
+        const uniqueEntries = [];
+        entries.forEach((entry) => {
+            const currentTime = new Date(entry.Open_Time).getTime();
+            const isDuplicate = uniqueEntries.some(uniqueEntry => {
+                const uniqueTime = new Date(uniqueEntry.Open_Time).getTime();
+                return Math.abs(currentTime - uniqueTime) <= 900000;
+            });
+            if (!isDuplicate) {
+                uniqueEntries.push(entry);
+            }
+        });
+        cleanedData[datakey] = uniqueEntries;
+    }
+    return cleanedData;
+}
 function formatoHora(tiempo) {
     const horas = tiempo.horas;
     const minutos = Math.abs(tiempo.minutos);
@@ -135,6 +168,28 @@ function sinHuella(primero) {
         Fecha: primero.Fecha,
         Open_Time: ultimo.Open_Time
     };
+}
+function difereciaConMoment2(entrada, salida) {
+    let entradaMoment = dayjs_1.default.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let entradaMinutos = entradaMoment.minute();
+    let salidaMoment = dayjs_1.default.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
+    let salidaMinutos = salidaMoment.minute();
+    if (entradaMinutos <= 30 && entradaMinutos > 0) {
+        entradaMoment = entradaMoment.set('minute', 30);
+    }
+    else if (entradaMinutos > 30 && entradaMinutos <= 59) {
+        entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
+    }
+    if (salidaMinutos <= 30 && salidaMinutos > 0) {
+        salidaMoment = salidaMoment.set('minute', 0);
+    }
+    else if (salidaMinutos > 30 && salidaMinutos <= 59) {
+        salidaMoment = salidaMoment.set('minute', 30);
+    }
+    let duracion = dayjs_1.default.duration(salidaMoment.diff(entradaMoment));
+    const horas = duracion.hours();
+    const minutos = duracion.minutes();
+    return { horas, minutos };
 }
 function diferenciaConMoment(entrada, salida) {
     let entradaMoment = dayjs_1.default.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
@@ -168,7 +223,7 @@ function diferenciaConMoment(entrada, salida) {
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        console.log(`${entrada.Hid} ---> ${horas}:${minutos}`);
+        // console.log(`${entrada.Hid} ---> ${horas}:${minutos}`);
     }
     else if (entradaMoment.day() === 6) {
         duracion = duracion.subtract(4, 'hours');
