@@ -48,9 +48,10 @@ export async function processXML(xmlContent: string): Promise<any> {
     }
 }
 
-function ordenarDatos(data: any): Array<{Hid: string, Name: string, Entrada: string, Salida: string, Fecha: string , Extra: string  }> {
+function ordenarDatos(data: any): Array<{Hid: string, Name: string, Entrada: string, Salida: string, Fecha: string , Extra: string  , Total: string}> {
     const dataf = filtrarProcesar(data);
     const datosp = procesarDatos(dataf);
+    console.log(datosp);
     return datosp;
 }
 
@@ -72,7 +73,7 @@ function organizarTiempoMoment(data: Array<{ Hid: string; Name: string; Open_Tim
     });
 }
 
-function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }>): Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string }> {
+function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }>): Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string }> {
     const agrupados: { [key: string]: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> } = {};
     data.forEach(item => {
         const clave = `${item.Fecha}-${item.Hid}`;
@@ -81,41 +82,50 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
         }
         agrupados[clave].push(item);
     });
-    console.log(agrupados)
     const agrupadosLimpios = removeDuplicate(agrupados)
-    console.log(agrupadosLimpios)
-    const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string }> = [];
+    // console.log(agrupadosLimpios);
+    const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string }> = [];
+    let total: string = '';
+    let primero: any = [];
+    let ultimo: any = [];
+    let entradaOriginal: any = []
+    let extra: string = ''; 
     const datosExtraProcesados: Array<{Hid: string; Name: string; Extras: string}> = [];
     // console.log(agrupados);
-    for (const clave in agrupados) {
-        const grupo: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> = agrupados[clave];
-        for (let i = 0; i <= grupo.length; i = i+2 ) {
-            let primero = grupo[i];
-            let ultimo =  !grupo[i+1] ? sinHuella(primero) : grupo[i+1];
-            var total = formatoHora(difereciaConMoment2(primero, ultimo))
-            console.log(`${primero.Open_Time} >>> ${ultimo.Open_Time}`)
-            console.log(`Cantidad de horas trabajadas por segmento: ${total}\n`)
+    for (const clave in agrupadosLimpios) {
+        let sumTotal: string = '0:0';
+        const grupo: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> = agrupadosLimpios[clave];
+        for (let i = 0; i < grupo.length; i = i+2) {
+            primero = grupo[i];
+            ultimo =  !grupo[i+1] ? sinHuella(primero) : grupo[i+1];
+            total = formatoHora(difereciaConMoment2(primero, ultimo))
+            sumTotal = convertMinutesToTime(convertTimeToMinutes(sumTotal) + convertTimeToMinutes(total))
             if (i === 0){
-                const entradaOriginal = grupo[i]
+                entradaOriginal = grupo[0]
             }
+            let opentimeEntrada = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+            let opentimeSalida = dayjs.tz(ultimo.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
+            // var ext = diferenciaConMoment(primero, ultimo);
+            // const extH = formatoHora(ext);
+            // Unir los registros en uno solo
+            
+
         }
-        let primero = grupo[0];
-        let ultimo = grupo.length > 1 ? grupo[grupo.length - 1] : sinHuella(primero);
-        let opentimeEntrada = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
-        let opentimeSalida = dayjs.tz(ultimo.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
-        var ext = diferenciaConMoment(primero, ultimo);
-        const extH = formatoHora(ext);
-        // Unir los registros en uno solo
+        extra = convertMinutesToTime(convertTimeToMinutes(sumTotal) - 570)
+        
+
         const procesado = {
             Hid: primero.Hid,
             Name: primero.Name,
-            Entrada: opentimeEntrada,
-            Salida: opentimeSalida, // Puede ser nulo si solo hay un registro
+            Entrada: entradaOriginal.Open_Time,
+            Salida: ultimo.Open_Time, // Puede ser nulo si solo hay un registro
             Fecha: primero.Fecha,
-            Extra: extH
+            Extra: convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30 ? '0:00' : extra,
+            Total: sumTotal
         };
-        datosProcesados.push(procesado);
+    datosProcesados.push(procesado);
     }
+
     return datosProcesados;
 }
 
@@ -167,11 +177,12 @@ export function difereciaConMoment2(entrada: {Fecha: string; Hid: string; Open_T
     } else if (entradaMinutos > 30 && entradaMinutos <= 59 ) {
         entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
     }
-    if (salidaMinutos <= 30 && salidaMinutos > 0 )  {
+    if (salidaMinutos < 30 && salidaMinutos > 0 )  {
         salidaMoment = salidaMoment.set('minute', 0);
-    } else if (salidaMinutos > 30 && salidaMinutos <= 59 ) {
+    } else if (salidaMinutos >= 30 && salidaMinutos <= 59 ) {
         salidaMoment = salidaMoment.set('minute', 30);
     }
+    console.log(`${entrada.Fecha}-${entrada.Hid} ${entradaMoment}-->${salidaMoment}`)
     let duracion = dayjs.duration(salidaMoment.diff(entradaMoment));
     const horas = duracion.hours();
     const minutos = duracion.minutes();
