@@ -92,6 +92,7 @@ const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         const listahorario = yield time_1.Registro.findAll({
             order: [['unique_key', 'ASC']]
         });
+        console.log(listahorario);
         const convertirAHorarioLocal = (fechaUTC) => {
             if (!fechaUTC) {
                 return null;
@@ -245,13 +246,13 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
             });
         }
         const salidacompleta = `${fecha} ${salida}`;
-        const fechaformateada = (0, dayjs_1.default)(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
+        const fechaformateada = dayjs_1.default.tz(fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const salidaformateada = dayjs_1.default.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         // Buscar el registro por ID y Fecha
         const registro = yield time_1.Registro.findOne({
             where: {
                 Hid: id,
-                Fecha: fechaformateada
+                Fecha: fechaformateada,
             }
         });
         if (!registro) {
@@ -269,9 +270,13 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
         const extra = registro.getDataValue('Extra');
         var entradaactual = (0, dayjs_1.default)(registro.getDataValue('Entrada'));
         var salidaactual = (0, dayjs_1.default)(salidaformateada);
-        const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual);
+        const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 9, 30);
+        const totalActual = (0, Manejo_1.formatoHora)((0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 0, 0));
         const extraactualformato = (0, Manejo_1.formatoHora)(extraactual);
-        yield time_1.Registro.update({ Extra: extraactualformato }, {
+        yield time_1.Registro.update({
+            Extra: extraactualformato,
+            Total: totalActual
+        }, {
             where: {
                 Hid: id,
                 Fecha: fechaformateada,
@@ -333,9 +338,13 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const extra = registro.getDataValue('Extra');
         var salidaactual = (0, dayjs_1.default)(registro.getDataValue('Salida'));
         var entradaactual = (0, dayjs_1.default)(entradaformateada);
-        const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual);
+        const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 9, 30);
+        const totalActual = (0, Manejo_1.formatoHora)((0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 0, 0));
         const extraactualformato = (0, Manejo_1.formatoHora)(extraactual);
-        yield time_1.Registro.update({ Extra: extraactualformato }, {
+        yield time_1.Registro.update({
+            Extra: extraactualformato,
+            Total: totalActual
+        }, {
             where: {
                 Hid: id,
                 Fecha: fechaformateada,
@@ -367,8 +376,10 @@ exports.updateEntradaById = updateEntradaById;
 const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let primero = { Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Entrada, Name: req.body.Name };
     let segundo = { Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name };
-    const ext = (0, Manejo_1.diferenciaConMoment)(primero, segundo);
-    const extH = (0, Manejo_1.formatoHora)(ext);
+    const total = (0, Manejo_1.difereciaConMoment2)(primero, segundo);
+    const extH = (0, Manejo_1.convertMinutesToTime)((0, Manejo_1.convertTimeToMinutes)((0, Manejo_1.formatoHora)(total)) - 570);
+    console.log((0, Manejo_1.formatoHora)(total));
+    console.log(extH);
     try {
         yield time_1.Registro.create({
             Hid: req.body.Hid,
@@ -377,6 +388,7 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
             Salida: req.body.Salida,
             Fecha: req.body.Fecha,
             Extra: extH,
+            Total: (0, Manejo_1.formatoHora)(total)
         });
         const listaExtras = yield time_1.Sumatoria.findAll({ where: { Sid: req.body.Hid } });
         if (listaExtras.length === 0) {

@@ -3,7 +3,7 @@ import {
     Response,
   } from 'express';
 
-import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, diferenciaConMoment, informeRiesgo} from '../services/Manejo'
+import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad} from '../models/time';
 import multer from 'multer';
@@ -12,6 +12,8 @@ import dayjs from 'dayjs';
 import { Op, json, literal, where } from 'sequelize';
 import e from 'cors';
 import { resolveContent } from 'nodemailer/lib/shared';
+import { format } from 'mysql2';
+import { xmppPreKey } from '@adiwajshing/baileys';
 
 
 
@@ -88,12 +90,12 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
         }
     });
 };
-
  export const getHorario = async (req: Request, res: Response): Promise<any> => {
     try {
         const listahorario = await Registro.findAll({
           order: [['unique_key', 'ASC']]
-        });        
+        });
+        console.log(listahorario)
         const convertirAHorarioLocal = (fechaUTC: string | null) => {
             if (!fechaUTC) {
                 return null;
@@ -131,7 +133,6 @@ export const getExtra = async (req: Request, res: Response): Promise<any> => {
         
     }
 }
-
 export const getExtraById = async (req: Request, res: Response): Promise<any> => {
     const { Sid } = req.params;
     try {
@@ -250,7 +251,6 @@ export const getHorarioByFecha = async (req: Request, res: Response): Promise<an
         });
     }
 };
-
 export const updateSalidaById = async (req: Request, res: Response): Promise<any> => {
     const { id, fecha, salida } = req.body;
     try {
@@ -259,15 +259,16 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
                 message: 'Fecha y hora de salida son requeridas',
             });
         }
+
         const salidacompleta = `${fecha} ${salida}`;
-        const fechaformateada = dayjs(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
+        const fechaformateada = dayjs.tz(fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const salidaformateada = dayjs.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         // Buscar el registro por ID y Fecha
-
         const registro = await Registro.findOne({
             where: {
                 Hid: id,
-                Fecha: fechaformateada}
+                Fecha: fechaformateada,
+                }
         });
         if (!registro) {
             return res.status(404).json({
@@ -287,10 +288,14 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
         const extra = registro.getDataValue('Extra');
         var entradaactual = dayjs(registro.getDataValue('Entrada'));
         var salidaactual = dayjs(salidaformateada);
-        const extraactual = diferenciaUpdate(entradaactual, salidaactual);
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
+        const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0))
         const extraactualformato = formatoHora(extraactual);
         await Registro.update(
-            { Extra: extraactualformato},
+            { 
+                Extra: extraactualformato,
+                Total: totalActual
+            },
             {
                 where: {
                     Hid: id,
@@ -322,7 +327,6 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
         });
     }
 };
-
 export const updateEntradaById = async (req: Request, res: Response): Promise<any> => {
     const { id, fecha, entrada } = req.body;
     try {
@@ -359,10 +363,14 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
         const extra = registro.getDataValue('Extra');
         var salidaactual = dayjs(registro.getDataValue('Salida'));
         var entradaactual = dayjs(entradaformateada);
-        const extraactual = diferenciaUpdate(entradaactual, salidaactual);
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
+        const totalActual = formatoHora(diferenciaUpdate(entradaactual,salidaactual,0,0))
         const extraactualformato = formatoHora(extraactual);
         await Registro.update(
-            { Extra: extraactualformato},
+            { 
+                Extra: extraactualformato,
+                Total : totalActual
+            },
             {
                 where: {
                     Hid: id,
@@ -398,8 +406,11 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
 export const agregarRegistro = async (req: Request, res: Response): Promise<any> => {
     let primero:{Fecha: string; Hid: string; Open_Time: string; Name: string;} = {Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Entrada, Name: req.body.Name};
     let segundo:{Fecha: string; Hid: string; Open_Time: string; Name: string;} = {Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name};
-    const ext = diferenciaConMoment(primero, segundo);
-    const extH = formatoHora(ext);
+    
+    const total = difereciaConMoment2(primero, segundo)
+    const extH = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - 570);
+    console.log(formatoHora(total))
+    console.log(extH)
     try {
         await Registro.create({
             Hid:  req.body.Hid,
@@ -408,6 +419,7 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
             Salida:  req.body.Salida,
             Fecha:  req.body.Fecha,
             Extra: extH,
+            Total: formatoHora(total)
         });
         const listaExtras = await Sumatoria.findAll({ where: {Sid: req.body.Hid}});
         if(listaExtras.length === 0){

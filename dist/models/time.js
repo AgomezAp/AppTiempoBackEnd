@@ -14,7 +14,8 @@ exports.Registro = connection_1.default.define("Registro", {
     Entrada: { type: sequelize_1.DataTypes.DATE, allowNull: false },
     Salida: { type: sequelize_1.DataTypes.DATE, allowNull: false },
     Fecha: { type: sequelize_1.DataTypes.DATE, allowNull: false },
-    Extra: { type: sequelize_1.DataTypes.STRING, allowNull: false }
+    Extra: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+    Total: { type: sequelize_1.DataTypes.STRING, allowNull: true }
 }, {
     timestamps: false,
     paranoid: false,
