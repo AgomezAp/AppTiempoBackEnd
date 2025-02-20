@@ -3,11 +3,13 @@ import {
     Response,
   } from 'express';
 
-import { Novedad, Sumatoria } from '../models/time';
+import { Novedad, NovedadHistorico, Sumatoria } from '../models/time';
 import { Permiso } from '../models/permisos';
 import dayjs from 'dayjs';
 import { convertTimeToMinutes } from '../services/Manejo';
 import { permisoToNovedad, convertirHora, convertirMinuto } from '../services/novedad';
+import sequelize from '../database/connection';
+import { normalizeMessageContent } from '@adiwajshing/baileys';
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -92,6 +94,7 @@ export const deleteNovedad = async (req: Request, res: Response): Promise<any> =
 
 
 export const aceptarTodo = async (req: Request, res: Response): Promise<any> => {
+  const transaction = await sequelize.transaction();
   try {
     //Obtiene en Novedad las que tengan aceptacion === null
     var novedades = await Novedad.findAll({
@@ -107,7 +110,7 @@ export const aceptarTodo = async (req: Request, res: Response): Promise<any> => 
       const item = novedadJS[0];
       const fechaobj = new Date(item.Fecha);
       const soloFecha = fechaobj.toISOString().split('T')[0]
-      return res.status(400).json({ error: `la novedad de ${item.Name} en la fecha ${soloFecha} no ha sido aceptada o rechazada` })
+      return res.status(400).json({ error: `la novedad de ${item.Name} en la fecha ${soloFecha} no ha sido aceptada o rechazada`})
     }
     //Obtiene en Novedad las que tengan aceptacion === true
     novedades = await Novedad.findAll({
@@ -161,19 +164,30 @@ export const aceptarTodo = async (req: Request, res: Response): Promise<any> => 
           Acumulado: convertirMinuto(minutosAcumulados) }
         );
       }
-      //Actualiza la aceptacion de la tabla novedades, poniendo en falso
-      await Novedad.update(
-        {aceptacion: false},
-        {where: {
-          Nid: uid,
-        }}
-      );
     }
+    const todasNovedades = await Novedad.findAll({transaction});
+    const todasNovedadesJS = todasNovedades.map(nv => nv.toJSON());
+    const novedadHistorico = todasNovedadesJS.map(nv => ({
+      Cid: nv.id,
+      Nid: nv.Nid,
+      Name: nv.Name,
+      type : nv.type,
+      Fecha: nv.Fecha,
+      HoraEntrada: nv.HoraEntrada,
+      HoraSalida: nv.HoraSalida,
+      description: nv.description,
+      horas: nv.horas,
+      aceptacion: nv.aceptacion
+    }))
+    await NovedadHistorico.bulkCreate(novedadHistorico, {transaction});
+    await Novedad.destroy({where: {}, transaction});
+    await transaction.commit();
     // Cuando termina de recorrer retorna el mensaje de aceptacion
     return res.status(200).json({message : 'Aceptado o rechazado todo este'});
     
     }
   } catch (error) {
+    await transaction.rollback()
     //En caso de error retorna mensaje de error
     console.error('Error al aceptar las novedades:', error);
     return res.status(500).json({ error: 'Error al aceptar las novedades' });

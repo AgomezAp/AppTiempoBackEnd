@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CopiaNovedad = exports.Novedad = exports.Sumatoria = exports.Registro = void 0;
+exports.NovedadHistorico = exports.Novedad = exports.Sumatoria = exports.Registro = void 0;
 const sequelize_1 = require("sequelize");
 const connection_1 = __importDefault(require("../database/connection"));
 const user_1 = require("./user");
@@ -49,7 +49,7 @@ exports.Novedad = connection_1.default.define("Novedad", {
 });
 user_1.User.hasMany(exports.Novedad, { foreignKey: "Nid", as: "novedades" });
 exports.Novedad.belongsTo(user_1.User, { foreignKey: "Nid", as: "usuario" });
-exports.CopiaNovedad = connection_1.default.define("CopiaNovedad", {
+exports.NovedadHistorico = connection_1.default.define("NovedadHistorico", {
     Cid: { type: sequelize_1.DataTypes.INTEGER },
     Nid: { type: sequelize_1.DataTypes.INTEGER, allowNull: true },
     Name: { type: sequelize_1.DataTypes.STRING, allowNull: true },

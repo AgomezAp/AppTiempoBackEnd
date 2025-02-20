@@ -126,14 +126,15 @@ const getExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.getExtra = getExtra;
 const getExtraById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { Sid } = req.params;
+    const { id } = req.params;
+    console.log(id);
     try {
         const listaextra = yield time_1.Sumatoria.findAll({
-            where: { Sid: Sid },
+            where: { Sid: id },
         });
         if (!listaextra) {
             return res.status(404).json({
-                message: `Empleado con ID ${Sid} no encontrado`,
+                message: `Empleado con ID ${id} no encontrado`,
             });
         }
         res.status(200).json(listaextra);
@@ -476,11 +477,19 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 }
             }
         });
-        if (!novedades || novedades.length === 0) {
+        const novedadesHistorico = yield time_1.NovedadHistorico.findAll({
+            where: {
+                Fecha: {
+                    [sequelize_1.Op.between]: [startofDay(fechaInicial), fechaFinal]
+                }
+            }
+        });
+        const todasNovedades = [...novedades, ...novedadesHistorico];
+        if (!todasNovedades || todasNovedades.length === 0) {
             res.status(404).json({ message: "No se encuentran novedades." });
             return;
         }
-        const novedadesPlain = novedades.map(novedad => {
+        const novedadesPlain = todasNovedades.map(novedad => {
             const obj = novedad.toJSON();
             return Object.assign({}, obj);
         });

@@ -5,7 +5,7 @@ import {
 
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
-import { Registro, Sumatoria, Novedad} from '../models/time';
+import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
 import multer from 'multer';
 import { parseStringPromise } from 'xml2js';
 import dayjs from 'dayjs';
@@ -134,14 +134,15 @@ export const getExtra = async (req: Request, res: Response): Promise<any> => {
     }
 }
 export const getExtraById = async (req: Request, res: Response): Promise<any> => {
-    const { Sid } = req.params;
+    const { id } = req.params;
+    console.log(id)
     try {
         const listaextra = await Sumatoria.findAll({
-            where: {Sid: Sid},
+            where: {Sid: id},
         });
         if (!listaextra) {
             return res.status(404).json({
-                message: `Empleado con ID ${Sid} no encontrado`,
+                message: `Empleado con ID ${id} no encontrado`,
             });
         }
         res.status(200).json(listaextra);
@@ -511,18 +512,27 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
                 }
             }
         });
-        if(!novedades || novedades.length === 0){
+        const novedadesHistorico = await NovedadHistorico.findAll({
+            where: {
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), fechaFinal]
+                }
+            }
+        });
+        const todasNovedades = [...novedades, ...novedadesHistorico];
+        if(!todasNovedades || todasNovedades.length === 0){
             res.status(404).json({message:"No se encuentran novedades."});
             return;
         }
 
-        const novedadesPlain = novedades.map(novedad => {
+        const novedadesPlain = todasNovedades.map(novedad => {
             const obj = novedad.toJSON() as {Nid: number; Name: string; type: string; description: string};
             return{...obj}
         })
         console.log(novedadesPlain)
         const pdfBuffer = await informeNovedades(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
+        
         res.send(pdfBuffer);
     } catch (error) {
         console.error("Error al generar el informe", error);

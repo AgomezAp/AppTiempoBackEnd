@@ -17,6 +17,7 @@ const time_1 = require("../models/time");
 const permisos_1 = require("../models/permisos");
 const dayjs_1 = __importDefault(require("dayjs"));
 const novedad_1 = require("../services/novedad");
+const connection_1 = __importDefault(require("../database/connection"));
 const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const permisos = yield permisos_1.Permiso.findAll();
@@ -101,6 +102,7 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.deleteNovedad = deleteNovedad;
 const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const transaction = yield connection_1.default.transaction();
     try {
         //Obtiene en Novedad las que tengan aceptacion === null
         var novedades = yield time_1.Novedad.findAll({
@@ -167,16 +169,30 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                         Name: agrupado.Name,
                         Acumulado: (0, novedad_1.convertirMinuto)(minutosAcumulados) });
                 }
-                //Actualiza la aceptacion de la tabla novedades, poniendo en falso
-                yield time_1.Novedad.update({ aceptacion: false }, { where: {
-                        Nid: uid,
-                    } });
             }
+            const todasNovedades = yield time_1.Novedad.findAll({ transaction });
+            const todasNovedadesJS = todasNovedades.map(nv => nv.toJSON());
+            const novedadHistorico = todasNovedadesJS.map(nv => ({
+                Cid: nv.id,
+                Nid: nv.Nid,
+                Name: nv.Name,
+                type: nv.type,
+                Fecha: nv.Fecha,
+                HoraEntrada: nv.HoraEntrada,
+                HoraSalida: nv.HoraSalida,
+                description: nv.description,
+                horas: nv.horas,
+                aceptacion: nv.aceptacion
+            }));
+            yield time_1.NovedadHistorico.bulkCreate(novedadHistorico, { transaction });
+            yield time_1.Novedad.destroy({ where: {}, transaction });
+            yield transaction.commit();
             // Cuando termina de recorrer retorna el mensaje de aceptacion
             return res.status(200).json({ message: 'Aceptado o rechazado todo este' });
         }
     }
     catch (error) {
+        yield transaction.rollback();
         //En caso de error retorna mensaje de error
         console.error('Error al aceptar las novedades:', error);
         return res.status(500).json({ error: 'Error al aceptar las novedades' });
