@@ -519,6 +519,7 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
                 }
             }
         });
+        console.log(novedadesHistorico)
         const todasNovedades = [...novedades, ...novedadesHistorico];
         if(!todasNovedades || todasNovedades.length === 0){
             res.status(404).json({message:"No se encuentran novedades."});
@@ -529,7 +530,7 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
             const obj = novedad.toJSON() as {Nid: number; Name: string; type: string; description: string};
             return{...obj}
         })
-        console.log(novedadesPlain)
+        // console.log(novedadesPlain)
         const pdfBuffer = await informeNovedades(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
         

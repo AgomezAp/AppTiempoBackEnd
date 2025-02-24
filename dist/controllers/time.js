@@ -484,6 +484,7 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 }
             }
         });
+        console.log(novedadesHistorico);
         const todasNovedades = [...novedades, ...novedadesHistorico];
         if (!todasNovedades || todasNovedades.length === 0) {
             res.status(404).json({ message: "No se encuentran novedades." });
@@ -493,7 +494,7 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
             const obj = novedad.toJSON();
             return Object.assign({}, obj);
         });
-        console.log(novedadesPlain);
+        // console.log(novedadesPlain)
         const pdfBuffer = yield (0, Manejo_1.informeNovedades)(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);

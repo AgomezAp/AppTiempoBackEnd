@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { 
     convertNovedad, 
-    getNovedad, deleteNovedad,updateNovedadHora, updateNovedadEstado, aceptarTodo
+    getNovedad, deleteNovedad,updateNovedadHora, updateNovedadEstado, aceptarTodo,
+    errorNovedad
  } from '../controllers/novedad';
 import validateToken  from './validateToken';
 
@@ -19,6 +20,8 @@ router.put("/api/novedad/editarNovedadHora",  updateNovedadHora);
 router.put("/api/novedad/editarNovedadEstado",  updateNovedadEstado);
 // aceptar todas las novedades
 router.post("/api/novedad/aceptacion",  aceptarTodo);
+// Volver a revisar
+router.get("api/novedada/revision", errorNovedad)
 
 
 export default router

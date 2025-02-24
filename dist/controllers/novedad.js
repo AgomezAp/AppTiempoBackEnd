@@ -12,12 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aceptarTodo = exports.deleteNovedad = exports.updateNovedadEstado = exports.updateNovedadHora = exports.getNovedad = exports.convertNovedad = void 0;
+exports.aceptarTodo = exports.errorNovedad = exports.deleteNovedad = exports.updateNovedadEstado = exports.updateNovedadHora = exports.getNovedad = exports.convertNovedad = void 0;
 const time_1 = require("../models/time");
 const permisos_1 = require("../models/permisos");
 const dayjs_1 = __importDefault(require("dayjs"));
 const novedad_1 = require("../services/novedad");
 const connection_1 = __importDefault(require("../database/connection"));
+const sequelize_1 = require("sequelize");
 const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const permisos = yield permisos_1.Permiso.findAll();
@@ -91,9 +92,22 @@ const updateNovedadEstado = (req, res) => __awaiter(void 0, void 0, void 0, func
 });
 exports.updateNovedadEstado = updateNovedadEstado;
 const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { ids } = req.body;
     try {
-        yield time_1.Novedad.destroy({ where: {} });
-        res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+        if (ids && ids.length > 0) {
+            yield time_1.Novedad.destroy({
+                where: {
+                    id: {
+                        [sequelize_1.Op.in]: ids
+                    }
+                }
+            });
+            res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+        }
+        else {
+            yield time_1.Novedad.destroy({ where: {} });
+            res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+        }
     }
     catch (error) {
         console.error('Error al eliminar las novedades:', error);
@@ -101,6 +115,28 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.deleteNovedad = deleteNovedad;
+const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.body;
+    try {
+        const novedadHistorico = yield time_1.NovedadHistorico.findByPk(id);
+        if (!novedadHistorico) {
+            return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });
+        }
+        // Convertir el registro a un objeto JSON
+        const novedadData = novedadHistorico.toJSON();
+        // Eliminar el registro de la tabla NovedadHistorico
+        yield time_1.NovedadHistorico.destroy({ where: { id } });
+        // Insertar el registro en la tabla Novedad
+        yield time_1.Novedad.create(novedadData);
+        res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
+    }
+    catch (error) {
+        console.error('Error al mover la novedad:', error);
+        const errorMessage = error.message;
+        res.status(500).json({ error: 'Error al mover la novedad', message: errorMessage });
+    }
+});
+exports.errorNovedad = errorNovedad;
 const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const transaction = yield connection_1.default.transaction();
     try {

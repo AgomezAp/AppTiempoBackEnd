@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import { convertTimeToMinutes } from '../services/Manejo';
 import { permisoToNovedad, convertirHora, convertirMinuto } from '../services/novedad';
 import sequelize from '../database/connection';
+import { Op } from 'sequelize'
 import { normalizeMessageContent } from '@adiwajshing/baileys';
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
@@ -83,12 +84,50 @@ export const updateNovedadEstado = async (req: Request, res: Response): Promise<
 };
 
 export const deleteNovedad = async (req: Request, res: Response): Promise<any> => {
+  const { ids } = req.body;
   try {
-    await Novedad.destroy({ where: {} });
-    res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+    if (ids && ids.length > 0){
+      await Novedad.destroy({
+        where: {
+          id: {
+            [Op.in]: ids
+          }
+        }
+      });
+      res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+    } else {
+      await Novedad.destroy({ where: {} });
+      res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
+    }
+    
   } catch (error) {
     console.error('Error al eliminar las novedades:', error);
     res.status(500).json({ error: 'Error al eliminar las novedades' });
+  }
+}
+
+export const errorNovedad = async (req: Request, res: Response): Promise<any> => {
+  const { id } = req.body;
+  try {
+    const novedadHistorico = await NovedadHistorico.findByPk(id);
+    if (!novedadHistorico) {
+      return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });
+    }
+
+    // Convertir el registro a un objeto JSON
+    const novedadData = novedadHistorico.toJSON();
+
+    // Eliminar el registro de la tabla NovedadHistorico
+    await NovedadHistorico.destroy({ where: { id } });
+
+    // Insertar el registro en la tabla Novedad
+    await Novedad.create(novedadData);
+
+    res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
+  } catch (error) {
+    console.error('Error al mover la novedad:', error);
+    const errorMessage = (error as Error).message;
+    res.status(500).json({ error: 'Error al mover la novedad', message: errorMessage });
   }
 }
 

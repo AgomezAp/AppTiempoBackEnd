@@ -15,4 +15,6 @@ router.put("/api/novedad/editarNovedadHora", novedad_1.updateNovedadHora);
 router.put("/api/novedad/editarNovedadEstado", novedad_1.updateNovedadEstado);
 // aceptar todas las novedades
 router.post("/api/novedad/aceptacion", novedad_1.aceptarTodo);
+// Volver a revisar
+router.get("api/novedada/revision", novedad_1.errorNovedad);
 exports.default = router;

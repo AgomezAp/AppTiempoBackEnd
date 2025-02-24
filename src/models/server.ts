@@ -16,7 +16,7 @@ import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
-import { Registro, Sumatoria, Novedad} from './time'
+import { Registro, Sumatoria, Novedad, NovedadHistorico} from './time'
 
 dotenv.config();
 class Server{
@@ -69,6 +69,8 @@ class Server{
             await Registro.sync();
             await Sumatoria.sync();
             await Novedad.sync({alter: true});
+            await NovedadHistorico.sync();
+
 
             console.log('Conexión establecida correctamente');
         }catch (error){
