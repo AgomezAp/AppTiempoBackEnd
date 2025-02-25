@@ -117,17 +117,18 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 exports.deleteNovedad = deleteNovedad;
 const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.body;
+    const transaction = yield connection_1.default.transaction();
     try {
-        const novedadHistorico = yield time_1.NovedadHistorico.findByPk(id);
+        const novedadHistorico = yield time_1.NovedadHistorico.findByPk(id, { transaction });
         if (!novedadHistorico) {
             return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });
         }
         // Convertir el registro a un objeto JSON
         const novedadData = novedadHistorico.toJSON();
         // Eliminar el registro de la tabla NovedadHistorico
-        yield time_1.NovedadHistorico.destroy({ where: { id } });
+        yield time_1.NovedadHistorico.destroy({ where: { id }, transaction });
         // Insertar el registro en la tabla Novedad
-        yield time_1.Novedad.create(novedadData);
+        yield time_1.Novedad.create(novedadData, { transaction });
         res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
     }
     catch (error) {
@@ -244,3 +245,74 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 
   */
 exports.aceptarTodo = aceptarTodo;
+const aceptarTodo1 = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const transaction = yield connection_1.default.transaction();
+    try {
+        let novedades = yield time_1.Novedad.findAll({
+            where: {
+                aceptacion: true
+            }
+        });
+        //Mapea las novedades obtenidas en formato json
+        let novedadJS = novedades.map(nv => nv.toJSON());
+        const sum = novedadJS.map(nv => ({
+            Uid: nv.Nid,
+            hora: (0, novedad_1.convertirHora)(nv.horas),
+            nombre: nv.Name
+        }));
+        const agrupado = {};
+        sum.forEach(item => {
+            if (agrupado[item.Uid]) {
+                agrupado[item.Uid] += item.hora;
+            }
+            else {
+                agrupado[item.Uid] = item.hora;
+            }
+        });
+        for (const uid in agrupado) {
+            //minutos acumulados en novedades
+            const minutosAcumulados = agrupado[uid];
+            //busca en sumatoria por id
+            const sumatoria = yield time_1.Sumatoria.findOne({ where: { Sid: uid } });
+            //Si existe el registro
+            if (sumatoria) {
+                // asigna a actual la cantidad de horas (minutos) extras que tiene el usuario
+                const actual = (0, novedad_1.convertirHora)(sumatoria.dataValues.Acumulado);
+                // Hace la suma de tiempo extra y minutos acumulados en novedades 
+                const minutosTotales = actual + minutosAcumulados;
+                //busca por id y actualiza el acumulado (convirtiendo al formato)
+                yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: uid } });
+            }
+            else {
+                //Si el registro no existe. lo crea agregandole los datos de sum
+                yield time_1.Sumatoria.create({ Sid: uid,
+                    Name: agrupado.Name,
+                    Acumulado: (0, novedad_1.convertirMinuto)(minutosAcumulados) });
+            }
+        }
+        const todasNovedades = yield time_1.Novedad.findAll({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
+        const todasNovedadesJS = todasNovedades.map(nv => nv.toJSON());
+        const novedadHistorico = todasNovedadesJS.map(nv => ({
+            Cid: nv.id,
+            Nid: nv.Nid,
+            Name: nv.Name,
+            type: nv.type,
+            Fecha: nv.Fecha,
+            HoraEntrada: nv.HoraEntrada,
+            HoraSalida: nv.HoraSalida,
+            description: nv.description,
+            horas: nv.horas,
+            aceptacion: nv.aceptacion
+        }));
+        yield time_1.NovedadHistorico.bulkCreate(novedadHistorico, { transaction });
+        yield time_1.Novedad.destroy({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
+        yield transaction.commit();
+        return res.status(200).json({ message: 'Aceptado o rechazado todo este' });
+    }
+    catch (error) {
+        yield transaction.rollback();
+        //En caso de error retorna mensaje de error
+        console.error('Error al aceptar las novedades:', error);
+        return res.status(500).json({ error: 'Error al aceptar las novedades' });
+    }
+});
