@@ -56,6 +56,10 @@ Permiso.init({
         type: sequelize_1.DataTypes.BLOB('long'),
         allowNull: true,
     },
+    novedad: {
+        type: sequelize_1.DataTypes.BOOLEAN,
+        allowNull: true
+    },
     Uid: {
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,

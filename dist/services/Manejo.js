@@ -488,7 +488,8 @@ function informeNovedades(novedad) {
 }
 function informeRiesgo(horario) {
     return __awaiter(this, void 0, void 0, function* () {
-        const riesgo = removeBeforeTime(horario, "7:25:59");
+        const time = `7:27:59`;
+        const riesgo = removeBeforeTime(horario, time);
         const riesgoStyle = riesgo.map(ries => {
             let valor = "tableCellCerca";
             const entrada = stringTonumber(ries.Entrada);
@@ -519,7 +520,7 @@ function informeRiesgo(horario) {
             {
                 columns: [
                     { image: 'public/LogoAP.png', width: 50 },
-                    { text: "Informe de entradas y salidas\n", style: "header", alignment: 'center' }
+                    { text: "Informe de llegadas\n", style: "header", alignment: 'center' }
                 ]
             },
             {
@@ -604,10 +605,15 @@ function informeRiesgo(horario) {
     });
 }
 function removeBeforeTime(records, time) {
-    const filtroRinicial = new Date(`1970-01-01T07:25:59Z`).getTime();
+    const filtroRinicial = new Date(`1970-01-01T07:27:59Z`).getTime();
+    console.log(new Date(`1970-01-01T7:27:59Z`));
+    const filtroRfinal = new Date(`1970-01-01T07:59:59Z`).getTime();
+    console.log(time, 'timeeeeeeeeeeeeeeeeeeee');
+    console.log(filtroRinicial, 'maijogfnhaisduoghasdoighoiasd');
+    console.log(filtroRfinal, 'ñókhypykojkyup755457');
     return records.filter(record => {
         const entradaTime = new Date(`1970-01-01T${record.Entrada}Z`).getTime();
-        return entradaTime >= filtroRinicial;
+        return entradaTime >= filtroRinicial && entradaTime <= filtroRfinal;
     });
 }
 function stringTonumber(Entrada) {

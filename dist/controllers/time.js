@@ -13,6 +13,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+//   import xpath, { XPathSelect } from 'xpath';
+//   import {DOMParser, XMLSerializer,} from '@xmldom/xmldom';
 const Manejo_1 = require("../services/Manejo");
 const novedad_1 = require("../services/novedad");
 const time_1 = require("../models/time");
@@ -536,7 +538,7 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
             return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
         });
         const pdfBuffer = yield (0, Manejo_1.informeRiesgo)(horarioPlain);
-        console.log("llegamos3");
+        console.log("llegamos3", horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     }

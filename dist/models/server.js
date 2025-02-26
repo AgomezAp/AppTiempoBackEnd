@@ -76,7 +76,7 @@ class Server {
                 yield time_2.Registro.sync();
                 yield time_2.Sumatoria.sync();
                 yield time_2.Novedad.sync({ alter: true });
-                yield time_2.NovedadHistorico.sync();
+                yield time_2.NovedadHistorico.sync({ alter: true });
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

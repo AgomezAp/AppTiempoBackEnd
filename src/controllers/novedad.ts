@@ -9,18 +9,19 @@ import dayjs from 'dayjs';
 import { convertTimeToMinutes } from '../services/Manejo';
 import { permisoToNovedad, convertirHora, convertirMinuto } from '../services/novedad';
 import sequelize from '../database/connection';
-import { Op } from 'sequelize'
-import { normalizeMessageContent } from '@adiwajshing/baileys';
+import { Op, where } from 'sequelize'
+import { hmacSign, normalizeMessageContent } from '@adiwajshing/baileys';
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
-      const permisos = await Permiso.findAll();
-      const novedad = await Novedad.findAll();
+      const permisos = await Permiso.findAll({where: {novedad: false}});
+      const novedadBD = await Novedad.findAll();
       // console.log('permisos:', permisos);
-      const novedadJS = novedad.map(nv => nv.toJSON());
+      const novedadJS = novedadBD.map(nv => nv.toJSON());
       const novedades = permisoToNovedad(permisos, novedadJS);
       console.log('Novedades:', novedades);
       const newNovedades = await Novedad.bulkCreate(novedades);
+      await Permiso.update({ novedad: true }, { where: { novedad: false } })
       res.status(200).json(newNovedades);          
     } catch (error) {
       res.status(500).json({ error: 'Error al obtener las novedades' });        
@@ -44,6 +45,25 @@ export const getNovedad = async (req: Request, res: Response): Promise<any> => {
         console.error('Error al obtener las novedades:', error);
         res.status(500).json({ error: 'Error al obtener las novedades' });        
     }
+}
+
+export const getNovedadHistorico = async (req: Request, res: Response): Promise<any> => {
+  try {
+      const listaNovedades = await NovedadHistorico.findAll({
+        order: [['Cid', 'ASC']]
+      });
+      const datosConvertidos = listaNovedades.map(registro => {
+          const registroConvertido = registro.toJSON();
+          return {
+              ...registroConvertido,
+              Fecha: dayjs.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+          };
+      });
+      res.json(datosConvertidos);
+  } catch (error) {
+      console.error('Error al obtener las novedades:', error);
+      res.status(500).json({ error: 'Error al obtener las novedades' });        
+  }
 }
 
 export const updateNovedadHora = async (req: Request, res: Response): Promise<any> =>{
@@ -107,25 +127,70 @@ export const deleteNovedad = async (req: Request, res: Response): Promise<any> =
 }
 
 export const errorNovedad = async (req: Request, res: Response): Promise<any> => {
-  const { id } = req.body;
+  const { Cid } = req.body;
+  if (!Cid) {
+    return res.status(400).json({error: 'falta id'});
+  }
+  console.log(Cid);
   const transaction = await sequelize.transaction();
   try {
-    const novedadHistorico = await NovedadHistorico.findByPk(id, {transaction});
+    const novedadHistorico = await NovedadHistorico.findByPk(Cid, {transaction});
     if (!novedadHistorico) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });
+    } else {
+      // Convertir el registro a un objeto JSON
+      const novedadData = novedadHistorico.toJSON();
+      const novedad = {
+        id: novedadData.Cid,
+        Nid: novedadData.Nid,
+        Name: novedadData.Name,
+        type : novedadData.type,
+        Fecha: novedadData.Fecha,
+        HoraEntrada: novedadData.HoraEntrada,
+        HoraSalida: novedadData.HoraSalida,
+        description: novedadData.description,
+        horas: novedadData.horas,
+        aceptacion: novedadData.aceptacion
+      }
+      if (novedadData.aceptacion === false){
+        // Insertar el registro en la tabla Novedad
+        await Novedad.create(novedad, { transaction });
+         // Eliminar el registro de la tabla NovedadHistorico
+        await NovedadHistorico.destroy({ where: { Cid } , transaction});
+        await transaction.commit();
+        res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
+      } else {
+        const hMinutos = convertirHora(novedadData.horas); 
+        const sum = typeof hMinutos === "number" ? -hMinutos : 0;
+        const sumatoria = await Sumatoria.findOne({ where: {Sid: novedadData.Nid}, transaction});
+        if (sumatoria) {
+          const actual = convertirHora(sumatoria.dataValues.Acumulado);
+          const minutosTotales = actual + sum;
+          await Sumatoria.update(
+            {Acumulado: convertirMinuto(minutosTotales)},
+            {where: {Sid: novedadData.Nid},
+            transaction}
+          );
+        } else {
+          //Si el registro no existe. lo crea agregandole los datos de sum
+          await Sumatoria.create(
+            {
+              Sid: novedadData.Nid,
+              Name: novedadData.Name,
+              Acumulado: convertirMinuto(-sum)
+            },
+            { transaction }
+          );
+        }
+        await Novedad.create(novedad, { transaction });
+        await NovedadHistorico.destroy({ where: { Cid } , transaction});
+        await transaction.commit();
+        res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
+      }
     }
-
-    // Convertir el registro a un objeto JSON
-    const novedadData = novedadHistorico.toJSON();
-
-    // Eliminar el registro de la tabla NovedadHistorico
-    await NovedadHistorico.destroy({ where: { id } , transaction});
-
-    // Insertar el registro en la tabla Novedad
-    await Novedad.create(novedadData, { transaction });
-
-    res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
   } catch (error) {
+    await transaction.rollback()
     console.error('Error al mover la novedad:', error);
     const errorMessage = (error as Error).message;
     res.status(500).json({ error: 'Error al mover la novedad', message: errorMessage });
@@ -216,4 +281,4 @@ export const aceptarTodo = async (req: Request, res: Response): Promise<any> => 
     console.error('Error al aceptar las novedades:', error);
     return res.status(500).json({ error: 'Error al aceptar las novedades' });
     }
-  }
+}

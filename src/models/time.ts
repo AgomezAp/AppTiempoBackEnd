@@ -66,7 +66,7 @@ Novedad.belongsTo(User,{foreignKey: "Nid", as: "usuario" });
 export const NovedadHistorico = sequelize.define(
     "NovedadHistorico",
     {
-        Cid: {type:DataTypes.INTEGER},
+        Cid: {type:DataTypes.INTEGER, primaryKey: true},
         Nid: {type: DataTypes.INTEGER, allowNull: true},
         Name: {type: DataTypes.STRING, allowNull: true},
         type: {type: DataTypes.STRING, allowNull: true},

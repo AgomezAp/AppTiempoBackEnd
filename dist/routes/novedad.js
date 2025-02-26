@@ -7,6 +7,8 @@ const router = (0, express_1.Router)();
 router.post("/api/novedad/NuevaNovedad", novedad_1.convertNovedad);
 // Ruta para ver novedades 
 router.get("/api/novedad/ObtenerNovedad", novedad_1.getNovedad);
+// Ruta para ver historico de novedades 
+router.get("/api/novedad/ObtenerHistorico", novedad_1.getNovedadHistorico);
 // eliminar novedades
 router.delete("/api/novedad/eliminarNovedad", novedad_1.deleteNovedad);
 // editar horas novedad
@@ -16,5 +18,5 @@ router.put("/api/novedad/editarNovedadEstado", novedad_1.updateNovedadEstado);
 // aceptar todas las novedades
 router.post("/api/novedad/aceptacion", novedad_1.aceptarTodo);
 // Volver a revisar
-router.get("api/novedada/revision", novedad_1.errorNovedad);
+router.put("/api/novedad/revisar", novedad_1.errorNovedad);
 exports.default = router;

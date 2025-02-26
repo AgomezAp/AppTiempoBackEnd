@@ -20,6 +20,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, tipo, horaEntrada, horaSalida, observaciones } = req.body;
     const soporte = req.file ? req.file.buffer : null;
     const Uid = parseInt(req.body.Uid, 10);
+    const novedad = false;
 
     // Verificar si todos los campos obligatorios están presentes
     if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fecha || !tipo || !Uid) {
@@ -47,6 +48,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         horaEntrada,
         observaciones,
         soporte,
+        novedad,
         Uid,
       });
       //Envía correo electrónico al lider 

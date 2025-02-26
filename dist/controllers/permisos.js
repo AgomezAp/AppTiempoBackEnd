@@ -26,6 +26,7 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, tipo, horaEntrada, horaSalida, observaciones } = req.body;
         const soporte = req.file ? req.file.buffer : null;
         const Uid = parseInt(req.body.Uid, 10);
+        const novedad = false;
         // Verificar si todos los campos obligatorios están presentes
         if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fecha || !tipo || !Uid) {
             return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
@@ -50,6 +51,7 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 horaEntrada,
                 observaciones,
                 soporte,
+                novedad,
                 Uid,
             });
             //Envía correo electrónico al lider 

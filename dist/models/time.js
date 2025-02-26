@@ -50,7 +50,7 @@ exports.Novedad = connection_1.default.define("Novedad", {
 user_1.User.hasMany(exports.Novedad, { foreignKey: "Nid", as: "novedades" });
 exports.Novedad.belongsTo(user_1.User, { foreignKey: "Nid", as: "usuario" });
 exports.NovedadHistorico = connection_1.default.define("NovedadHistorico", {
-    Cid: { type: sequelize_1.DataTypes.INTEGER },
+    Cid: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true },
     Nid: { type: sequelize_1.DataTypes.INTEGER, allowNull: true },
     Name: { type: sequelize_1.DataTypes.STRING, allowNull: true },
     type: { type: sequelize_1.DataTypes.STRING, allowNull: true },

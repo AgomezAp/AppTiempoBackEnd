@@ -2,7 +2,8 @@ import {
     Request,
     Response,
   } from 'express';
-
+//   import xpath, { XPathSelect } from 'xpath';
+//   import {DOMParser, XMLSerializer,} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
@@ -577,7 +578,7 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
             }
         });
         const pdfBuffer = await informeRiesgo(horarioPlain);
-        console.log("llegamos3");
+        console.log("llegamos3", horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     } catch (error) {

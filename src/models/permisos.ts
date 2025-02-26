@@ -69,6 +69,10 @@ Permiso.init(
       type: DataTypes.BLOB('long'),
       allowNull: true,
     },
+    novedad: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true
+    },
     Uid: {
       type: DataTypes.INTEGER,
       allowNull: false,

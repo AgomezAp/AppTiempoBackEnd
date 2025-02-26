@@ -69,7 +69,7 @@ class Server{
             await Registro.sync();
             await Sumatoria.sync();
             await Novedad.sync({alter: true});
-            await NovedadHistorico.sync();
+            await NovedadHistorico.sync({alter: true});
 
 
             console.log('Conexión establecida correctamente');

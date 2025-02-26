@@ -488,7 +488,8 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
 }
 
 export async function informeRiesgo(horario: Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}>): Promise<Buffer> {
-    const riesgo = removeBeforeTime(horario, "7:25:59");
+    const time = `7:27:59`
+    const riesgo = removeBeforeTime(horario, time);
     const riesgoStyle = riesgo.map(ries => {
         let valor = "tableCellCerca";
         const entrada = stringTonumber(ries.Entrada);
@@ -520,7 +521,7 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
         {
             columns: [
                 {image: 'public/LogoAP.png', width: 50},
-                {text: "Informe de entradas y salidas\n", style: "header", alignment:'center'}
+                {text: "Informe de llegadas\n", style: "header", alignment:'center'}
             ]
         },
         {
@@ -612,10 +613,16 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
 
 
 function removeBeforeTime(records: Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}>, time: string): Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}> {
-    const filtroRinicial = new Date(`1970-01-01T07:25:59Z`).getTime();
+    const filtroRinicial = new Date(`1970-01-01T07:27:59Z`).getTime();
+    console.log(new Date(`1970-01-01T7:27:59Z`))
+    const filtroRfinal = new Date(`1970-01-01T07:59:59Z`).getTime();
+    console.log(time, 'timeeeeeeeeeeeeeeeeeeee')
+    console.log(filtroRinicial, 'maijogfnhaisduoghasdoighoiasd')
+    console.log(filtroRfinal, 'ñókhypykojkyup755457')
+
     return records.filter(record => {
         const entradaTime = new Date(`1970-01-01T${record.Entrada}Z`).getTime();
-        return entradaTime >= filtroRinicial;
+        return entradaTime >= filtroRinicial && entradaTime <= filtroRfinal;
     });
 }
 
