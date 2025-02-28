@@ -83,7 +83,6 @@ export const actualizarRol = async (req:Request, res:Response):Promise<any> =>{
         });
 
     }catch(error){
-        console.log("Rid: ",Rid,"Rname:",Rname)
         return res.status(500).json({
             
             msg:`Error al actualizar el rol`
@@ -97,7 +96,6 @@ export const borrarRol = async (req: Request, res:Response):Promise<any> =>{
     try{
         const role: any = await Role.findOne({where:{Rid:Rid}});
         if(!role){
-            console.log(role)
             return res.status(404).json({ msg:`Rol con Id ${Rid} no existe`});
         }
         await Role.destroy({where:{Rid:Rid}});

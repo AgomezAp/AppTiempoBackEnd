@@ -2,8 +2,9 @@ import {
     Request,
     Response,
   } from 'express';
-//   import xpath, { XPathSelect } from 'xpath';
-//   import {DOMParser, XMLSerializer,} from '@xmldom/xmldom';
+
+import xpath, { XPathSelect } from 'xpath';
+import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
@@ -16,7 +17,13 @@ import { resolveContent } from 'nodemailer/lib/shared';
 import { format } from 'mysql2';
 import { xmppPreKey } from '@adiwajshing/baileys';
 
-
+declare global {
+    namespace Express {
+      interface Request {
+        files?: { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
+      }
+    }
+  }
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage }).single('xml');
@@ -96,7 +103,6 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
         const listahorario = await Registro.findAll({
           order: [['unique_key', 'ASC']]
         });
-        console.log(listahorario)
         const convertirAHorarioLocal = (fechaUTC: string | null) => {
             if (!fechaUTC) {
                 return null;
@@ -136,7 +142,6 @@ export const getExtra = async (req: Request, res: Response): Promise<any> => {
 }
 export const getExtraById = async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
-    console.log(id)
     try {
         const listaextra = await Sumatoria.findAll({
             where: {Sid: id},
@@ -411,8 +416,6 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
     
     const total = difereciaConMoment2(primero, segundo)
     const extH = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - 570);
-    console.log(formatoHora(total))
-    console.log(extH)
     try {
         await Registro.create({
             Hid:  req.body.Hid,
@@ -475,7 +478,6 @@ export const informePersonalById = async (req: Request, res: Response): Promise<
                 ['Name', 'ASC']
             ]
         });
-        console.log("llegamos2");
         
         if(!horario || horario.length === 0){
             res.status(404).json({message:"No se encuentran Registros."});
@@ -492,7 +494,6 @@ export const informePersonalById = async (req: Request, res: Response): Promise<
             }
         });
         const pdfBuffer = await informePersonal(horarioPlain2);
-        console.log("llegamos3");
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", "attachment; filename=informe_personal.pdf");
         res.send(pdfBuffer);
@@ -520,7 +521,6 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
                 }
             }
         });
-        console.log(novedadesHistorico)
         const todasNovedades = [...novedades, ...novedadesHistorico];
         if(!todasNovedades || todasNovedades.length === 0){
             res.status(404).json({message:"No se encuentran novedades."});
@@ -531,7 +531,6 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
             const obj = novedad.toJSON() as {Nid: number; Name: string; type: string; description: string};
             return{...obj}
         })
-        // console.log(novedadesPlain)
         const pdfBuffer = await informeNovedades(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
         
@@ -544,7 +543,6 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
 
 export const informePeligro = async (req: Request, res: Response): Promise<any> => {
     const {fechaInicial, fechaFinal} = req.body;
-    console.log("llegamos1");
     const convertirAHorarioLocal = (fechaUTC: string | null) => {
         if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
         return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
@@ -561,7 +559,6 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
                 ['Name', 'ASC']
             ]
         });
-        console.log("llegamos2");
         
         if(!horario || horario.length === 0){
             res.status(404).json({message:"No se encuentran Registros."});
@@ -578,7 +575,6 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
             }
         });
         const pdfBuffer = await informeRiesgo(horarioPlain);
-        console.log("llegamos3", horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     } catch (error) {
@@ -586,3 +582,81 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
         res.status(500).json({ message: "Error interno al generar el informe."})
     }
 };
+
+export const concatenar = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.files || !Array.isArray(req.files) || req.files.length < 1) {
+        res.status(400).json({ error: 'Debe subir al menos un archivo XML' });
+        return;
+      }
+  
+      // Configurar namespaces para XPath
+      const namespaces = {
+        ns: "urn:schemas-microsoft-com:office:spreadsheet",
+        ss: "urn:schemas-microsoft-com:office:spreadsheet"
+      };
+      
+      const select: XPathSelect = xpath.useNamespaces(namespaces);
+  
+      // Procesar el primer archivo como base
+      const baseXml: string = req.files[0].buffer.toString();
+      const baseDoc: Document = new DOMParser().parseFromString(baseXml, 'text/xml');
+      
+      const baseTable: Node = select('//ns:Table', baseDoc as unknown as Node, true) as Node;
+  
+      if (!baseTable) {
+        throw new Error('Estructura XML inválida: No se encontró la tabla');
+      }
+  
+      // Procesar archivos adicionales
+      for (let i = 1; i < req.files.length; i++) {
+        const currentXml: string = req.files[i].buffer.toString();
+
+        const currentDoc: Document = new DOMParser().parseFromString(currentXml, 'text/xml');
+        
+        const rows: Node[] = select('//ns:Table/ns:Row', currentDoc as unknown as Node) as Node[];
+        
+        if (!rows || rows.length === 0) {
+          console.warn(`Archivo ${req.files[i].originalname} no contiene filas válidas`);
+          continue;
+        }
+  
+        rows.forEach((row: Node) => {
+            if (row.nodeName === 'Row') { // Asegura que solo se añadan filas
+              const importedRow: Node = baseDoc.importNode(row as any, true);
+              baseTable.appendChild(importedRow);
+            } else {
+              console.warn(`Nodo ignorado: ${row.nodeName}`);
+            }
+          });
+      }
+  
+      // Generar XML resultante
+      const mergedXml: string = new XMLSerializer().serializeToString(baseDoc);
+
+  
+      // Configurar headers y enviar respuesta
+      res.set({
+        'Content-Type': 'application/xml',
+        'Content-Disposition': 'attachment; filename=merged.xml'
+      });
+      
+      res.send(mergedXml);
+  
+    } catch (error: unknown) {
+      console.error('Error en concatenar:', error instanceof Error ? error.stack : error);
+      
+      const errorResponse = {
+        error: 'Error al procesar los archivos',
+        details: error instanceof Error ? error.message : 'Error desconocido',
+        ...(process.env.NODE_ENV === 'development' && {
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      };
+  
+      res.status(500).json(errorResponse);
+    }
+  };
+
+
+  

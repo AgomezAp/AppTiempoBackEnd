@@ -1,7 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const time_1 = require("../controllers/time");
+const multer_1 = __importDefault(require("multer"));
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // Guarda los archivos en memoria
 const router = (0, express_1.Router)();
 //Ruta para registrar horarios//
 //router.post("/api/horario/enviarData",  registrarHorarios);
@@ -30,4 +35,6 @@ router.post("/api/horario/informePersonal", time_1.informePersonalById);
 router.post("/api/horario/informeNovedad", time_1.informeNovedad);
 //Ruta para informe de peligro
 router.post("/api/horario/InformeRiesgo", time_1.informePeligro);
+//Concatenar
+router.post("/api/horario/concatenar", upload.array('files'), time_1.concatenar);
 exports.default = router;

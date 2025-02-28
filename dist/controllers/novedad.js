@@ -23,10 +23,8 @@ const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
     try {
         const permisos = yield permisos_1.Permiso.findAll({ where: { novedad: false } });
         const novedadBD = yield time_1.Novedad.findAll();
-        // console.log('permisos:', permisos);
         const novedadJS = novedadBD.map(nv => nv.toJSON());
         const novedades = (0, novedad_1.permisoToNovedad)(permisos, novedadJS);
-        console.log('Novedades:', novedades);
         const newNovedades = yield time_1.Novedad.bulkCreate(novedades);
         yield permisos_1.Permiso.update({ novedad: true }, { where: { novedad: false } });
         res.status(200).json(newNovedades);
@@ -138,7 +136,6 @@ const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     if (!Cid) {
         return res.status(400).json({ error: 'falta id' });
     }
-    console.log(Cid);
     const transaction = yield connection_1.default.transaction();
     try {
         const novedadHistorico = yield time_1.NovedadHistorico.findByPk(Cid, { transaction });

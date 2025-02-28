@@ -50,7 +50,6 @@ export async function processXML(xmlContent: string): Promise<any> {
 
 function ordenarDatos(data: any): Array<{Hid: string, Name: string, Entrada: string, Salida: string, Fecha: string , Extra: string  , Total: string}> {
     const dataf = filtrarProcesar(data);
-    console.log(dataf)
     const datosp = procesarDatos(dataf);
     return datosp;
 }
@@ -82,7 +81,6 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
         agrupados[clave].push(item);
     });
     const agrupadosLimpios = removeDuplicate(agrupados)
-    // console.log(agrupadosLimpios);
     const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string }> = [];
     let total: string = '';
     let primero: any = [];
@@ -90,7 +88,6 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
     let entradaOriginal: any = []
     let extra: string = ''; 
     const datosExtraProcesados: Array<{Hid: string; Name: string; Extras: string}> = [];
-    // console.log(agrupados);
     for (const clave in agrupadosLimpios) {
         let sumTotal: string = '0:0';
         const grupo: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> = agrupadosLimpios[clave];
@@ -180,7 +177,6 @@ export function difereciaConMoment2(entrada: {Fecha: string; Hid: string; Open_T
     } else if (salidaMinutos >= 30 && salidaMinutos <= 59 ) {
         salidaMoment = salidaMoment.set('minute', 30);
     }
-    console.log(`${entrada.Fecha}-${entrada.Hid} ${entradaMoment}-->${salidaMoment}`)
     let duracion = dayjs.duration(salidaMoment.diff(entradaMoment));
     const horas = duracion.hours();
     const minutos = duracion.minutes();
@@ -221,7 +217,6 @@ export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_T
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        // console.log(`${entrada.Hid} ---> ${horas}:${minutos}`);
     } else if (entradaMoment.day() === 6) {
         duracion = duracion.subtract(4, 'hours');
         duracion = duracion.subtract(0, 'minutes');
@@ -234,7 +229,6 @@ export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_T
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        // console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
         
     }
     return { horas, minutos };
@@ -242,7 +236,6 @@ export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_T
 
 export function diferenciaUpdate(entrada: Dayjs, salida: Dayjs, hora: number, minuto: number): {horas: number; minutos: number}{
     let duracion = dayjs.duration(salida.diff(entrada));
-    console.log('Duracion:', duracion);
     duracion = duracion.subtract(hora, 'hours');
     duracion = duracion.subtract(minuto, 'minutes');
     if (duracion.seconds() > 30) {
@@ -251,8 +244,6 @@ export function diferenciaUpdate(entrada: Dayjs, salida: Dayjs, hora: number, mi
     }
     const horas: number = duracion.hours();
     var minutos: number = duracion.minutes();
-    console.log('Horas:', horas);
-    console.log('Minutos:', minutos);
     if (horas == 0 && minutos >= 0) {
         minutos = 0;
     }
@@ -614,11 +605,7 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
 
 function removeBeforeTime(records: Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}>, time: string): Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}> {
     const filtroRinicial = new Date(`1970-01-01T07:27:59Z`).getTime();
-    console.log(new Date(`1970-01-01T7:27:59Z`))
     const filtroRfinal = new Date(`1970-01-01T07:59:59Z`).getTime();
-    console.log(time, 'timeeeeeeeeeeeeeeeeeeee')
-    console.log(filtroRinicial, 'maijogfnhaisduoghasdoighoiasd')
-    console.log(filtroRfinal, 'ñókhypykojkyup755457')
 
     return records.filter(record => {
         const entradaTime = new Date(`1970-01-01T${record.Entrada}Z`).getTime();

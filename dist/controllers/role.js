@@ -86,7 +86,6 @@ const actualizarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         });
     }
     catch (error) {
-        console.log("Rid: ", Rid, "Rname:", Rname);
         return res.status(500).json({
             msg: `Error al actualizar el rol`
         });
@@ -98,7 +97,6 @@ const borrarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const role = yield role_1.Role.findOne({ where: { Rid: Rid } });
         if (!role) {
-            console.log(role);
             return res.status(404).json({ msg: `Rol con Id ${Rid} no existe` });
         }
         yield role_1.Role.destroy({ where: { Rid: Rid } });

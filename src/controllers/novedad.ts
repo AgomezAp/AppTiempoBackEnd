@@ -16,10 +16,8 @@ export const convertNovedad = async (req: Request, res: Response): Promise<any> 
     try {
       const permisos = await Permiso.findAll({where: {novedad: false}});
       const novedadBD = await Novedad.findAll();
-      // console.log('permisos:', permisos);
       const novedadJS = novedadBD.map(nv => nv.toJSON());
       const novedades = permisoToNovedad(permisos, novedadJS);
-      console.log('Novedades:', novedades);
       const newNovedades = await Novedad.bulkCreate(novedades);
       await Permiso.update({ novedad: true }, { where: { novedad: false } })
       res.status(200).json(newNovedades);          
@@ -131,7 +129,6 @@ export const errorNovedad = async (req: Request, res: Response): Promise<any> =>
   if (!Cid) {
     return res.status(400).json({error: 'falta id'});
   }
-  console.log(Cid);
   const transaction = await sequelize.transaction();
   try {
     const novedadHistorico = await NovedadHistorico.findByPk(Cid, {transaction});

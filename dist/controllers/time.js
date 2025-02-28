@@ -12,9 +12,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
-//   import xpath, { XPathSelect } from 'xpath';
-//   import {DOMParser, XMLSerializer,} from '@xmldom/xmldom';
+exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+const xpath_1 = __importDefault(require("xpath"));
+const xmldom_1 = require("@xmldom/xmldom");
 const Manejo_1 = require("../services/Manejo");
 const novedad_1 = require("../services/novedad");
 const time_1 = require("../models/time");
@@ -94,7 +94,6 @@ const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         const listahorario = yield time_1.Registro.findAll({
             order: [['unique_key', 'ASC']]
         });
-        console.log(listahorario);
         const convertirAHorarioLocal = (fechaUTC) => {
             if (!fechaUTC) {
                 return null;
@@ -129,7 +128,6 @@ const getExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.getExtra = getExtra;
 const getExtraById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    console.log(id);
     try {
         const listaextra = yield time_1.Sumatoria.findAll({
             where: { Sid: id },
@@ -381,8 +379,6 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
     let segundo = { Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name };
     const total = (0, Manejo_1.difereciaConMoment2)(primero, segundo);
     const extH = (0, Manejo_1.convertMinutesToTime)((0, Manejo_1.convertTimeToMinutes)((0, Manejo_1.formatoHora)(total)) - 570);
-    console.log((0, Manejo_1.formatoHora)(total));
-    console.log(extH);
     try {
         yield time_1.Registro.create({
             Hid: req.body.Hid,
@@ -446,7 +442,6 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
                 ['Name', 'ASC']
             ]
         });
-        console.log("llegamos2");
         if (!horario || horario.length === 0) {
             res.status(404).json({ message: "No se encuentran Registros." });
             return;
@@ -457,7 +452,6 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
             return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
         });
         const pdfBuffer = yield (0, Manejo_1.informePersonal)(horarioPlain2);
-        console.log("llegamos3");
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", "attachment; filename=informe_personal.pdf");
         res.send(pdfBuffer);
@@ -486,7 +480,6 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 }
             }
         });
-        console.log(novedadesHistorico);
         const todasNovedades = [...novedades, ...novedadesHistorico];
         if (!todasNovedades || todasNovedades.length === 0) {
             res.status(404).json({ message: "No se encuentran novedades." });
@@ -496,7 +489,6 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
             const obj = novedad.toJSON();
             return Object.assign({}, obj);
         });
-        // console.log(novedadesPlain)
         const pdfBuffer = yield (0, Manejo_1.informeNovedades)(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
@@ -509,7 +501,6 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
 exports.informeNovedad = informeNovedad;
 const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { fechaInicial, fechaFinal } = req.body;
-    console.log("llegamos1");
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
             return null; // Manejar fechas nulas o no definidas
@@ -527,7 +518,6 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 ['Name', 'ASC']
             ]
         });
-        console.log("llegamos2");
         if (!horario || horario.length === 0) {
             res.status(404).json({ message: "No se encuentran Registros." });
             return;
@@ -538,7 +528,6 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
             return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
         });
         const pdfBuffer = yield (0, Manejo_1.informeRiesgo)(horarioPlain);
-        console.log("llegamos3", horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     }
@@ -548,3 +537,59 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.informePeligro = informePeligro;
+const concatenar = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!req.files || !Array.isArray(req.files) || req.files.length < 1) {
+            res.status(400).json({ error: 'Debe subir al menos un archivo XML' });
+            return;
+        }
+        // Configurar namespaces para XPath
+        const namespaces = {
+            ns: "urn:schemas-microsoft-com:office:spreadsheet",
+            ss: "urn:schemas-microsoft-com:office:spreadsheet"
+        };
+        const select = xpath_1.default.useNamespaces(namespaces);
+        // Procesar el primer archivo como base
+        const baseXml = req.files[0].buffer.toString();
+        const baseDoc = new xmldom_1.DOMParser().parseFromString(baseXml, 'text/xml');
+        const baseTable = select('//ns:Table', baseDoc, true);
+        if (!baseTable) {
+            throw new Error('Estructura XML inválida: No se encontró la tabla');
+        }
+        // Procesar archivos adicionales
+        for (let i = 1; i < req.files.length; i++) {
+            const currentXml = req.files[i].buffer.toString();
+            const currentDoc = new xmldom_1.DOMParser().parseFromString(currentXml, 'text/xml');
+            const rows = select('//ns:Table/ns:Row', currentDoc);
+            if (!rows || rows.length === 0) {
+                console.warn(`Archivo ${req.files[i].originalname} no contiene filas válidas`);
+                continue;
+            }
+            rows.forEach((row) => {
+                if (row.nodeName === 'Row') { // Asegura que solo se añadan filas
+                    const importedRow = baseDoc.importNode(row, true);
+                    baseTable.appendChild(importedRow);
+                }
+                else {
+                    console.warn(`Nodo ignorado: ${row.nodeName}`);
+                }
+            });
+        }
+        // Generar XML resultante
+        const mergedXml = new xmldom_1.XMLSerializer().serializeToString(baseDoc);
+        // Configurar headers y enviar respuesta
+        res.set({
+            'Content-Type': 'application/xml',
+            'Content-Disposition': 'attachment; filename=merged.xml'
+        });
+        res.send(mergedXml);
+    }
+    catch (error) {
+        console.error('Error en concatenar:', error instanceof Error ? error.stack : error);
+        const errorResponse = Object.assign({ error: 'Error al procesar los archivos', details: error instanceof Error ? error.message : 'Error desconocido' }, (process.env.NODE_ENV === 'development' && {
+            stack: error instanceof Error ? error.stack : undefined
+        }));
+        res.status(500).json(errorResponse);
+    }
+});
+exports.concatenar = concatenar;

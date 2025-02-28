@@ -16,9 +16,14 @@ import {
     informeNovedad,
     updateEntradaById,
     agregarRegistro,
-    informePeligro
+    informePeligro,
+    concatenar
  } from '../controllers/time';
 import validateToken  from './validateToken';
+import multer from 'multer';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024} }); // Guarda los archivos en memoria
+
 
 const router = Router();
 
@@ -46,10 +51,10 @@ router.put("/api/horario/ActualizarEntrada", updateEntradaById);
 router.post("/api/horario/agregarRegistro", agregarRegistro);
 //Ruta para informe personal
 router.post("/api/horario/informePersonal", informePersonalById);
-
 //Ruta para informe novedades
 router.post("/api/horario/informeNovedad", informeNovedad);
 //Ruta para informe de peligro
 router.post("/api/horario/InformeRiesgo", informePeligro);
-
+//Concatenar
+router.post("/api/horario/concatenar",upload.array('files'), concatenar)
 export default router

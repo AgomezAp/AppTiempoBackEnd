@@ -69,7 +69,6 @@ function processXML(xmlContent) {
 }
 function ordenarDatos(data) {
     const dataf = filtrarProcesar(data);
-    console.log(dataf);
     const datosp = procesarDatos(dataf);
     return datosp;
 }
@@ -98,7 +97,6 @@ function procesarDatos(data) {
         agrupados[clave].push(item);
     });
     const agrupadosLimpios = removeDuplicate(agrupados);
-    // console.log(agrupadosLimpios);
     const datosProcesados = [];
     let total = '';
     let primero = [];
@@ -106,7 +104,6 @@ function procesarDatos(data) {
     let entradaOriginal = [];
     let extra = '';
     const datosExtraProcesados = [];
-    // console.log(agrupados);
     for (const clave in agrupadosLimpios) {
         let sumTotal = '0:0';
         const grupo = agrupadosLimpios[clave];
@@ -191,7 +188,6 @@ function difereciaConMoment2(entrada, salida) {
     else if (salidaMinutos >= 30 && salidaMinutos <= 59) {
         salidaMoment = salidaMoment.set('minute', 30);
     }
-    console.log(`${entrada.Fecha}-${entrada.Hid} ${entradaMoment}-->${salidaMoment}`);
     let duracion = dayjs_1.default.duration(salidaMoment.diff(entradaMoment));
     const horas = duracion.hours();
     const minutos = duracion.minutes();
@@ -230,7 +226,6 @@ function diferenciaConMoment(entrada, salida) {
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        // console.log(`${entrada.Hid} ---> ${horas}:${minutos}`);
     }
     else if (entradaMoment.day() === 6) {
         duracion = duracion.subtract(4, 'hours');
@@ -244,13 +239,11 @@ function diferenciaConMoment(entrada, salida) {
         if (horas == 0 && minutos >= 0) {
             minutos = 0;
         }
-        // console.log(`Sabado: ${entrada.Hid} ---> ${horas}:${minutos}`);
     }
     return { horas, minutos };
 }
 function diferenciaUpdate(entrada, salida, hora, minuto) {
     let duracion = dayjs_1.default.duration(salida.diff(entrada));
-    console.log('Duracion:', duracion);
     duracion = duracion.subtract(hora, 'hours');
     duracion = duracion.subtract(minuto, 'minutes');
     if (duracion.seconds() > 30) {
@@ -259,8 +252,6 @@ function diferenciaUpdate(entrada, salida, hora, minuto) {
     }
     const horas = duracion.hours();
     var minutos = duracion.minutes();
-    console.log('Horas:', horas);
-    console.log('Minutos:', minutos);
     if (horas == 0 && minutos >= 0) {
         minutos = 0;
     }
@@ -606,11 +597,7 @@ function informeRiesgo(horario) {
 }
 function removeBeforeTime(records, time) {
     const filtroRinicial = new Date(`1970-01-01T07:27:59Z`).getTime();
-    console.log(new Date(`1970-01-01T7:27:59Z`));
     const filtroRfinal = new Date(`1970-01-01T07:59:59Z`).getTime();
-    console.log(time, 'timeeeeeeeeeeeeeeeeeeee');
-    console.log(filtroRinicial, 'maijogfnhaisduoghasdoighoiasd');
-    console.log(filtroRfinal, 'ñókhypykojkyup755457');
     return records.filter(record => {
         const entradaTime = new Date(`1970-01-01T${record.Entrada}Z`).getTime();
         return entradaTime >= filtroRinicial && entradaTime <= filtroRfinal;

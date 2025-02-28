@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.7",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
@@ -11,7 +12,8 @@
     "pdfmake": "^0.2.18",
     "pg": "^8.13.1",
     "sequelize": "^6.37.5",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "xpath": "^0.0.34"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
