@@ -12,6 +12,7 @@ if (!databaseUrl) {
 const sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     protocol: 'postgres',
+    timezone: '-03:00',
     dialectOptions: {
         useUTC: false,
         ssl: {

@@ -488,7 +488,7 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
         if(entrada.hora > 7) {
             valor = "tableCellTarde"
         } else if(entrada.hora == 7) {
-            if(entrada.minutos >= 31) {
+            if(entrada.minutos >= 30) {
                 valor = "tableCellTarde"
             } else {
                 valor = "tableCellCerca"
