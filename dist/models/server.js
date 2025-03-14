@@ -73,8 +73,8 @@ class Server {
                 yield user_2.User.sync();
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync({ alter: true });
-                yield time_2.Registro.sync({ force: true });
-                yield time_2.Sumatoria.sync({ force: true });
+                yield time_2.Registro.sync();
+                yield time_2.Sumatoria.sync();
                 yield time_2.Novedad.sync({ alter: true });
                 yield time_2.NovedadHistorico.sync({ alter: true });
                 console.log('Conexión establecida correctamente');

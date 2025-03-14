@@ -295,9 +295,24 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
         const extra = registro.getDataValue('Extra');
         var entradaactual = dayjs(registro.getDataValue('Entrada'));
         var salidaactual = dayjs(salidaformateada);
+        console.log('Entrada antes:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Salida antes:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
+        salidaactual = salidaactual.minute() >= 30 
+            ? salidaactual.minute(30).second(0) 
+            : salidaactual.minute(0).second(0);
+        entradaactual = entradaactual.minute() > 30 
+            ? entradaactual.add(1, 'hour').minute(0).second(0) 
+            : entradaactual.minute() > 0 
+            ? entradaactual.minute(30).second(0)
+            : entradaactual;
         const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
         const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0))
         const extraactualformato = formatoHora(extraactual);
+        console.log('Extra anterior:', extra);
+        console.log('Entrada actual:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Salida actual:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Extra actual:', extraactualformato);
+        console.log('Total actual:', totalActual);
         await Registro.update(
             { 
                 Extra: extraactualformato,
@@ -370,8 +385,19 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
         const extra = registro.getDataValue('Extra');
         var salidaactual = dayjs(registro.getDataValue('Salida'));
         var entradaactual = dayjs(entradaformateada);
+
+        // Ajustar los minutos de entrada y salida
+        salidaactual = salidaactual.minute() >= 30
+            ? salidaactual.minute(30).second(0)
+            : salidaactual.minute(0).second(0);
+        entradaactual = entradaactual.minute() > 30
+            ? entradaactual.add(1, 'hour').minute(0).second(0)
+            : entradaactual.minute() > 0
+            ? entradaactual.minute(30).second(0)
+            : entradaactual;
+
         const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
-        const totalActual = formatoHora(diferenciaUpdate(entradaactual,salidaactual,0,0))
+        const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0));
         const extraactualformato = formatoHora(extraactual);
         await Registro.update(
             { 
@@ -658,5 +684,33 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
     }
   };
 
+  export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): Promise<any> => {
+    const { Hid, Fecha } = req.params;
+  
+    try {
+      // Buscar el registro por Hid y Fecha
+      const registro = await Registro.findOne({
+        where: {
+          Hid,
+          Fecha: dayjs.tz(Fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
+        },
+      });
+  
+      if (!registro) {
+        return res.status(404).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} no encontrado` });
+      }
+  
+      // Eliminar el registro
+      await registro.destroy();
+  
+      res.status(200).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} eliminado con éxito` });
+    } catch (error: any) {
+      console.error('Error al eliminar el registro:', error);
+      res.status(500).json({
+        error: 'Error al eliminar el registro',
+        details: error.message,
+      });
+    }
+  };
 
   

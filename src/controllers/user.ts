@@ -174,3 +174,43 @@ export const deleteUserById = async (req: Request, res: Response): Promise<any> 
     res.status(500).json({ msg: 'Error al eliminar el usuario', error });
   }
 };
+
+export const updateUser = async (req: Request, res: Response): Promise<any> => {
+  const { Uid } = req.params;
+  const { name, lastName, email, password, Rid, Aid } = req.body;
+  try {
+    const user = await User.findByPk(Uid);
+
+    if (!user) {
+      return res.status(404).json({msg: 'Usuario no encontrado'})
+    }
+
+    if (Rid) {
+      const role = await Role.findByPk(Rid);
+      if (!role) {
+        return res.status(404).json({msg: `El role con ID ${Rid} no existe`})
+      }
+    }
+    if (Aid) {
+      const area = await Role.findByPk(Aid);
+      if (!area) {
+        return res.status(404).json({msg: `El role con ID ${Aid} no existe`})
+      }
+    }
+    user.name = name || user.name;
+    user.lastName = lastName || user.lastName;
+    user.email = email || user.email;
+    user.Rid = Rid || user.Rid;
+    user.Aid = Aid || user.Aid;
+
+    if (password) {
+      const passwordHash = await bcrypt.hash(password,10);
+      user.password = passwordHash;
+    }
+    await user.save()
+    res.status(200).json({msg: 'Usuario Actualizado', user});
+  } catch (error) {
+    console.error('Error al actualizar el usuario', error);
+    res.status(500).json({msg: 'Error al actualizar el usuario', error});
+  }
+}

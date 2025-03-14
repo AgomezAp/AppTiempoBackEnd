@@ -37,4 +37,6 @@ router.post("/api/horario/informeNovedad", time_1.informeNovedad);
 router.post("/api/horario/InformeRiesgo", time_1.informePeligro);
 //Concatenar
 router.post("/api/horario/concatenar", upload.array('files'), time_1.concatenar);
+//Eliminar Registro 
+router.delete("/api/horario/delete/:Hid/:Fecha", time_1.deleteRegistroByHidAndFecha);
 exports.default = router;

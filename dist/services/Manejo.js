@@ -19,6 +19,7 @@ exports.diferenciaConMoment = diferenciaConMoment;
 exports.diferenciaUpdate = diferenciaUpdate;
 exports.convertTimeToMinutes = convertTimeToMinutes;
 exports.convertMinutesToTime = convertMinutesToTime;
+exports.extraConvertMinutesToTime = extraConvertMinutesToTime;
 exports.informePersonal = informePersonal;
 exports.informeNovedades = informeNovedades;
 exports.informeRiesgo = informeRiesgo;
@@ -41,7 +42,7 @@ function processXML(xmlContent) {
             const data = [];
             for (let i = 3; i < rows.length; i++) { // Empezar desde 3 para saltar los primeros elementos
                 const cells = rows[i].Cell;
-                if (cells.length === 5) {
+                if (cells.length === 5 || cells.length === 6) {
                     const id = (_d = (_c = (_b = (_a = cells[1]) === null || _a === void 0 ? void 0 : _a.Data) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c._) === null || _d === void 0 ? void 0 : _d.trim();
                     if (id && id !== '' && !id.includes('User')) { // Omitir elementos vacíos en el campo ID
                         const entry = {
@@ -55,10 +56,11 @@ function processXML(xmlContent) {
                     }
                 }
                 else {
-                    console.warn(`Fila ${i} no tiene 5 celdas:`, cells);
+                    console.warn(`Fila ${i} no tiene 5 celdas:`, cells[0].Data[0]._);
                 }
             }
             const result_Data = ordenarDatos(data);
+            console.log(result_Data);
             const result_Extra = sumarExtra(result_Data);
             return [result_Data, result_Extra];
         }
@@ -98,13 +100,14 @@ function procesarDatos(data) {
     });
     const agrupadosLimpios = removeDuplicate(agrupados);
     const datosProcesados = [];
-    let total = '';
+    let total = '0:0';
     let primero = [];
     let ultimo = [];
     let entradaOriginal = [];
     let extra = '';
     const datosExtraProcesados = [];
     for (const clave in agrupadosLimpios) {
+        console.log(agrupadosLimpios[clave]);
         let sumTotal = '0:0';
         const grupo = agrupadosLimpios[clave];
         for (let i = 0; i < grupo.length; i = i + 2) {
@@ -117,19 +120,23 @@ function procesarDatos(data) {
             }
         }
         let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+        console.log(sumTotal);
         if (opentimeEntrada.day() !== 6) {
-            extra = convertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
+            extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
+            console.log("CTTM", (convertTimeToMinutes(sumTotal) - 570));
         }
         else if (opentimeEntrada.day() === 6) {
-            extra = convertMinutesToTime(convertTimeToMinutes(sumTotal) - 240);
+            extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 240);
         }
+        console.log("extra", extra);
+        const modificadoextra = (convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30) && extra[0] !== '-' ? '0:00' : extra;
         const procesado = {
             Hid: primero.Hid,
             Name: primero.Name,
             Entrada: entradaOriginal.Open_Time,
             Salida: ultimo.Open_Time, // Puede ser nulo si solo hay un registro
             Fecha: primero.Fecha,
-            Extra: convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30 ? '0:00' : extra,
+            Extra: modificadoextra,
             Total: sumTotal
         };
         datosProcesados.push(procesado);
@@ -137,6 +144,15 @@ function procesarDatos(data) {
     return datosProcesados;
 }
 function removeDuplicate(data) {
+    Object.keys(data).forEach(clave => {
+        data[clave].sort((a, b) => {
+            if (a.Open_Time < b.Open_Time)
+                return -1;
+            if (a.Open_Time > b.Open_Time)
+                return 1;
+            return 0;
+        });
+    });
     const cleanedData = {};
     for (const datakey in data) {
         const entries = data[datakey];
@@ -157,8 +173,9 @@ function removeDuplicate(data) {
 }
 function formatoHora(tiempo) {
     const horas = tiempo.horas;
-    const minutos = Math.abs(tiempo.minutos);
-    return `${horas}:${minutos < 10 ? '0' : ''}${minutos}`;
+    const minutos = tiempo.minutos;
+    const formatedminutos = (minutos < 0 ? (minutos * -1) : minutos).toString().padStart(2, '0');
+    return `${minutos < 0 ? `-${horas}` : horas}:${formatedminutos}`;
 }
 function sinHuella(primero) {
     const ultimo = Object.assign({}, primero);
@@ -176,13 +193,13 @@ function difereciaConMoment2(entrada, salida) {
     let entradaMinutos = entradaMoment.minute();
     let salidaMoment = dayjs_1.default.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
     let salidaMinutos = salidaMoment.minute();
-    if (entradaMinutos <= 30 && entradaMinutos > 0) {
+    if (entradaMinutos > 0 && entradaMinutos <= 30) {
         entradaMoment = entradaMoment.set('minute', 30);
     }
     else if (entradaMinutos > 30 && entradaMinutos <= 59) {
         entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
     }
-    if (salidaMinutos < 30 && salidaMinutos > 0) {
+    if (salidaMinutos > 0 && salidaMinutos < 30) {
         salidaMoment = salidaMoment.set('minute', 0);
     }
     else if (salidaMinutos >= 30 && salidaMinutos <= 59) {
@@ -287,12 +304,27 @@ function sumarExtra(data) {
 }
 function convertTimeToMinutes(time) {
     const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
+    return (hours * 60) + (Math.sign(hours) * minutes);
 }
 function convertMinutesToTime(minutes) {
-    const horas = Math.floor(minutes / 60);
+    let horas = 0;
+    if (minutes < 0) {
+        let horas = Math.floor(Math.abs(minutes) / 60);
+        horas = -horas;
+    }
+    else {
+        horas = Math.floor(minutes / 60);
+    }
     const minutos = minutes % 60;
     return formatoHora({ horas, minutos });
+}
+function extraConvertMinutesToTime(minutes) {
+    const horas = Math.floor(Math.abs(minutes) / 60);
+    const minutos = Math.abs(minutes % 60);
+    const formatedminutos = minutos.toString().padStart(2, '0');
+    // Si los minutos originales son negativos, el resultado también debe ser negativo
+    const sign = minutes < 0 ? '-' : '';
+    return `${sign}${horas}:${formatedminutos}`;
 }
 function informePersonal(horario) {
     return __awaiter(this, void 0, void 0, function* () {

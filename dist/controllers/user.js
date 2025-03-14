@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUserById = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
+exports.updateUser = exports.deleteUserById = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const area_1 = require("../models/area");
@@ -170,3 +170,41 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.deleteUserById = deleteUserById;
+const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { Uid } = req.params;
+    const { name, lastName, email, password, Rid, Aid } = req.body;
+    try {
+        const user = yield user_1.User.findByPk(Uid);
+        if (!user) {
+            return res.status(404).json({ msg: 'Usuario no encontrado' });
+        }
+        if (Rid) {
+            const role = yield role_1.Role.findByPk(Rid);
+            if (!role) {
+                return res.status(404).json({ msg: `El role con ID ${Rid} no existe` });
+            }
+        }
+        if (Aid) {
+            const area = yield role_1.Role.findByPk(Aid);
+            if (!area) {
+                return res.status(404).json({ msg: `El role con ID ${Aid} no existe` });
+            }
+        }
+        user.name = name || user.name;
+        user.lastName = lastName || user.lastName;
+        user.email = email || user.email;
+        user.Rid = Rid || user.Rid;
+        user.Aid = Aid || user.Aid;
+        if (password) {
+            const passwordHash = yield bcrypt_1.default.hash(password, 10);
+            user.password = passwordHash;
+        }
+        yield user.save();
+        res.status(200).json({ msg: 'Usuario Actualizado', user });
+    }
+    catch (error) {
+        console.error('Error al actualizar el usuario', error);
+        res.status(500).json({ msg: 'Error al actualizar el usuario', error });
+    }
+});
+exports.updateUser = updateUser;

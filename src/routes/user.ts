@@ -6,7 +6,8 @@ import {
   login,
   register,
   resetPassword,
-  getListUser
+  getListUser,
+  updateUser
 } from '../controllers/user';
 
 const router = Router();
@@ -17,5 +18,5 @@ router.patch('/api/user/reset-password', resetPassword);
 router.get('/api/user/AllUsers', getAllUsers);
 router.get('/api/user/ListUsers',getListUser)
 router.delete('/api/user/delete/:Uid', deleteUserById);
-
+router.put("/api/user/editarUsuario/:Uid", updateUser);
 export default router

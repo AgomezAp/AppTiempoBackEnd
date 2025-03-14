@@ -9,4 +9,5 @@ router.patch('/api/user/reset-password', user_1.resetPassword);
 router.get('/api/user/AllUsers', user_1.getAllUsers);
 router.get('/api/user/ListUsers', user_1.getListUser);
 router.delete('/api/user/delete/:Uid', user_1.deleteUserById);
+router.put("/api/user/editarUsuario/:Uid", user_1.updateUser);
 exports.default = router;

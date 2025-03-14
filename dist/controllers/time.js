@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
 const xpath_1 = __importDefault(require("xpath"));
 const xmldom_1 = require("@xmldom/xmldom");
 const Manejo_1 = require("../services/Manejo");
@@ -271,9 +271,24 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
         const extra = registro.getDataValue('Extra');
         var entradaactual = (0, dayjs_1.default)(registro.getDataValue('Entrada'));
         var salidaactual = (0, dayjs_1.default)(salidaformateada);
+        console.log('Entrada antes:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Salida antes:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
+        salidaactual = salidaactual.minute() >= 30
+            ? salidaactual.minute(30).second(0)
+            : salidaactual.minute(0).second(0);
+        entradaactual = entradaactual.minute() > 30
+            ? entradaactual.add(1, 'hour').minute(0).second(0)
+            : entradaactual.minute() > 0
+                ? entradaactual.minute(30).second(0)
+                : entradaactual;
         const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 9, 30);
         const totalActual = (0, Manejo_1.formatoHora)((0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 0, 0));
         const extraactualformato = (0, Manejo_1.formatoHora)(extraactual);
+        console.log('Extra anterior:', extra);
+        console.log('Entrada actual:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Salida actual:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('Extra actual:', extraactualformato);
+        console.log('Total actual:', totalActual);
         yield time_1.Registro.update({
             Extra: extraactualformato,
             Total: totalActual
@@ -339,6 +354,15 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const extra = registro.getDataValue('Extra');
         var salidaactual = (0, dayjs_1.default)(registro.getDataValue('Salida'));
         var entradaactual = (0, dayjs_1.default)(entradaformateada);
+        // Ajustar los minutos de entrada y salida
+        salidaactual = salidaactual.minute() >= 30
+            ? salidaactual.minute(30).second(0)
+            : salidaactual.minute(0).second(0);
+        entradaactual = entradaactual.minute() > 30
+            ? entradaactual.add(1, 'hour').minute(0).second(0)
+            : entradaactual.minute() > 0
+                ? entradaactual.minute(30).second(0)
+                : entradaactual;
         const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 9, 30);
         const totalActual = (0, Manejo_1.formatoHora)((0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 0, 0));
         const extraactualformato = (0, Manejo_1.formatoHora)(extraactual);
@@ -593,3 +617,29 @@ const concatenar = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.concatenar = concatenar;
+const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { Hid, Fecha } = req.params;
+    try {
+        // Buscar el registro por Hid y Fecha
+        const registro = yield time_1.Registro.findOne({
+            where: {
+                Hid,
+                Fecha: dayjs_1.default.tz(Fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
+            },
+        });
+        if (!registro) {
+            return res.status(404).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} no encontrado` });
+        }
+        // Eliminar el registro
+        yield registro.destroy();
+        res.status(200).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} eliminado con éxito` });
+    }
+    catch (error) {
+        console.error('Error al eliminar el registro:', error);
+        res.status(500).json({
+            error: 'Error al eliminar el registro',
+            details: error.message,
+        });
+    }
+});
+exports.deleteRegistroByHidAndFecha = deleteRegistroByHidAndFecha;
