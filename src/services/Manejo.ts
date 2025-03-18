@@ -103,16 +103,12 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
             }
         }
         let opentimeEntrada = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota')
-        console.log(sumTotal);
         if(opentimeEntrada.day() !== 6){
             extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
-            console.log("CTTM",(convertTimeToMinutes(sumTotal) - 570))
         } else if(opentimeEntrada.day() === 6) {
             extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 240);
         }
-        console.log("extra",extra)
         const modificadoextra = (convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30) && extra[0] !== '-' ? '0:00' : extra;
-
         const procesado = {
             Hid: primero.Hid,
             Name: primero.Name,
@@ -265,13 +261,16 @@ function sumarExtra(data: Array<{ Hid: string; Name: string; Entrada: string; Sa
     const acumulado: { [key: string]: { horas:number, minutos:number, Name: string}} = {};
 
     data.forEach(item => {
-        const [horas, mintos] = item.Extra.split(':').map(Number);
+        let [horas, mintos] = item.Extra.split(':').map(Number);
+        if (item.Extra.startsWith('-')) {
+            mintos = -Math.abs(mintos);
+        }
         if(!acumulado[item.Hid]) {
             acumulado[item.Hid] = {horas: 0, minutos: 0, Name: item.Name} 
         }
         acumulado[item.Hid].horas += horas;
         acumulado[item.Hid].minutos += mintos;
-        
+
         if(acumulado[item.Hid].minutos >= 60) {
             acumulado[item.Hid].horas += Math.floor(acumulado[item.Hid].minutos / 60);
             acumulado[item.Hid].minutos %= 60;

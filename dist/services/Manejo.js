@@ -120,15 +120,12 @@ function procesarDatos(data) {
             }
         }
         let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
-        console.log(sumTotal);
         if (opentimeEntrada.day() !== 6) {
             extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
-            console.log("CTTM", (convertTimeToMinutes(sumTotal) - 570));
         }
         else if (opentimeEntrada.day() === 6) {
             extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 240);
         }
-        console.log("extra", extra);
         const modificadoextra = (convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30) && extra[0] !== '-' ? '0:00' : extra;
         const procesado = {
             Hid: primero.Hid,
@@ -277,7 +274,10 @@ function diferenciaUpdate(entrada, salida, hora, minuto) {
 function sumarExtra(data) {
     const acumulado = {};
     data.forEach(item => {
-        const [horas, mintos] = item.Extra.split(':').map(Number);
+        let [horas, mintos] = item.Extra.split(':').map(Number);
+        if (item.Extra.startsWith('-')) {
+            mintos = -Math.abs(mintos);
+        }
         if (!acumulado[item.Hid]) {
             acumulado[item.Hid] = { horas: 0, minutos: 0, Name: item.Name };
         }
