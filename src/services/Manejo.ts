@@ -358,7 +358,7 @@ export async function informePersonal(horario: Array<{Hid: number; Name: string;
     const contenido = [
         {
             columns: [
-                {image: 'public/LogoAP.png', width: 50},
+                // {image: 'public/LogoAP.png', width: 50},
                 {text: "Informe de entradas y salidas\n", style: "header", alignment:'center'}
             ]
         },
@@ -422,13 +422,13 @@ export async function informePersonal(horario: Array<{Hid: number; Name: string;
         defaultStyle: {
             font: "Helvetica"
         },
-        background: {
-            image: 'public/LogoAp.png',
-            width: 400,
-            opacity: 0.2,
-            alignment:'center',
-            absolutePosition: {x: 10 , y: 300},
-        }
+        // background: {
+        //     image: 'public/LogoAp.png',
+        //     width: 400,
+        //     opacity: 0.2,
+        //     alignment:'center',
+        //     absolutePosition: {x: 10 , y: 300},
+        // }
     };
 
     const pdfDoc = informePersonal.createPdfKitDocument(docDefinition as any);
@@ -455,7 +455,7 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
     const content = [
         {
             columns: [
-                {image: 'public/LogoAP.png', width: 50},
+                // {image: 'public/LogoAP.png', width: 50},
                 {text: "Informe de entradas y salidas\n", style: "header", alignment:'center'}
             ],
         },
@@ -514,13 +514,13 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
         defaultStyle: {
             font: "Helvetica",
         },
-        background: {
-            image: "public/LogoAP.png",
-            width: 400,
-            opacity: 0.2,
-            alignment: "center",
-            absolutePosition: {x: 10, y: 300},
-        },
+        // background: {
+        //     image: "public/LogoAP.png",
+        //     width: 400,
+        //     opacity: 0.2,
+        //     alignment: "center",
+        //     absolutePosition: {x: 10, y: 300},
+        // },
     };
     const pdfDoc = printer.createPdfKitDocument(docDefinition as any);
     return new Promise<Buffer>((resolve, reject)=> {
@@ -565,7 +565,7 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
     const contenido = [
         {
             columns: [
-                {image: 'public/LogoAP.png', width: 50},
+                // {image: 'public/LogoAP.png', width: 50},
                 {text: "Informe de llegadas\n", style: "header", alignment:'center'}
             ]
         },
@@ -636,13 +636,13 @@ export async function informeRiesgo(horario: Array<{Hid: number; Name: string; E
         defaultStyle: {
             font: "Helvetica"
         },
-        background: {
-            image: 'public/LogoAp.png',
-            width: 400,
-            opacity: 0.2,
-            alignment:'center',
-            absolutePosition: {x: 10 , y: 300},
-        }
+        // background: {
+        //     image: 'public/LogoAp.png',
+        //     width: 400,
+        //     opacity: 0.2,
+        //     alignment:'center',
+        //     absolutePosition: {x: 10 , y: 300},
+        // }
     };
 
     const pdfDoc = informeRiesgo.createPdfKitDocument(docDefinition as any);
