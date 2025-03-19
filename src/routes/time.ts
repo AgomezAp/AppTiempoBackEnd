@@ -18,7 +18,8 @@ import {
     agregarRegistro,
     informePeligro,
     concatenar,
-    deleteRegistroByHidAndFecha
+    deleteRegistroByHidAndFecha,
+    restarTiempoSabado
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -60,4 +61,6 @@ router.post("/api/horario/InformeRiesgo", informePeligro);
 router.post("/api/horario/concatenar",upload.array('files'), concatenar)
 //Eliminar Registro 
 router.delete("/api/horario/delete/:Hid/:Fecha", deleteRegistroByHidAndFecha)
+//Restar tiempo de sabado
+router.post("/api/horario/restaTiempo", restarTiempoSabado)
 export default router

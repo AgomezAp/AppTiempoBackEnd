@@ -66,8 +66,10 @@ class Server{
             await User.sync();
             await Product.sync();
             await Permiso.sync({alter: true});
-            await Registro.sync({force: true});
-            await Sumatoria.sync({force: true});
+            // await Registro.sync({force: true});
+            // await Sumatoria.sync({force: true});
+            await Registro.sync();
+            await Sumatoria.sync();
             await Novedad.sync({alter: true});
             await NovedadHistorico.sync({alter: true});
 

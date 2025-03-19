@@ -682,9 +682,9 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
   
       res.status(500).json(errorResponse);
     }
-  };
+};
 
-  export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): Promise<any> => {
+export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): Promise<any> => {
     const { Hid, Fecha } = req.params;
   
     try {
@@ -711,6 +711,27 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
         details: error.message,
       });
     }
-  };
+};
 
-  
+export const restarTiempoSabado = async (): Promise<void> => {
+    try {
+        const tiempoARestar = '4:00';
+        const minutosARestar = convertTimeToMinutes(tiempoARestar);
+        const registros = await Sumatoria.findAll();
+
+        for (const reg of registros) {
+            const acumuladoActual = reg.getDataValue('Acumulado');
+            const minutosAcumulados = convertTimeToMinutes(acumuladoActual);
+            const sabadoMinutos = minutosAcumulados - minutosARestar;
+            const sabado = sabadoMinutos < 0 ? `${Math.ceil(sabadoMinutos/60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}` : `${Math.floor(sabadoMinutos/60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}`;
+            await Sumatoria.update(
+                { Acumulado: sabado},
+                { where: { Sid: reg.getDataValue('Sid')}}
+            );
+        }
+        console.log('Tiempo restado exitosamente')
+    } catch (error: any) {
+        console.error('Error al restar el tiempo:', error);
+        throw error;
+    }
+};

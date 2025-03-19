@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+exports.restarTiempoSabado = exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
 const xpath_1 = __importDefault(require("xpath"));
 const xmldom_1 = require("@xmldom/xmldom");
 const Manejo_1 = require("../services/Manejo");
@@ -643,3 +643,23 @@ const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.deleteRegistroByHidAndFecha = deleteRegistroByHidAndFecha;
+const restarTiempoSabado = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const tiempoARestar = '4:00';
+        const minutosARestar = (0, Manejo_1.convertTimeToMinutes)(tiempoARestar);
+        const registros = yield time_1.Sumatoria.findAll();
+        for (const reg of registros) {
+            const acumuladoActual = reg.getDataValue('Acumulado');
+            const minutosAcumulados = (0, Manejo_1.convertTimeToMinutes)(acumuladoActual);
+            const sabadoMinutos = minutosAcumulados - minutosARestar;
+            const sabado = sabadoMinutos < 0 ? `${Math.ceil(sabadoMinutos / 60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}` : `${Math.floor(sabadoMinutos / 60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}`;
+            yield time_1.Sumatoria.update({ Acumulado: sabado }, { where: { Sid: reg.getDataValue('Sid') } });
+        }
+        console.log('Tiempo restado exitosamente');
+    }
+    catch (error) {
+        console.error('Error al restar el tiempo:', error);
+        throw error;
+    }
+});
+exports.restarTiempoSabado = restarTiempoSabado;

@@ -60,7 +60,7 @@ function processXML(xmlContent) {
                 }
             }
             const result_Data = ordenarDatos(data);
-            console.log(result_Data);
+            // console.log(result_Data);
             const result_Extra = sumarExtra(result_Data);
             return [result_Data, result_Extra];
         }
@@ -113,18 +113,26 @@ function procesarDatos(data) {
         for (let i = 0; i < grupo.length; i = i + 2) {
             primero = grupo[i];
             ultimo = !grupo[i + 1] ? sinHuella(primero) : grupo[i + 1];
+            if ((0, dayjs_1.default)(primero.Open_Time).isAfter((0, dayjs_1.default)(ultimo.Open_Time))) {
+                const temp = primero;
+                primero = ultimo;
+                ultimo = temp;
+            }
             total = formatoHora(difereciaConMoment2(primero, ultimo));
             sumTotal = convertMinutesToTime(convertTimeToMinutes(sumTotal) + convertTimeToMinutes(total));
-            if (i === 0) {
+            if (grupo.length === 1) {
+                entradaOriginal = primero;
+            }
+            else if (i === 0) {
                 entradaOriginal = grupo[0];
             }
         }
-        let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
-        if (opentimeEntrada.day() !== 6) {
+        let opentimeEntrada = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-D D HH:mm:ss', 'America/Bogota');
+        if (opentimeEntrada.day() !== 6 && opentimeEntrada.day() !== 0) {
             extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
         }
-        else if (opentimeEntrada.day() === 6) {
-            extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 240);
+        else {
+            extra = sumTotal;
         }
         const modificadoextra = (convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30) && extra[0] !== '-' ? '0:00' : extra;
         const procesado = {
@@ -272,34 +280,48 @@ function diferenciaUpdate(entrada, salida, hora, minuto) {
     return { horas, minutos };
 }
 function sumarExtra(data) {
+    // Filtrar y mostrar los datos específicos para Hid 2 y 9
+    const datosFiltrados = data.filter(item => item.Hid === '2' || item.Hid === '9');
+    console.log('Datos filtrados para Hid 2 y 9:', datosFiltrados);
+    // Crear un mapa para acumular los datos
     const acumulado = {};
     data.forEach(item => {
-        let [horas, mintos] = item.Extra.split(':').map(Number);
+        console.log('Procesando item:', item);
+        // Convertir el tiempo extra a minutos
+        let [horas, minutos] = item.Extra.split(':').map(Number);
         if (item.Extra.startsWith('-')) {
-            mintos = -Math.abs(mintos);
+            minutos = -Math.abs(minutos);
         }
+        const totalMinutos = horas * 60 + minutos;
+        console.log(`totalMinutos = ${horas * 60} + ${Math.sign(horas)} + ${minutos}`);
+        console.log(`Hid: ${item.Hid}, Extra: ${item.Extra}, Total minutos: ${totalMinutos}`);
+        // Si el Hid no existe en el acumulador, inicializarlo
         if (!acumulado[item.Hid]) {
-            acumulado[item.Hid] = { horas: 0, minutos: 0, Name: item.Name };
+            acumulado[item.Hid] = {
+                totalMinutos,
+                Name: item.Name,
+            };
         }
-        acumulado[item.Hid].horas += horas;
-        acumulado[item.Hid].minutos += mintos;
-        if (acumulado[item.Hid].minutos >= 60) {
-            acumulado[item.Hid].horas += Math.floor(acumulado[item.Hid].minutos / 60);
-            acumulado[item.Hid].minutos %= 60;
+        else {
+            // Sumar los minutos al acumulador existente
+            acumulado[item.Hid].totalMinutos += totalMinutos;
         }
-        else if (acumulado[item.Hid].minutos <= -60) {
-            acumulado[item.Hid].horas -= Math.ceil(Math.abs(acumulado[item.Hid].minutos / 60));
-            acumulado[item.Hid].minutos = acumulado[item.Hid].minutos % 60;
-        }
+        // Mostrar el estado actual del acumulador
+        console.log('Estado actual del acumulador:', acumulado);
+        // Solo procesar y mostrar datos cuando el Hid sea 2 o 9
     });
-    const resultado = [];
-    for (const id in acumulado) {
-        resultado.push({
-            Sid: id,
-            Name: acumulado[id].Name,
-            Acumulado: `${acumulado[id].horas}:${acumulado[id].minutos < 10 ? '0' : ''}${acumulado[id].minutos}`
-        });
-    }
+    // Convertir el acumulador en un array de resultados
+    const resultado = Object.entries(acumulado).map(([Hid, { totalMinutos, Name }]) => {
+        const horas = Math.floor(Math.abs(totalMinutos) / 60) * Math.sign(totalMinutos);
+        const minutos = Math.abs(totalMinutos % 60);
+        const acumuladoFinal = {
+            Sid: Hid,
+            Name,
+            Acumulado: `${horas}:${minutos.toString().padStart(2, '0')}`,
+        };
+        // Mostrar el resultado final para cada Hid
+        return acumuladoFinal;
+    });
     return resultado;
 }
 function convertTimeToMinutes(time) {
