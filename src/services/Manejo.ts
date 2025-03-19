@@ -1,14 +1,9 @@
 import { parseStringPromise } from 'xml2js';
-import * as procesadoModel from '../models/time';
 import dayjs, { Dayjs } from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { text } from 'express';
 import PdfPrinter from 'pdfmake';
-import { register } from '../controllers/user';
-import { resolveContent } from 'nodemailer/lib/shared';
-import { parseNumbers } from 'xml2js/lib/processors';
 dayjs.extend(duration);
 dayjs.extend(utc);
 dayjs.extend(timezone);

@@ -9,13 +9,8 @@ import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNoved
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
 import multer from 'multer';
-import { parseStringPromise } from 'xml2js';
 import dayjs from 'dayjs';
-import { Op, json, literal, where } from 'sequelize';
-import e from 'cors';
-import { resolveContent } from 'nodemailer/lib/shared';
-import { format } from 'mysql2';
-import { xmppPreKey } from '@adiwajshing/baileys';
+import { Op } from 'sequelize';
 
 declare global {
     namespace Express {

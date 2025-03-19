@@ -1,6 +1,5 @@
 import { Permiso } from '../models/permisos';
 import type { Novedad } from '../models/time';
-import { convertTimeToMinutes } from './Manejo';
 export function permisoToNovedad(permisos: Permiso[], novedad: Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada: string, HoraSalida: string, description: string, horas: string, aceptacion: boolean|null}>): Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada?: string|null, HoraSalida?: string|null, description: string, horas: string, aceptacion: boolean|null}> {
     const transicion = permisos.map(permiso => permiso.toJSON());
     const idsNovedades = new Set(novedad.map(nv => nv.id));

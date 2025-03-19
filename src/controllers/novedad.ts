@@ -6,11 +6,9 @@ import {
 import { Novedad, NovedadHistorico, Sumatoria } from '../models/time';
 import { Permiso } from '../models/permisos';
 import dayjs from 'dayjs';
-import { convertTimeToMinutes } from '../services/Manejo';
 import { permisoToNovedad, convertirHora, convertirMinuto } from '../services/novedad';
 import sequelize from '../database/connection';
-import { Op, where } from 'sequelize'
-import { hmacSign, normalizeMessageContent } from '@adiwajshing/baileys';
+import { Op } from 'sequelize'
 
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
