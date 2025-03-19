@@ -17,6 +17,7 @@ const time_1 = require("../controllers/time");
 node_cron_1.default.schedule('0 2 1 * *', () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield (0, time_1.restarTiempoSabado)();
+        console.log("Tiempo restado automaticamente");
     }
     catch (error) {
         console.error('Error al ejecutar la tarea', error);
