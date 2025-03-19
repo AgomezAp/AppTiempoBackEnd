@@ -20,6 +20,6 @@ node_cron_1.default.schedule('0 2 1 * *', () => __awaiter(void 0, void 0, void 0
         console.log("Tiempo restado automaticamente");
     }
     catch (error) {
-        console.error('Error al ejecutar la tarea', error);
+        console.error('Error al ejecutar la tarea de quitar tiempo automaticamente', error);
     }
 }));

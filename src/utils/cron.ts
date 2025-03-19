@@ -6,6 +6,6 @@ cron.schedule('0 2 1 * *', async () => {
         await restarTiempoSabado();
         console.log("Tiempo restado automaticamente")
     } catch(error) {
-        console.error('Error al ejecutar la tarea', error)
+        console.error('Error al ejecutar la tarea de quitar tiempo automaticamente', error)
     }
 })
