@@ -34,7 +34,7 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
         try {
             const xmlContent = req.file.buffer.toString();
             const [jsonData, jsonDataExtra] = await processXML(xmlContent);
-
+            console.log(`Cacasdac ${JSON.stringify(jsonDataExtra, null, 2)}`);
             if (!Array.isArray(jsonData) || jsonData.length === 0) {
                 throw new Error('Los datos procesados no son válidos o están vacíos');
             }
@@ -55,6 +55,13 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
             if(Object.keys(listaExtras).length === 0){
                 Extra = await Sumatoria.bulkCreate(jsonDataExtra)
             } else {
+                const idsExistentes = listaExtras.map(rec => rec.getDataValue('Sid'));
+                const registrosFaltantes = jsonDataExtra.filter((extra: {Sid: string}) => !idsExistentes.includes(extra.Sid));
+                if (registrosFaltantes.length > 0){
+                    await Sumatoria.bulkCreate(registrosFaltantes, {
+                        ignoreDuplicates: true
+                    });
+                }
                 const resultado = listaExtras.map(record => ({
                     Sid: record.dataValues.Sid.toString(),
                     Name: record.dataValues.Name,
@@ -64,13 +71,23 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                     const matchingExtra = jsonDataExtra.find((extra: {Sid: string; Name: string; Acumulado: string}) => extra.Sid === res.Sid);
                     if(matchingExtra) {
 
-                        const [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
-                        const [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
-                        const totalMinutos = mintosRes + mintosExtra;
-                        const totalHoras = horasRes + horasExtra + Math.floor(totalMinutos / 60);
-                        const mintosFinales = totalMinutos % 60;
-    
+                        let [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
+                        if(res.Acumulado.startsWith("-")) {
+                            mintosRes = -Math.abs(mintosRes)
+                        }
+                        let [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
+                        if(matchingExtra.Acumulado.startsWith("-")) {
+                            mintosExtra = -Math.abs(mintosExtra)
+                        }
+                        const totalMinutos = (horasRes * 60) + (horasExtra * 60) + mintosRes + mintosExtra;
+                        let totalHoras = totalMinutos < 0 ? Math.ceil(totalMinutos/60) : Math.floor(totalMinutos/60);
+                        let mintosFinales = totalMinutos % 60
+                        // if (totalHoras < 0 || mintosFinales < 0) {
+                        //     totalHoras = totalHoras < 0 ? totalHoras : -totalHoras;
+                        //     mintosFinales = Math.abs(mintosFinales);
+                        // }
                         res.Acumulado = formatoHora({ horas: totalHoras, minutos: mintosFinales});
+                        console.log(res.Acumulado, totalHoras, mintosFinales)
                         return {
                             Sid: res.Sid,
                             Name: res.Name,
@@ -79,6 +96,11 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                     }
                     return res;
                 })
+                resultadoActualizado.forEach(res => {
+                    if (res.Acumulado.startsWith("--")) {
+                        res.Acumulado = res.Acumulado.replace("--", "-");
+                    }
+                });
                 for(const data of resultadoActualizado) {
                    Extra = await Sumatoria.update(
                     {Acumulado: data.Acumulado},

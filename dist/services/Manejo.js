@@ -281,20 +281,20 @@ function diferenciaUpdate(entrada, salida, hora, minuto) {
 }
 function sumarExtra(data) {
     // Filtrar y mostrar los datos específicos para Hid 2 y 9
-    const datosFiltrados = data.filter(item => item.Hid === '2' || item.Hid === '9');
-    console.log('Datos filtrados para Hid 2 y 9:', datosFiltrados);
+    const datosFiltrados = data.filter(item => item.Hid === '2' || item.Hid === '16');
+    // console.log('Datos filtrados para Hid 2 y 9:', datosFiltrados);
     // Crear un mapa para acumular los datos
     const acumulado = {};
     data.forEach(item => {
-        console.log('Procesando item:', item);
+        // console.log('Procesando item:', item);
         // Convertir el tiempo extra a minutos
         let [horas, minutos] = item.Extra.split(':').map(Number);
         if (item.Extra.startsWith('-')) {
             minutos = -Math.abs(minutos);
         }
         const totalMinutos = horas * 60 + minutos;
-        console.log(`totalMinutos = ${horas * 60} + ${Math.sign(horas)} + ${minutos}`);
-        console.log(`Hid: ${item.Hid}, Extra: ${item.Extra}, Total minutos: ${totalMinutos}`);
+        // console.log(`totalMinutos = ${horas * 60} + ${Math.sign(horas)} + ${minutos}`);
+        // console.log(`Hid: ${item.Hid}, Extra: ${item.Extra}, Total minutos: ${totalMinutos}`);
         // Si el Hid no existe en el acumulador, inicializarlo
         if (!acumulado[item.Hid]) {
             acumulado[item.Hid] = {
@@ -307,18 +307,20 @@ function sumarExtra(data) {
             acumulado[item.Hid].totalMinutos += totalMinutos;
         }
         // Mostrar el estado actual del acumulador
-        console.log('Estado actual del acumulador:', acumulado);
+        // console.log('Estado actual del acumulador:', acumulado);
         // Solo procesar y mostrar datos cuando el Hid sea 2 o 9
     });
     // Convertir el acumulador en un array de resultados
     const resultado = Object.entries(acumulado).map(([Hid, { totalMinutos, Name }]) => {
+        // console.log(acumulado, "acumulado dentro de resultado")
         const horas = Math.floor(Math.abs(totalMinutos) / 60) * Math.sign(totalMinutos);
         const minutos = Math.abs(totalMinutos % 60);
         const acumuladoFinal = {
             Sid: Hid,
             Name,
-            Acumulado: `${horas}:${minutos.toString().padStart(2, '0')}`,
+            Acumulado: horas === 0 ? `-${horas}:${minutos.toString().padStart(2, '0')}` : `${horas}:${minutos.toString().padStart(2, '0')}`,
         };
+        // console.log(acumuladoFinal)
         // Mostrar el resultado final para cada Hid
         return acumuladoFinal;
     });
@@ -424,7 +426,7 @@ function informePersonal(horario) {
                 font: "Helvetica"
             },
             background: {
-                image: 'public/LogoAp.png',
+                image: 'public/LogoAP.png',
                 width: 400,
                 opacity: 0.2,
                 alignment: 'center',
@@ -632,7 +634,7 @@ function informeRiesgo(horario) {
                 font: "Helvetica"
             },
             background: {
-                image: 'public/LogoAp.png',
+                image: 'public/LogoAP.png',
                 width: 400,
                 opacity: 0.2,
                 alignment: 'center',

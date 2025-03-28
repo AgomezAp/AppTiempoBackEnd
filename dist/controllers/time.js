@@ -34,6 +34,7 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
         try {
             const xmlContent = req.file.buffer.toString();
             const [jsonData, jsonDataExtra] = yield (0, Manejo_1.processXML)(xmlContent);
+            console.log(`Cacasdac ${JSON.stringify(jsonDataExtra, null, 2)}`);
             if (!Array.isArray(jsonData) || jsonData.length === 0) {
                 throw new Error('Los datos procesados no son válidos o están vacíos');
             }
@@ -54,6 +55,13 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                 Extra = yield time_1.Sumatoria.bulkCreate(jsonDataExtra);
             }
             else {
+                const idsExistentes = listaExtras.map(rec => rec.getDataValue('Sid'));
+                const registrosFaltantes = jsonDataExtra.filter((extra) => !idsExistentes.includes(extra.Sid));
+                if (registrosFaltantes.length > 0) {
+                    yield time_1.Sumatoria.bulkCreate(registrosFaltantes, {
+                        ignoreDuplicates: true
+                    });
+                }
                 const resultado = listaExtras.map(record => ({
                     Sid: record.dataValues.Sid.toString(),
                     Name: record.dataValues.Name,
@@ -62,12 +70,23 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                 const resultadoActualizado = resultado.map(res => {
                     const matchingExtra = jsonDataExtra.find((extra) => extra.Sid === res.Sid);
                     if (matchingExtra) {
-                        const [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
-                        const [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
-                        const totalMinutos = mintosRes + mintosExtra;
-                        const totalHoras = horasRes + horasExtra + Math.floor(totalMinutos / 60);
-                        const mintosFinales = totalMinutos % 60;
+                        let [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
+                        if (res.Acumulado.startsWith("-")) {
+                            mintosRes = -Math.abs(mintosRes);
+                        }
+                        let [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
+                        if (matchingExtra.Acumulado.startsWith("-")) {
+                            mintosExtra = -Math.abs(mintosExtra);
+                        }
+                        const totalMinutos = (horasRes * 60) + (horasExtra * 60) + mintosRes + mintosExtra;
+                        let totalHoras = totalMinutos < 0 ? Math.ceil(totalMinutos / 60) : Math.floor(totalMinutos / 60);
+                        let mintosFinales = totalMinutos % 60;
+                        // if (totalHoras < 0 || mintosFinales < 0) {
+                        //     totalHoras = totalHoras < 0 ? totalHoras : -totalHoras;
+                        //     mintosFinales = Math.abs(mintosFinales);
+                        // }
                         res.Acumulado = (0, Manejo_1.formatoHora)({ horas: totalHoras, minutos: mintosFinales });
+                        console.log(res.Acumulado, totalHoras, mintosFinales);
                         return {
                             Sid: res.Sid,
                             Name: res.Name,
@@ -75,6 +94,11 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                         };
                     }
                     return res;
+                });
+                resultadoActualizado.forEach(res => {
+                    if (res.Acumulado.startsWith("--")) {
+                        res.Acumulado = res.Acumulado.replace("--", "-");
+                    }
                 });
                 for (const data of resultadoActualizado) {
                     Extra = yield time_1.Sumatoria.update({ Acumulado: data.Acumulado }, { where: { Sid: data.Sid } });
