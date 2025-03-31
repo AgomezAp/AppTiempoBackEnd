@@ -27,6 +27,8 @@ router.get("/api/horario/Obtener/:fecha", time_1.getHorarioByFecha);
 router.put("/api/horario/ActualizarSalida", time_1.updateSalidaById);
 //Ruta para actualizar entrada
 router.put("/api/horario/ActualizarEntrada", time_1.updateEntradaById);
+//Ruta para cambiar extras
+router.put("/api/horario/updateExtra", time_1.updateExtra);
 //Ruta para agregar registro
 router.post("/api/horario/agregarRegistro", time_1.agregarRegistro);
 //Ruta para informe personal

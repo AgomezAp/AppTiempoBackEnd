@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restarTiempoSabado = exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+exports.restarTiempoSabado = exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.addExtra = exports.updateExtra = exports.informePeligro = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
 const xpath_1 = __importDefault(require("xpath"));
 const xmldom_1 = require("@xmldom/xmldom");
 const Manejo_1 = require("../services/Manejo");
@@ -585,6 +585,71 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.informePeligro = informePeligro;
+const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id, extra } = req.body;
+    try {
+        if (!id || !extra) {
+            return res.status(400).json({
+                message: 'ID y valor de extra son requeridos',
+            });
+        }
+        const sumatoria = yield time_1.Sumatoria.findOne({
+            where: { Sid: id },
+        });
+        if (!sumatoria) {
+            return res.status(404).json({
+                message: `Registro con ID ${id} no encontrado`,
+            });
+        }
+        const extraFormateado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extra));
+        yield time_1.Sumatoria.update({ Acumulado: extraFormateado }, { where: { Sid: id } });
+        res.status(200).json({
+            message: `Valor de extra actualizado correctamente para el ID ${id}`,
+        });
+    }
+    catch (error) {
+        console.error('Error al actualizar el valor de extra:', error);
+        res.status(500).json({
+            error: 'Error al actualizar el valor de extra',
+            details: error.message,
+        });
+    }
+});
+exports.updateExtra = updateExtra;
+const addExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id, extra } = req.body;
+    try {
+        if (!id || !extra) {
+            return res.status(400).json({
+                message: 'ID y valor de extra son requeridos',
+            });
+        }
+        const sumatoria = yield time_1.Sumatoria.findOne({
+            where: { Sid: id },
+        });
+        if (!sumatoria) {
+            return res.status(404).json({
+                message: `Registro con ID ${id} no encontrado`,
+            });
+        }
+        const extraFormateado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extra));
+        const acumuladoActual = sumatoria.getDataValue('Acumulado');
+        const nuevoAcumulado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(acumuladoActual) + (0, novedad_1.convertirHora)(extraFormateado));
+        yield time_1.Sumatoria.update({ Acumulado: nuevoAcumulado }, { where: { Sid: id } });
+        res.status(200).json({
+            message: `Tiempo añadido correctamente al acumulado para el ID ${id}`,
+            nuevoAcumulado,
+        });
+    }
+    catch (error) {
+        console.error('Error al añadir tiempo al acumulado:', error);
+        res.status(500).json({
+            error: 'Error al añadir tiempo al acumulado',
+            details: error.message,
+        });
+    }
+});
+exports.addExtra = addExtra;
 const concatenar = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         if (!req.files || !Array.isArray(req.files) || req.files.length < 1) {

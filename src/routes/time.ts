@@ -19,7 +19,8 @@ import {
     informePeligro,
     concatenar,
     deleteRegistroByHidAndFecha,
-    restarTiempoSabado
+    restarTiempoSabado,
+    updateExtra
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -49,6 +50,8 @@ router.get("/api/horario/Obtener/:fecha", getHorarioByFecha);
 router.put("/api/horario/ActualizarSalida", updateSalidaById);
 //Ruta para actualizar entrada
 router.put("/api/horario/ActualizarEntrada", updateEntradaById);
+//Ruta para cambiar extras
+router.put("/api/horario/updateExtra", updateExtra)
 //Ruta para agregar registro
 router.post("/api/horario/agregarRegistro", agregarRegistro);
 //Ruta para informe personal

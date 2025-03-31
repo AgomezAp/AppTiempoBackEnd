@@ -626,6 +626,87 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
     }
 };
 
+export const updateExtra = async (req: Request, res: Response): Promise<any> => {
+    const { id, extra } = req.body;
+
+    try {
+        if (!id || !extra) {
+            return res.status(400).json({
+                message: 'ID y valor de extra son requeridos',
+            });
+        }
+
+        const sumatoria = await Sumatoria.findOne({
+            where: { Sid: id },
+        });
+
+        if (!sumatoria) {
+            return res.status(404).json({
+                message: `Registro con ID ${id} no encontrado`,
+            });
+        }
+
+        const extraFormateado = convertirMinuto(convertirHora(extra));
+
+        await Sumatoria.update(
+            { Acumulado: extraFormateado },
+            { where: { Sid: id } }
+        );
+
+        res.status(200).json({
+            message: `Valor de extra actualizado correctamente para el ID ${id}`,
+        });
+    } catch (error: any) {
+        console.error('Error al actualizar el valor de extra:', error);
+        res.status(500).json({
+            error: 'Error al actualizar el valor de extra',
+            details: error.message,
+        });
+    }
+};
+
+export const addExtra = async (req: Request, res: Response): Promise<any> => {
+    const { id, extra } = req.body;
+
+    try {
+        if (!id || !extra) {
+            return res.status(400).json({
+                message: 'ID y valor de extra son requeridos',
+            });
+        }
+
+        const sumatoria = await Sumatoria.findOne({
+            where: { Sid: id },
+        });
+
+        if (!sumatoria) {
+            return res.status(404).json({
+                message: `Registro con ID ${id} no encontrado`,
+            });
+        }
+
+        const extraFormateado = convertirMinuto(convertirHora(extra));
+        const acumuladoActual = sumatoria.getDataValue('Acumulado');
+        const nuevoAcumulado = convertirMinuto(convertirHora(acumuladoActual) + convertirHora(extraFormateado));
+
+        await Sumatoria.update(
+            { Acumulado: nuevoAcumulado },
+            { where: { Sid: id } }
+        );
+
+        res.status(200).json({
+            message: `Tiempo añadido correctamente al acumulado para el ID ${id}`,
+            nuevoAcumulado,
+        });
+    } catch (error: any) {
+        console.error('Error al añadir tiempo al acumulado:', error);
+        res.status(500).json({
+            error: 'Error al añadir tiempo al acumulado',
+            details: error.message,
+        });
+    }
+};
+
 export const concatenar = async (req: Request, res: Response): Promise<void> => {
     try {
       if (!req.files || !Array.isArray(req.files) || req.files.length < 1) {
