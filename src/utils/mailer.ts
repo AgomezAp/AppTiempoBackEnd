@@ -14,6 +14,10 @@ export const sendMail = (to: string[], subject: string, text: string) => {
     to: to.join(','),
     subject,
     text,
+    headers: {
+      'References': '',
+      'In-Reply-to': '',
+    },
   };
 
   return transporter.sendMail(mailOptions);

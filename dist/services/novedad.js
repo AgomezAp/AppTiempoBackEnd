@@ -86,12 +86,21 @@ function defineDescuento(tipo, entrada, salida) {
             horas = `-${dif}`;
             return [{ acp, horas }];
         }
+        case 'Permiso personal por horas': {
+            acp = true;
+            const entradaMin = convertirHora(entrada);
+            const salidaMin = convertirHora(salida);
+            const dif = convertirMinuto(entradaMin - salidaMin);
+            horas = `-${dif}`;
+            return [{ acp, horas }];
+        }
         case 'Movimiento de horario': {
             acp = false;
             horas = '0:0';
             return [{ acp, horas }];
         }
-        case 'Horas extras (en casa, fuera de las instalaciones y viajes)': {
+        case 'Horas extras (en casa, fuera de las instalaciones y viajes)':
+        case 'Adecuacion horario': {
             acp = null;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
