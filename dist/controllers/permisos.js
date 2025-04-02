@@ -60,7 +60,7 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             const subject = 'Nuevo Permiso Solicitado';
             const text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.\n Fecha de salida: ${fecha}.\n Hora de salida: ${horaSalida}.\n Hora de regreso: ${horaEntrada}.\n\n Observaciones: ${observaciones}`;
             const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
-            yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider], subject, text);
+            yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider, emailPersonal], subject, text);
             res.status(200).json({
                 message: 'Permiso creado con éxito',
                 permiso: newPermiso,

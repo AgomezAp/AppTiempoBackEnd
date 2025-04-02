@@ -18,6 +18,11 @@ const sendMail = (to, subject, text) => {
         to: to.join(','),
         subject,
         text,
+        headers: {
+            'References': '',
+            'In-Reply-to': '',
+        },
+        messageId: `<${Date.now()}-${Math.random()}@gmail.com>`
     };
     return transporter.sendMail(mailOptions);
 };
