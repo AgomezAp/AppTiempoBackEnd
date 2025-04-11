@@ -53,7 +53,7 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
             return [{acp, horas}];
         }
         case 'Salida Temprano': {
-            acp = true;
+            acp = false;
             entrada = '17:00';
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
@@ -67,7 +67,7 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
             return [{acp, horas}];
         }
         case 'Entrada luego de la jornada': {
-            acp = true;
+            acp = false;
             salida = '7:30';
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
@@ -77,7 +77,7 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
         }
         case 'Cita médica':
         case 'Cita odontológica': {
-            acp = null;
+            acp = false;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
@@ -85,7 +85,7 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
             return [{acp, horas}];
         }
         case 'Permiso personal por horas': {
-            acp = true;
+            acp = false;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
