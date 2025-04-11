@@ -22,7 +22,6 @@ const sendMail = (to, subject, text) => {
             'References': '',
             'In-Reply-to': '',
         },
-        messageId: `<${Date.now()}-${Math.random()}@gmail.com>`
     };
     return transporter.sendMail(mailOptions);
 };
