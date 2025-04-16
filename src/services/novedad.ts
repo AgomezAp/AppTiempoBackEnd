@@ -121,14 +121,10 @@ export function convertirHora(hora: string | undefined): number {
     if (!hora) {
         return 0;
     }
-    const [hh, mm] = hora.split(':').map(Number);
-    if(hh < 0){
-        sum = (hh * 60) - mm;
-    } else {
-        sum = (hh * 60) + mm;
-    }
-    
-    return sum;
+    const negativo = hora.startsWith('-')
+    let [hh, mm] = hora.replace('-','').split(':').map(Number);
+    sum = (hh * 60) + mm
+    return negativo ? -sum : sum;
 }
 
 export function convertirMinuto(hora: number): string {

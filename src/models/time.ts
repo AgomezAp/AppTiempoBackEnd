@@ -51,7 +51,7 @@ export const Novedad = sequelize.define(
         Fecha: {type: DataTypes.DATE, allowNull: false},
         HoraEntrada: {type: DataTypes.STRING, allowNull: true},           //revisar el allow
         HoraSalida: {type: DataTypes.STRING, allowNull: true},            //revisar el allow
-        description: {type: DataTypes.STRING, allowNull: true},         //revisar el allow
+        description: {type: DataTypes.TEXT, allowNull: true},         //revisar el allow
         horas: {type: DataTypes.STRING, allowNull: true},          //revisar el allow
         aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          //revisar el allow
     },
@@ -73,7 +73,7 @@ export const NovedadHistorico = sequelize.define(
         Fecha: {type: DataTypes.DATE, allowNull: true},
         HoraEntrada: {type: DataTypes.STRING, allowNull: true},           
         HoraSalida: {type: DataTypes.STRING, allowNull: true},            
-        description: {type: DataTypes.STRING, allowNull: true},         
+        description: {type: DataTypes.TEXT, allowNull: true},         
         horas: {type: DataTypes.STRING, allowNull: true},          
         aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          
     },

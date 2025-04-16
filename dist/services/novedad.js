@@ -55,7 +55,7 @@ function defineDescuento(tipo, entrada, salida) {
             return [{ acp, horas }];
         }
         case 'Salida Temprano': {
-            acp = true;
+            acp = false;
             entrada = '17:00';
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
@@ -69,7 +69,7 @@ function defineDescuento(tipo, entrada, salida) {
             return [{ acp, horas }];
         }
         case 'Entrada luego de la jornada': {
-            acp = true;
+            acp = false;
             salida = '7:30';
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
@@ -79,7 +79,7 @@ function defineDescuento(tipo, entrada, salida) {
         }
         case 'Cita médica':
         case 'Cita odontológica': {
-            acp = null;
+            acp = false;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
@@ -87,7 +87,7 @@ function defineDescuento(tipo, entrada, salida) {
             return [{ acp, horas }];
         }
         case 'Permiso personal por horas': {
-            acp = true;
+            acp = false;
             const entradaMin = convertirHora(entrada);
             const salidaMin = convertirHora(salida);
             const dif = convertirMinuto(entradaMin - salidaMin);
@@ -120,14 +120,10 @@ function convertirHora(hora) {
     if (!hora) {
         return 0;
     }
-    const [hh, mm] = hora.split(':').map(Number);
-    if (hh < 0) {
-        sum = (hh * 60) - mm;
-    }
-    else {
-        sum = (hh * 60) + mm;
-    }
-    return sum;
+    const negativo = hora.startsWith('-');
+    let [hh, mm] = hora.replace('-', '').split(':').map(Number);
+    sum = (hh * 60) + mm;
+    return negativo ? -sum : sum;
 }
 function convertirMinuto(hora) {
     const absHora = Math.abs(hora);

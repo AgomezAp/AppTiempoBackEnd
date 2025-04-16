@@ -13,13 +13,30 @@ import { Op } from 'sequelize'
 export const convertNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
       const permisos = await Permiso.findAll({where: {novedad: false}});
+      // console.log(permisos.map(pr => pr.toJSON()))
       const novedadBD = await Novedad.findAll();
+      // console.log(novedadBD)
       const novedadJS = novedadBD.map(nv => nv.toJSON());
+      // console.log(novedadJS)
       const novedades = permisoToNovedad(permisos, novedadJS);
-      const newNovedades = await Novedad.bulkCreate(novedades);
+      // console.log(novedades)
+      const newNovedades = await Novedad.bulkCreate(novedades, {validate: true});
+      console.log(newNovedades)
       await Permiso.update({ novedad: true }, { where: { novedad: false } })
       res.status(200).json(newNovedades);          
     } catch (error) {
+      console.error('Error en bulkCreate:', error);
+      if ((error as any).name === 'SequelizeUniqueConstraintError') {
+        console.error('Violación de restricción UNIQUE:', (error as any).errors);
+      } else if ((error as Error).name === 'SequelizeValidationError') {
+    console.error('Error de validación:', (error as any).errors);
+  } else {
+    if (error instanceof Error) {
+        console.error('Otro error:', error.message);
+    } else {
+        console.error('Otro error:', error);
+    }
+  }
       res.status(500).json({ error: 'Error al obtener las novedades' });        
     }
 };

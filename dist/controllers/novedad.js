@@ -22,14 +22,34 @@ const sequelize_1 = require("sequelize");
 const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const permisos = yield permisos_1.Permiso.findAll({ where: { novedad: false } });
+        // console.log(permisos.map(pr => pr.toJSON()))
         const novedadBD = yield time_1.Novedad.findAll();
+        // console.log(novedadBD)
         const novedadJS = novedadBD.map(nv => nv.toJSON());
+        // console.log(novedadJS)
         const novedades = (0, novedad_1.permisoToNovedad)(permisos, novedadJS);
-        const newNovedades = yield time_1.Novedad.bulkCreate(novedades);
+        // console.log(novedades)
+        const newNovedades = yield time_1.Novedad.bulkCreate(novedades, { validate: true });
+        console.log(newNovedades);
         yield permisos_1.Permiso.update({ novedad: true }, { where: { novedad: false } });
         res.status(200).json(newNovedades);
     }
     catch (error) {
+        console.error('Error en bulkCreate:', error);
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            console.error('Violación de restricción UNIQUE:', error.errors);
+        }
+        else if (error.name === 'SequelizeValidationError') {
+            console.error('Error de validación:', error.errors);
+        }
+        else {
+            if (error instanceof Error) {
+                console.error('Otro error:', error.message);
+            }
+            else {
+                console.error('Otro error:', error);
+            }
+        }
         res.status(500).json({ error: 'Error al obtener las novedades' });
     }
 });
