@@ -4,6 +4,8 @@ import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import PdfPrinter from 'pdfmake';
+import { width } from 'pdfkit/js/page';
+import { fontSize } from 'pdfkit';
 dayjs.extend(duration);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -453,17 +455,24 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
         }
     };
     const printer = new PdfPrinter(fonts);
+    const processLongText = (text: string) => {
+        return {
+            text: text,
+            fontSize: 10,  // Reducir tamaño para contenido largo
+            margin: [2, 2, 2, 2]
+        };
+    };
     const content = [
         {
             columns: [
                 {image: 'public/LogoAP.png', width: 50},
-                {text: "Informe de entradas y salidas\n", style: "header", alignment:'center'}
+                {text: "Informe de Novedades\n", style: "header", alignment:'center'}
             ],
         },
         {
             table: {
                 headerRows: 1,
-                widths: ["*","*","*"],
+                widths: ["auto","auto","*"],
                 body: [
                     [
                         {text: "Nombre", style: "tableHeader", alignment: "center"},
@@ -471,11 +480,16 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
                         {text: "Descripcion", style: "tableHeader", alignment: "center"},
                     ],
 
-                    ...novedad.map((item ) => [
-                        {text: item.Name, style: "tableCell", alignment:"center"},
-                        {text: item.type, style: "tableCell", alignment:"center"},
-                        {text: item.description, style: "tableCell", alignment:"center"},
-                    ]),
+                    // ...novedad.map((item ) => [
+                    //     {text: item.Name, style: "tableCell", alignment:"center"},
+                    //     {text: item.type, style: "tableCell", alignment:"center"},
+                    //     {text: item.description, style: "tableCell", alignment:"center"},
+                    // ]),
+                    ...novedad.map((item) => [
+                        processLongText(item.Name),
+                        processLongText(item.type),
+                        processLongText(item.description),
+                    ])
                 ],
             },
             layout: {
@@ -486,9 +500,12 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
                 hLineColor: () => "#000000",
                 paddingLeft: () => 5,
                 paddingRight: () => 5,
-                paddingTop: () => 5,
-                paddingBottom: () => 5,
+                paddingTop: () => 3,
+                paddingBottom: () => 3,
+                defaultBorder: true,
+                wordBreak: 'break-word'
             },
+            width: '100%'
         },
     ];
     const styles = {
@@ -506,7 +523,8 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
         },
         tableCell: {
             color: "black",
-            fontSize: 12,
+            fontSize: 10,
+            lineHeight: 1.2
         },
     };
     const docDefinition = {
@@ -514,7 +532,12 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
         styles,
         defaultStyle: {
             font: "Helvetica",
+            fontSize: 10,
+            lineHeight: 1.2
         },
+        pageMargins: [20, 40, 20, 40],
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
         background: {
             image: "public/LogoAP.png",
             width: 400,
