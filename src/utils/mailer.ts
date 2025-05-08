@@ -8,9 +8,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendMail = (to: string[], subject: string, text: string) => {
+export const sendMail = (to: string[], subject: string, text: string, attachments?: Buffer | Buffer[] | null) => {
   const domain = process.env.EMAIL_SERVICE;
   const messageId = `<${crypto.randomUUID()}@${domain}.com>`;
+  const uniqueReferencesId = crypto.randomUUID();
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: to.join(','),
@@ -21,10 +22,28 @@ export const sendMail = (to: string[], subject: string, text: string) => {
       'X-Entity-Ref-ID': crypto.randomUUID(),
       'Precedence': 'bulk',
       'Auto-Submitted': 'auto-generated',
+      'References': uniqueReferencesId
     },
-    inReplyTo: undefined,
-    references: undefined
+    references: undefined,
+    attachments: undefined as any,
   };
+  if (attachments) {
+    const pdfFileName = 'documento.pdf'; // Nombre fijo para el PDF
+    
+    if (Array.isArray(attachments)) {
+      mailOptions.attachments = attachments.map((buffer, index) => ({
+        filename: index === 0 ? pdfFileName : `documento_${index + 1}.pdf`, // documento.pdf, documento_2.pdf, etc.
+        content: buffer,
+        contentType: 'application/pdf', // Especificamos que es PDF
+      }));
+    } else {
+      mailOptions.attachments = [{
+        filename: pdfFileName,
+        content: attachments,
+        contentType: 'application/pdf',
+      }];
+    }
+  }
 
   return transporter.sendMail(mailOptions);
 };

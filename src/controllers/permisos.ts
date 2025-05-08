@@ -55,7 +55,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       const subject = 'Nuevo Permiso Solicitado';
       const text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.\n Fecha de salida: ${fecha}.\n Hora de salida: ${horaSalida}.\n Hora de regreso: ${horaEntrada}.\n\n Observaciones: ${observaciones}`;
       const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
-      await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text);
+      await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
 
       res.status(200).json({
         message: 'Permiso creado con éxito',

@@ -11,7 +11,7 @@ import { User } from '../models/user';
 
 // Registro de usuario con asignación de rol
  export const register = async (req: Request, res: Response): Promise<any> => {
-  const { name, lastName, password, email, Rid, Aid} = req.body;
+  const { Uid, name, lastName, password, email, Rid, Aid} = req.body;
 
   // Verificar si el usuario ya existe
   const userOne = await User.findOne({ where: { email: email } });
@@ -35,6 +35,7 @@ import { User } from '../models/user';
   try {
     // Crear usuario con el rol asignado
     const newUser = await User.create({
+      Uid,
       name,
       lastName,
       password: passwordHash,
