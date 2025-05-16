@@ -556,6 +556,116 @@ export async function informeNovedades(novedad: Array<{Nid: number; Name: string
     })
 }
 
+export async function informeNovedadNuevo(novedades: Array<{Sid: string; Name: string; Acumulado: string; Descripciones: Array<{Fecha: string; Descripcion: string;}>}>) {
+    const fonts = {
+        Helvetica: {
+            normal: "Helvetica",
+            bold: "Helvetica-Bold",
+            italics: "Helvetica-Oblique",
+            bolditalics: "Helvetica-BoldOblique"
+        }
+    };
+    const printer = new PdfPrinter(fonts);
+    const processLongText = (text: string) => {
+        return {
+            text: text,
+            fontSize: 10,  // Reducir tamaño para contenido largo
+            margin: [2, 2, 2, 2]
+        };
+    };
+    const content = [
+        {
+            columns: [
+                {image: 'public/LogoAP.png', width: 50},
+                {text: "Informe de Novedades\n", style: "header", alignment:'center'}
+            ],
+        },
+        {
+            table: {
+                headerRows: 1,
+                widths: ["auto","auto","*"],
+                body: [
+                    [
+                        {text: "Nombre", style: "tableHeader", alignment: "center"},
+                        {text: "Acumulado", style: "tableHeader", alignment: "center"},
+                        {text: "Descripcion", style: "tableHeader", alignment: "center"},
+                    ],
+                    ...novedades.map((novedad) => [
+                        processLongText(novedad.Name),
+                        processLongText(novedad.Acumulado),
+                        processLongText(
+                            Array.isArray(novedad.Descripciones)
+                                ? novedad.Descripciones
+                                    .map(desc => `${desc.Fecha} ${String(desc.Descripcion).replace(/[\r\n]+/g, ' ')}`)
+                                    .join('\n')
+                                : String(novedad.Descripciones).replace(/[\r\n]+/g, ' ')
+                        ),
+                    ])
+                ],
+            },
+            layout: {
+                fillColor: (rowIndex: number) => (rowIndex === 0 ? "#CCCCCC":null),
+                vLineWidth: () => 0.5,
+                hLineWidth: () => 0.5,
+                vLineColor: () => "#000000",
+                hLineColor: () => "#000000",
+                paddingLeft: () => 5,
+                paddingRight: () => 5,
+                paddingTop: () => 3,
+                paddingBottom: () => 3,
+                defaultBorder: true,
+                wordBreak: 'break-word'
+            },
+            width: '100%'
+        },
+    ];
+    const styles = {
+        header: {
+            fontSize: 20,
+            bold: true,
+            margin: [0, 10, 0, 15] as [number,number,number,number],
+        },
+        tableHeader: {
+            bold: true,
+            fontSize: 12,
+            color: "white",
+            fillColor: "#4CAF50",
+            alignment: "center",
+        },
+        tableCell: {
+            color: "black",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+    };
+    const docDefinition = {
+        content,
+        styles,
+        defaultStyle: {
+            font: "Helvetica",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+        pageMargins: [20, 40, 20, 40],
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        background: {
+            image: "public/LogoAP.png",
+            width: 400,
+            opacity: 0.2,
+            alignment: "center",
+            absolutePosition: {x: 10, y: 300},
+        },
+    };
+    const pdfDoc = printer.createPdfKitDocument(docDefinition as any);
+    return new Promise<Buffer>((resolve, reject)=> {
+        const chunks: any[]= []
+        pdfDoc.on("data", (chunk)=> chunks.push(chunk))
+        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+        pdfDoc.on("error", (err)=> reject(err));
+        pdfDoc.end();
+    })
+}
 export async function informeRiesgo(horario: Array<{Hid: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string}>): Promise<Buffer> {
     const time = `7:27:59`
     const riesgo = removeBeforeTime(horario, time);

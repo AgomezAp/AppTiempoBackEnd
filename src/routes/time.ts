@@ -20,7 +20,8 @@ import {
     concatenar,
     deleteRegistroByHidAndFecha,
     restarTiempoSabado,
-    updateExtra
+    updateExtra,
+    nuevaNovedad
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -57,9 +58,10 @@ router.post("/api/horario/agregarRegistro", agregarRegistro);
 //Ruta para informe personal
 router.post("/api/horario/informePersonal", informePersonalById);
 //Ruta para informe novedades
-router.post("/api/horario/informeNovedad", informeNovedad);
+router.post("/api/horario/informeNovedad", nuevaNovedad);
 //Ruta para informe de peligro
 router.post("/api/horario/InformeRiesgo", informePeligro);
+router.post("/api/horario/NuevoInforme", informeNovedad);
 //Concatenar
 router.post("/api/horario/concatenar",upload.array('files'), concatenar)
 //Eliminar Registro 

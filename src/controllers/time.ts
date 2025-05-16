@@ -5,7 +5,7 @@ import {
 
 import xpath, { XPathSelect } from 'xpath';
 import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
-import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes} from '../services/Manejo'
+import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes, informeNovedadNuevo} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
 import multer from 'multer';
@@ -584,6 +584,135 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
     }
 }
 
+export const nuevaNovedad = async (req: Request, res: Response): Promise<any> => {
+    const {fechaInicial, fechaFinal} = req.body;
+    const startofDay = (fecha:string) => new Date(new Date(fecha).setHours(0,0,0,0));
+    const endofDay = (fecha: string) => dayjs(fecha).endOf('day').toDate();
+
+    try {
+        const extras = await Sumatoria.findAll()
+        const sids = extras
+            .map(extra => extra.getDataValue('Sid'))
+            .sort((a, b) => Number(a) - Number(b));
+
+        const novedades = await Novedad.findAll({
+            where: {
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), endofDay(fechaFinal)]
+                }
+            }
+        });
+        const novedadesHistorico = await NovedadHistorico.findAll({
+            where: {
+                Fecha: {
+                    [Op.between]: [startofDay(fechaInicial), endofDay(fechaFinal)]
+                }
+            }
+        });
+
+        const todasNovedades = [...novedades, ...novedadesHistorico]
+        const resultadoPlano = todasNovedades.map(nov => {
+            const novObj = nov.toJSON() as { Nid?: string,  Name: string, description: string, Fecha: string}
+            const extra = extras.find(e => e.getDataValue('Sid') == (novObj.Nid));
+            return {
+                Sid: novObj.Nid,
+                Name: novObj.Name,
+                Acumulado: extra ? extra.getDataValue('Acumulado') : null,
+                Descripcion: novObj.description,
+                Fecha: dayjs(novObj.Fecha).format('YYYY-MM-DD')
+            };
+        });
+        const resultadoAgrupado : {
+            [sid: string]: {
+                Sid: string,
+                Name: string,
+                Acumulado: string,
+                Descripciones: Array<{ Fecha: string, Descripcion: string}>
+            }
+        } = {}
+
+        resultadoPlano.forEach(item => {
+            if (!item.Sid) return;
+            if (!resultadoAgrupado[item.Sid]) {
+                resultadoAgrupado[item.Sid] = {
+                    Sid: item.Sid,
+                    Name: item.Name,
+                    Acumulado: item.Acumulado,
+                    Descripciones: []
+                };
+            }
+            // Buscar si ya existe una descripción igual
+            const existe = resultadoAgrupado[item.Sid].Descripciones.find(
+                d => d.Descripcion === item.Descripcion
+            );
+            if (!existe) {
+                resultadoAgrupado[item.Sid].Descripciones.push({
+                    Fecha: item.Fecha,
+                    Descripcion: item.Descripcion
+                });
+            } else {
+                // Si ya existe, actualizar la fecha si es menor o mayor
+                if (item.Fecha < existe.Fecha) {
+                    existe.Fecha = item.Fecha; // Primera aparición
+                } else if (item.Fecha > existe.Fecha) {
+                    // Si la fecha es mayor, agregar como última aparición
+                    resultadoAgrupado[item.Sid].Descripciones.push({
+                        Fecha: item.Fecha,
+                        Descripcion: item.Descripcion
+                    });
+                }
+            }
+            // Ordenar por fecha y dejar solo la primera y la última si hay duplicados
+            resultadoAgrupado[item.Sid].Descripciones = Object.values(
+                resultadoAgrupado[item.Sid].Descripciones.reduce((acc, curr) => {
+                    if (!acc[curr.Descripcion]) {
+                        acc[curr.Descripcion] = { first: curr, last: curr };
+                    } else {
+                        if (curr.Fecha < acc[curr.Descripcion].first.Fecha) {
+                            acc[curr.Descripcion].first = curr;
+                        }
+                        if (curr.Fecha > acc[curr.Descripcion].last.Fecha) {
+                            acc[curr.Descripcion].last = curr;
+                        }
+                    }
+                    return acc;
+                }, {} as Record<string, { first: { Fecha: string, Descripcion: string }, last: { Fecha: string, Descripcion: string } }>)
+            ).flatMap(({ first, last }) =>
+                first.Fecha === last.Fecha ? [first] : [first, last]
+            ).sort((a, b) => a.Fecha.localeCompare(b.Fecha));
+        });
+        const resultadoFinal = extras.map(extra => {
+            const sid = extra.getDataValue('Sid');
+            const acumuladoRaw = extra.getDataValue('Acumulado');
+            const acumuladoFormateado = formatearAcumuladoDias(acumuladoRaw);
+            if(resultadoAgrupado[sid]) {
+                return {
+                    ...resultadoAgrupado[sid],
+                    Acumulado: acumuladoFormateado
+                };
+            } else {
+                return {
+                    Sid: sid,
+                    Name: extra.getDataValue('Name'),
+                    Acumulado: acumuladoFormateado,
+                    Descripciones: [{
+                        Fecha: "",
+                        Descripcion: ""
+                    }]
+                };
+            }
+        });
+        resultadoFinal.sort((a, b) => a.Name.localeCompare(b.Name));
+        const pdfBuffer = await informeNovedadNuevo(resultadoFinal);
+        res.setHeader("Content-Type", "application/pdf");
+        
+        res.send(pdfBuffer);
+    } catch (error) {
+        console.error("Error al generar el informe", error)
+        res.status(500).json({message: "Error interno al generar el informe"})
+    }
+}
+
 export const informePeligro = async (req: Request, res: Response): Promise<any> => {
     const {fechaInicial, fechaFinal} = req.body;
     const convertirAHorarioLocal = (fechaUTC: string | null) => {
@@ -833,3 +962,25 @@ export const restarTiempoSabado = async (): Promise<void> => {
         throw error;
     }
 };
+
+function formatearAcumuladoDias(acumulado: string): string {
+    // Soporta valores negativos también
+    const negativo = acumulado.startsWith('-');
+    const [horasStr, minutosStr] = acumulado.replace('-', '').split(':');
+    const horas = parseInt(horasStr, 10) || 0;
+    const minutos = parseInt(minutosStr, 10) || 0;
+    let totalMin = horas * 60 + minutos;
+
+    if (negativo) totalMin = -totalMin;
+
+    const minutosPorDia = 8 * 60 + 30; // 8 horas y 30 minutos = 510 minutos
+    const dias = Math.trunc(totalMin / minutosPorDia);
+    let restoMin = Math.abs(totalMin % minutosPorDia);
+    const horasRestantes = Math.trunc(restoMin / 60);
+    const minutosRestantes = restoMin % 60;
+
+    // Manejar el caso negativo
+    const signo = totalMin < 0 ? '-' : '';
+
+    return `${signo}${Math.abs(dias)} dias ${horasRestantes} horas ${minutosRestantes} minutos`;
+}
