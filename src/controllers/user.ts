@@ -193,9 +193,9 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
       }
     }
     if (Aid) {
-      const area = await Role.findByPk(Aid);
+      const area = await Area.findByPk(Aid);
       if (!area) {
-        return res.status(404).json({msg: `El role con ID ${Aid} no existe`})
+        return res.status(404).json({msg: `El area con ID ${Aid} no existe`})
       }
     }
     user.name = name || user.name;
