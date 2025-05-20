@@ -11,21 +11,23 @@ const transporter = nodemailer.createTransport({
 export const sendMail = (to: string[], subject: string, text: string, attachments?: Buffer | Buffer[] | null) => {
   const domain = process.env.EMAIL_SERVICE;
   const messageId = `<${crypto.randomUUID()}@${domain}.com>`;
-  const uniqueReferencesId = crypto.randomUUID();
+  // const uniqueReferencesId = crypto.randomUUID();
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: to.join(','),
-    subject,
+    subject: `[${crypto.randomUUID().substring(0, 8)}] ${subject}`,
     text,
     headers: {
       'Message-ID': messageId,
       'X-Entity-Ref-ID': crypto.randomUUID(),
       'Precedence': 'bulk',
       'Auto-Submitted': 'auto-generated',
-      'References': uniqueReferencesId
+      'X-Google-Thread-Id': crypto.randomUUID(),
+      // 'References': uniqueReferencesId
     },
     references: undefined,
     attachments: undefined as any,
+    inReplyTo: undefined,
   };
   if (attachments) {
     const pdfFileName = 'documento.pdf'; // Nombre fijo para el PDF
