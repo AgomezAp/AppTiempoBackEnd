@@ -1,17 +1,16 @@
-import bcrypt from 'bcrypt';
-import {
-  Request,
-  Response,
-} from 'express';
-import jwt from 'jsonwebtoken';
+import bcrypt from "bcrypt";
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 
-import { Area } from '../models/area';
-import { Role } from '../models/role';
-import { User } from '../models/user';
+import { Area } from "../models/area";
+import { Role } from "../models/role";
+import { User } from "../models/user";
+import { Permiso } from "../models/permisos";
+import { Novedad, NovedadHistorico } from "../models/time";
 
 // Registro de usuario con asignación de rol
- export const register = async (req: Request, res: Response): Promise<any> => {
-  const { Uid, name, lastName, password, email, Rid, Aid} = req.body;
+export const register = async (req: Request, res: Response): Promise<any> => {
+  const { Uid, name, lastName, password, email, Rid, Aid } = req.body;
 
   // Verificar si el usuario ya existe
   const userOne = await User.findOne({ where: { email: email } });
@@ -42,30 +41,33 @@ import { User } from '../models/user';
       email,
       status: 1,
       Rid: Rid, // Asociar rol al usuario
-      Aid: Aid
+      Aid: Aid,
     });
 
     res.status(200).json({
-      message: 'Usuario registrado con éxito',
+      message: "Usuario registrado con éxito",
       user: newUser,
     });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({
-      error: 'Problemas al registrar el usuario',
+      error: "Problemas al registrar el usuario",
       message: err.message || err,
     });
   }
 };
 
 // Login con validación de rol
- export const login = async (req: Request, res: Response): Promise<any> => {
+export const login = async (req: Request, res: Response): Promise<any> => {
   const { password, email } = req.body;
 
   // Buscar usuario por email
   const user: any = await User.findOne({
     where: { email },
-    include: [{ model: Role, as: 'role' },{model:Area, as :'area'}], // Incluir rol en la consulta
+    include: [
+      { model: Role, as: "role" },
+      { model: Area, as: "area" },
+    ], // Incluir rol en la consulta
   });
 
   if (!user) {
@@ -78,7 +80,7 @@ import { User } from '../models/user';
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     return res.status(400).json({
-      msg: 'Contraseña incorrecta',
+      msg: "Contraseña incorrecta",
     });
   }
 
@@ -92,16 +94,16 @@ import { User } from '../models/user';
       Aid: user.Aid,
       name: user.name,
       lastname: user.lastName,
-      correolider: user.area.correolider
+      correolider: user.area.correolider,
     },
-    process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS',
+    process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS",
     {
-      expiresIn: '30m',
+      expiresIn: "30m",
     }
   );
 
   res.json({
-    msg: 'Inicio de sesión exitoso',
+    msg: "Inicio de sesión exitoso",
     token,
     role: user.role.Rname,
     userId: user.Uid,
@@ -109,70 +111,65 @@ import { User } from '../models/user';
     Aid: user.Aid,
     name: user.name,
     lastname: user.lastName,
-    correolider: user.area.correoLider
+    correolider: user.area.correoLider,
   });
 };
-export const resetPassword = async (req: Request, res: Response): Promise<any> => {
+export const resetPassword = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   const { email, newPassword } = req.body;
 
   try {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(404).json({ msg: 'Usuario no encontrado' });
+      return res.status(404).json({ msg: "Usuario no encontrado" });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     user.password = passwordHash;
     await user.save();
 
-    res.status(200).json({ msg: 'Contraseña actualizada con éxito' });
+    res.status(200).json({ msg: "Contraseña actualizada con éxito" });
   } catch (error) {
-    res.status(500).json({ msg: 'Error al actualizar la contraseña', error });
+    res.status(500).json({ msg: "Error al actualizar la contraseña", error });
   }
 };
 
 // Obtener todos los usuarios
-export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
+export const getAllUsers = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   try {
     const users = await User.findAll({
-      include: [{ model: Role, as: 'role' },{model:Area, as:'area'}], // Incluir rol en la consulta
+      include: [
+        { model: Role, as: "role" },
+        { model: Area, as: "area" },
+      ], // Incluir rol en la consulta
     });
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ msg: 'Error al obtener los usuarios', error });
+    res.status(500).json({ msg: "Error al obtener los usuarios", error });
   }
 };
 
-export const getListUser = async (req: Request, res: Response): Promise<any> => {
+export const getListUser = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   try {
     const user = await User.findAll({
-      attributes: ['Uid', 'name', 'lastName']
+      attributes: ["Uid", "name", "lastName"],
     });
-    const userJS = user.map(us => ({
+    const userJS = user.map((us) => ({
       Uid: us.Uid,
-      nombre: `${us.name} ${us.lastName}`
+      nombre: `${us.name} ${us.lastName}`,
     }));
     res.status(200).json(userJS);
   } catch (error) {
-    res.status(500).json({msg: 'Error al obtener los usuarios0', error})
-  }
-};
-// Borrar usuario por ID
-export const deleteUserById = async (req: Request, res: Response): Promise<any> => {
-  const { Uid } = req.params;
-
-  try {
-    const user = await User.findByPk(Uid);
-
-    if (!user) {
-      return res.status(404).json({ msg: 'Usuario no encontrado' });
-    }
-
-    await user.destroy();
-    res.status(200).json({ msg: 'Usuario eliminado con éxito' });
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al eliminar el usuario', error });
+    res.status(500).json({ msg: "Error al obtener los usuarios0", error });
   }
 };
 
@@ -183,19 +180,19 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     const user = await User.findByPk(Uid);
 
     if (!user) {
-      return res.status(404).json({msg: 'Usuario no encontrado'})
+      return res.status(404).json({ msg: "Usuario no encontrado" });
     }
 
     if (Rid) {
       const role = await Role.findByPk(Rid);
       if (!role) {
-        return res.status(404).json({msg: `El role con ID ${Rid} no existe`})
+        return res.status(404).json({ msg: `El role con ID ${Rid} no existe` });
       }
     }
     if (Aid) {
       const area = await Area.findByPk(Aid);
       if (!area) {
-        return res.status(404).json({msg: `El area con ID ${Aid} no existe`})
+        return res.status(404).json({ msg: `El area con ID ${Aid} no existe` });
       }
     }
     user.name = name || user.name;
@@ -205,13 +202,146 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.Aid = Aid || user.Aid;
 
     if (password) {
-      const passwordHash = await bcrypt.hash(password,10);
+      const passwordHash = await bcrypt.hash(password, 10);
       user.password = passwordHash;
     }
-    await user.save()
-    res.status(200).json({msg: 'Usuario Actualizado', user});
+    await user.save();
+    res.status(200).json({ msg: "Usuario Actualizado", user });
   } catch (error) {
-    console.error('Error al actualizar el usuario', error);
-    res.status(500).json({msg: 'Error al actualizar el usuario', error});
+    console.error("Error al actualizar el usuario", error);
+    res.status(500).json({ msg: "Error al actualizar el usuario", error });
   }
-}
+};
+
+export const deleteUserById = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const { Uid } = req.params;
+
+  console.log("=== INICIANDO deleteUserById ===");
+  console.log("Uid recibido:", Uid);
+
+  if (!Uid) {
+    console.log("❌ ERROR: Uid no proporcionado");
+    return res.status(400).json({ msg: "ID de usuario requerido" });
+  }
+
+  try {
+    console.log("🔍 Buscando usuario...");
+    const user = await User.findByPk(Uid);
+
+    if (!user) {
+      console.log("❌ Usuario no encontrado");
+      return res.status(404).json({ msg: "Usuario no encontrado" });
+    }
+
+    console.log("✅ Usuario encontrado:", {
+      Uid: user.Uid,
+      email: user.email,
+      name: user.name,
+    });
+
+    // Verificar que sequelize esté disponible
+    if (!User.sequelize) {
+      console.error("❌ Error: Sequelize no está configurado");
+      return res.status(500).json({ 
+        msg: "Error de configuración de base de datos" 
+      });
+    }
+
+    // Iniciar transacción para asegurar consistencia
+    const transaction = await User.sequelize.transaction();
+
+    try {
+      console.log("🧹 Eliminando registros relacionados...");
+
+      // 1. Eliminar registros de la tabla Novedads (usando Nid, no Uid)
+      console.log("📰 Eliminando novedades...");
+      const novedadesDeleted = await Novedad.destroy({
+        where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+        transaction,
+      });
+      console.log(`✅ Novedades eliminadas: ${novedadesDeleted}`);
+
+      // 2. Eliminar registros de la tabla NovedadHistorico (usando Nid, no Uid)
+      console.log("📚 Eliminando historial de novedades...");
+      const novedadHistoricoDeleted = await NovedadHistorico.destroy({
+        where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+        transaction,
+      });
+      console.log(
+        `✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`
+      );
+
+      // 3. Eliminar registros de la tabla permisos (este sí usa Uid)
+      console.log("🔐 Eliminando permisos...");
+      const permissionsDeleted = await Permiso.destroy({
+        where: { Uid: Uid }, // Este permanece igual
+        transaction,
+      });
+      console.log(`✅ Permisos eliminados: ${permissionsDeleted}`);
+
+      // 4. Finalmente eliminar el usuario
+      console.log("🗑️ Eliminando usuario...");
+      await user.destroy({ transaction });
+
+      // Confirmar transacción
+      await transaction.commit();
+
+      console.log(
+        "✅ Usuario y todos los registros relacionados eliminados exitosamente"
+      );
+      res.status(200).json({
+        msg: "Usuario eliminado con éxito",
+        details: "Se eliminaron todos los registros relacionados",
+        eliminatedRecords: {
+          novedades: novedadesDeleted,
+          novedadHistorico: novedadHistoricoDeleted,
+          permisos: permissionsDeleted,
+        },
+      });
+    } catch (transactionError) {
+      // Revertir transacción en caso de error
+      console.error("❌ Error en transacción, revirtiendo cambios...");
+      await transaction.rollback();
+      throw transactionError;
+    }
+  } catch (error: any) {
+    console.error("❌ ERROR:", error);
+    console.error("Detalles del error:", error.message);
+    console.error("Stack trace:", error.stack);
+
+    // Verificar si es un error de clave foránea
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      console.error("🔗 Error de clave foránea detectado");
+      return res.status(400).json({
+        msg: "No se puede eliminar el usuario porque tiene registros relacionados",
+        error: "Foreign key constraint",
+      });
+    }
+
+    // Error de conexión a la base de datos
+    if (error.name === "ConnectionError") {
+      console.error("🔌 Error de conexión a la base de datos");
+      return res.status(500).json({
+        msg: "Error de conexión a la base de datos",
+        error: "Database connection error",
+      });
+    }
+
+    // Error de columna no existente
+    if (error.name === "SequelizeDatabaseError" && error.message.includes("does not exist")) {
+      console.error("🗂️ Error de columna no existente");
+      return res.status(500).json({
+        msg: "Error en la estructura de la base de datos",
+        error: "Column does not exist",
+      });
+    }
+
+    res.status(500).json({
+      msg: "Error al eliminar el usuario",
+      error: error.message,
+    });
+  }
+};
