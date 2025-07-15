@@ -162,7 +162,14 @@ export function formatoHora(tiempo: { horas: number, minutos: number }): string 
 
 function sinHuella(primero: {Fecha: string; Hid: string; Open_Time: string; Name: string;}): {Fecha: string; Hid: string; Open_Time: string; Name: string;}{
     const ultimo: {Open_Time: string} = { ...primero };
-    const adjustedTime = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').hour(17).minute(0).second(0).millisecond(0);
+    const openTime = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+    let adjustedTime = dayjs.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').hour(17).minute(0).second(0).millisecond(0);
+
+    if (openTime.hour() < 12){
+        adjustedTime = openTime.hour(17).minute(0).second(0).millisecond(0);
+    } else {
+        adjustedTime = openTime.hour(7).minute(30).second(0).millisecond(0);
+    }
     ultimo.Open_Time = adjustedTime.format('YYYY-MM-DD HH:mm:ss');
     return {
         Hid: primero.Hid,
