@@ -22,6 +22,7 @@ exports.convertMinutesToTime = convertMinutesToTime;
 exports.extraConvertMinutesToTime = extraConvertMinutesToTime;
 exports.informePersonal = informePersonal;
 exports.informeNovedades = informeNovedades;
+exports.informeNovedadNuevo = informeNovedadNuevo;
 exports.informeRiesgo = informeRiesgo;
 const xml2js_1 = require("xml2js");
 const dayjs_1 = __importDefault(require("dayjs"));
@@ -184,7 +185,14 @@ function formatoHora(tiempo) {
 }
 function sinHuella(primero) {
     const ultimo = Object.assign({}, primero);
-    const adjustedTime = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').hour(17).minute(0).second(0).millisecond(0);
+    const openTime = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+    let adjustedTime = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').hour(17).minute(0).second(0).millisecond(0);
+    if (openTime.hour() < 12) {
+        adjustedTime = openTime.hour(17).minute(0).second(0).millisecond(0);
+    }
+    else {
+        adjustedTime = openTime.hour(7).minute(30).second(0).millisecond(0);
+    }
     ultimo.Open_Time = adjustedTime.format('YYYY-MM-DD HH:mm:ss');
     return {
         Hid: primero.Hid,
@@ -487,6 +495,116 @@ function informeNovedades(novedad) {
                             processLongText(item.Name),
                             processLongText(item.type),
                             processLongText(item.description),
+                        ])
+                    ],
+                },
+                layout: {
+                    fillColor: (rowIndex) => (rowIndex === 0 ? "#CCCCCC" : null),
+                    vLineWidth: () => 0.5,
+                    hLineWidth: () => 0.5,
+                    vLineColor: () => "#000000",
+                    hLineColor: () => "#000000",
+                    paddingLeft: () => 5,
+                    paddingRight: () => 5,
+                    paddingTop: () => 3,
+                    paddingBottom: () => 3,
+                    defaultBorder: true,
+                    wordBreak: 'break-word'
+                },
+                width: '100%'
+            },
+        ];
+        const styles = {
+            header: {
+                fontSize: 20,
+                bold: true,
+                margin: [0, 10, 0, 15],
+            },
+            tableHeader: {
+                bold: true,
+                fontSize: 12,
+                color: "white",
+                fillColor: "#4CAF50",
+                alignment: "center",
+            },
+            tableCell: {
+                color: "black",
+                fontSize: 10,
+                lineHeight: 1.2
+            },
+        };
+        const docDefinition = {
+            content,
+            styles,
+            defaultStyle: {
+                font: "Helvetica",
+                fontSize: 10,
+                lineHeight: 1.2
+            },
+            pageMargins: [20, 40, 20, 40],
+            pageSize: 'A4',
+            pageOrientation: 'portrait',
+            background: {
+                image: "public/LogoAP.png",
+                width: 400,
+                opacity: 0.2,
+                alignment: "center",
+                absolutePosition: { x: 10, y: 300 },
+            },
+        };
+        const pdfDoc = printer.createPdfKitDocument(docDefinition);
+        return new Promise((resolve, reject) => {
+            const chunks = [];
+            pdfDoc.on("data", (chunk) => chunks.push(chunk));
+            pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+            pdfDoc.on("error", (err) => reject(err));
+            pdfDoc.end();
+        });
+    });
+}
+function informeNovedadNuevo(novedades) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const fonts = {
+            Helvetica: {
+                normal: "Helvetica",
+                bold: "Helvetica-Bold",
+                italics: "Helvetica-Oblique",
+                bolditalics: "Helvetica-BoldOblique"
+            }
+        };
+        const printer = new pdfmake_1.default(fonts);
+        const processLongText = (text) => {
+            return {
+                text: text,
+                fontSize: 10, // Reducir tamaño para contenido largo
+                margin: [2, 2, 2, 2]
+            };
+        };
+        const content = [
+            {
+                columns: [
+                    { image: 'public/LogoAP.png', width: 50 },
+                    { text: "Informe de Novedades\n", style: "header", alignment: 'center' }
+                ],
+            },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ["auto", "auto", "*"],
+                    body: [
+                        [
+                            { text: "Nombre", style: "tableHeader", alignment: "center" },
+                            { text: "Acumulado", style: "tableHeader", alignment: "center" },
+                            { text: "Descripcion", style: "tableHeader", alignment: "center" },
+                        ],
+                        ...novedades.map((novedad) => [
+                            processLongText(novedad.Name),
+                            processLongText(novedad.Acumulado),
+                            processLongText(Array.isArray(novedad.Descripciones)
+                                ? novedad.Descripciones
+                                    .map(desc => `${desc.Fecha} ${String(desc.Descripcion).replace(/[\r\n]+/g, ' ')}`)
+                                    .join('\n')
+                                : String(novedad.Descripciones).replace(/[\r\n]+/g, ' ')),
                         ])
                     ],
                 },

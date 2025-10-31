@@ -12,15 +12,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUser = exports.deleteUserById = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
+exports.deleteUserById = exports.updateUser = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const area_1 = require("../models/area");
 const role_1 = require("../models/role");
 const user_1 = require("../models/user");
+const permisos_1 = require("../models/permisos");
+const time_1 = require("../models/time");
 // Registro de usuario con asignación de rol
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, lastName, password, email, Rid, Aid } = req.body;
+    const { Uid, name, lastName, password, email, Rid, Aid } = req.body;
     // Verificar si el usuario ya existe
     const userOne = yield user_1.User.findOne({ where: { email: email } });
     if (userOne) {
@@ -40,23 +42,24 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Crear usuario con el rol asignado
         const newUser = yield user_1.User.create({
+            Uid,
             name,
             lastName,
             password: passwordHash,
             email,
             status: 1,
             Rid: Rid, // Asociar rol al usuario
-            Aid: Aid
+            Aid: Aid,
         });
         res.status(200).json({
-            message: 'Usuario registrado con éxito',
+            message: "Usuario registrado con éxito",
             user: newUser,
         });
     }
     catch (err) {
         console.error(err);
         res.status(500).json({
-            error: 'Problemas al registrar el usuario',
+            error: "Problemas al registrar el usuario",
             message: err.message || err,
         });
     }
@@ -68,7 +71,10 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // Buscar usuario por email
     const user = yield user_1.User.findOne({
         where: { email },
-        include: [{ model: role_1.Role, as: 'role' }, { model: area_1.Area, as: 'area' }], // Incluir rol en la consulta
+        include: [
+            { model: role_1.Role, as: "role" },
+            { model: area_1.Area, as: "area" },
+        ], // Incluir rol en la consulta
     });
     if (!user) {
         return res.status(400).json({
@@ -79,7 +85,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const isPasswordValid = yield bcrypt_1.default.compare(password, user.password);
     if (!isPasswordValid) {
         return res.status(400).json({
-            msg: 'Contraseña incorrecta',
+            msg: "Contraseña incorrecta",
         });
     }
     // Crear token con datos del usuario y su rol
@@ -91,12 +97,12 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         Aid: user.Aid,
         name: user.name,
         lastname: user.lastName,
-        correolider: user.area.correolider
-    }, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS', {
-        expiresIn: '30m',
+        correolider: user.area.correolider,
+    }, process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS", {
+        expiresIn: "30m",
     });
     res.json({
-        msg: 'Inicio de sesión exitoso',
+        msg: "Inicio de sesión exitoso",
         token,
         role: user.role.Rname,
         userId: user.Uid,
@@ -104,7 +110,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         Aid: user.Aid,
         name: user.name,
         lastname: user.lastName,
-        correolider: user.area.correoLider
+        correolider: user.area.correoLider,
     });
 });
 exports.login = login;
@@ -113,15 +119,15 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     try {
         const user = yield user_1.User.findOne({ where: { email } });
         if (!user) {
-            return res.status(404).json({ msg: 'Usuario no encontrado' });
+            return res.status(404).json({ msg: "Usuario no encontrado" });
         }
         const passwordHash = yield bcrypt_1.default.hash(newPassword, 10);
         user.password = passwordHash;
         yield user.save();
-        res.status(200).json({ msg: 'Contraseña actualizada con éxito' });
+        res.status(200).json({ msg: "Contraseña actualizada con éxito" });
     }
     catch (error) {
-        res.status(500).json({ msg: 'Error al actualizar la contraseña', error });
+        res.status(500).json({ msg: "Error al actualizar la contraseña", error });
     }
 });
 exports.resetPassword = resetPassword;
@@ -129,54 +135,41 @@ exports.resetPassword = resetPassword;
 const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const users = yield user_1.User.findAll({
-            include: [{ model: role_1.Role, as: 'role' }, { model: area_1.Area, as: 'area' }], // Incluir rol en la consulta
+            include: [
+                { model: role_1.Role, as: "role" },
+                { model: area_1.Area, as: "area" },
+            ], // Incluir rol en la consulta
         });
         res.status(200).json(users);
     }
     catch (error) {
-        res.status(500).json({ msg: 'Error al obtener los usuarios', error });
+        res.status(500).json({ msg: "Error al obtener los usuarios", error });
     }
 });
 exports.getAllUsers = getAllUsers;
 const getListUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = yield user_1.User.findAll({
-            attributes: ['Uid', 'name', 'lastName']
+            attributes: ["Uid", "name", "lastName"],
         });
-        const userJS = user.map(us => ({
+        const userJS = user.map((us) => ({
             Uid: us.Uid,
-            nombre: `${us.name} ${us.lastName}`
+            nombre: `${us.name} ${us.lastName}`,
         }));
         res.status(200).json(userJS);
     }
     catch (error) {
-        res.status(500).json({ msg: 'Error al obtener los usuarios0', error });
+        res.status(500).json({ msg: "Error al obtener los usuarios0", error });
     }
 });
 exports.getListUser = getListUser;
-// Borrar usuario por ID
-const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { Uid } = req.params;
-    try {
-        const user = yield user_1.User.findByPk(Uid);
-        if (!user) {
-            return res.status(404).json({ msg: 'Usuario no encontrado' });
-        }
-        yield user.destroy();
-        res.status(200).json({ msg: 'Usuario eliminado con éxito' });
-    }
-    catch (error) {
-        res.status(500).json({ msg: 'Error al eliminar el usuario', error });
-    }
-});
-exports.deleteUserById = deleteUserById;
 const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Uid } = req.params;
     const { name, lastName, email, password, Rid, Aid } = req.body;
     try {
         const user = yield user_1.User.findByPk(Uid);
         if (!user) {
-            return res.status(404).json({ msg: 'Usuario no encontrado' });
+            return res.status(404).json({ msg: "Usuario no encontrado" });
         }
         if (Rid) {
             const role = yield role_1.Role.findByPk(Rid);
@@ -185,9 +178,9 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             }
         }
         if (Aid) {
-            const area = yield role_1.Role.findByPk(Aid);
+            const area = yield area_1.Area.findByPk(Aid);
             if (!area) {
-                return res.status(404).json({ msg: `El role con ID ${Aid} no existe` });
+                return res.status(404).json({ msg: `El area con ID ${Aid} no existe` });
             }
         }
         user.name = name || user.name;
@@ -200,11 +193,121 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             user.password = passwordHash;
         }
         yield user.save();
-        res.status(200).json({ msg: 'Usuario Actualizado', user });
+        res.status(200).json({ msg: "Usuario Actualizado", user });
     }
     catch (error) {
-        console.error('Error al actualizar el usuario', error);
-        res.status(500).json({ msg: 'Error al actualizar el usuario', error });
+        console.error("Error al actualizar el usuario", error);
+        res.status(500).json({ msg: "Error al actualizar el usuario", error });
     }
 });
 exports.updateUser = updateUser;
+const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { Uid } = req.params;
+    console.log("=== INICIANDO deleteUserById ===");
+    console.log("Uid recibido:", Uid);
+    if (!Uid) {
+        console.log("❌ ERROR: Uid no proporcionado");
+        return res.status(400).json({ msg: "ID de usuario requerido" });
+    }
+    try {
+        console.log("🔍 Buscando usuario...");
+        const user = yield user_1.User.findByPk(Uid);
+        if (!user) {
+            console.log("❌ Usuario no encontrado");
+            return res.status(404).json({ msg: "Usuario no encontrado" });
+        }
+        console.log("✅ Usuario encontrado:", {
+            Uid: user.Uid,
+            email: user.email,
+            name: user.name,
+        });
+        // Verificar que sequelize esté disponible
+        if (!user_1.User.sequelize) {
+            console.error("❌ Error: Sequelize no está configurado");
+            return res.status(500).json({
+                msg: "Error de configuración de base de datos"
+            });
+        }
+        // Iniciar transacción para asegurar consistencia
+        const transaction = yield user_1.User.sequelize.transaction();
+        try {
+            console.log("🧹 Eliminando registros relacionados...");
+            // 1. Eliminar registros de la tabla Novedads (usando Nid, no Uid)
+            console.log("📰 Eliminando novedades...");
+            const novedadesDeleted = yield time_1.Novedad.destroy({
+                where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+                transaction,
+            });
+            console.log(`✅ Novedades eliminadas: ${novedadesDeleted}`);
+            // 2. Eliminar registros de la tabla NovedadHistorico (usando Nid, no Uid)
+            console.log("📚 Eliminando historial de novedades...");
+            const novedadHistoricoDeleted = yield time_1.NovedadHistorico.destroy({
+                where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+                transaction,
+            });
+            console.log(`✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`);
+            // 3. Eliminar registros de la tabla permisos (este sí usa Uid)
+            console.log("🔐 Eliminando permisos...");
+            const permissionsDeleted = yield permisos_1.Permiso.destroy({
+                where: { Uid: Uid }, // Este permanece igual
+                transaction,
+            });
+            console.log(`✅ Permisos eliminados: ${permissionsDeleted}`);
+            // 4. Finalmente eliminar el usuario
+            console.log("🗑️ Eliminando usuario...");
+            yield user.destroy({ transaction });
+            // Confirmar transacción
+            yield transaction.commit();
+            console.log("✅ Usuario y todos los registros relacionados eliminados exitosamente");
+            res.status(200).json({
+                msg: "Usuario eliminado con éxito",
+                details: "Se eliminaron todos los registros relacionados",
+                eliminatedRecords: {
+                    novedades: novedadesDeleted,
+                    novedadHistorico: novedadHistoricoDeleted,
+                    permisos: permissionsDeleted,
+                },
+            });
+        }
+        catch (transactionError) {
+            // Revertir transacción en caso de error
+            console.error("❌ Error en transacción, revirtiendo cambios...");
+            yield transaction.rollback();
+            throw transactionError;
+        }
+    }
+    catch (error) {
+        console.error("❌ ERROR:", error);
+        console.error("Detalles del error:", error.message);
+        console.error("Stack trace:", error.stack);
+        // Verificar si es un error de clave foránea
+        if (error.name === "SequelizeForeignKeyConstraintError") {
+            console.error("🔗 Error de clave foránea detectado");
+            return res.status(400).json({
+                msg: "No se puede eliminar el usuario porque tiene registros relacionados",
+                error: "Foreign key constraint",
+            });
+        }
+        // Error de conexión a la base de datos
+        if (error.name === "ConnectionError") {
+            console.error("🔌 Error de conexión a la base de datos");
+            return res.status(500).json({
+                msg: "Error de conexión a la base de datos",
+                error: "Database connection error",
+            });
+        }
+        // Error de columna no existente
+        if (error.name === "SequelizeDatabaseError" && error.message.includes("does not exist")) {
+            console.error("🗂️ Error de columna no existente");
+            return res.status(500).json({
+                msg: "Error en la estructura de la base de datos",
+                error: "Column does not exist",
+            });
+        }
+        res.status(500).json({
+            msg: "Error al eliminar el usuario",
+            error: error.message,
+        });
+    }
+});
+exports.deleteUserById = deleteUserById;

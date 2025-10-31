@@ -56,12 +56,29 @@ class Server {
         this.app.use(novedad_1.default);
     }
     middlewares() {
-        this.app.use(express_1.default.json());
+        // CORS debe ir ANTES de express.json() y cualquier otra cosa
         this.app.use((0, cors_1.default)({
             origin: '*', // Permite todas las solicitudes de origen cruzado
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Métodos permitidos
-            allowedHeaders: ['Content-Type', 'Authorization']
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Métodos permitidos (incluir OPTIONS)
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+            credentials: true,
+            optionsSuccessStatus: 200 // Algunos navegadores antiguos (IE11, varios SmartTVs) tienen problemas con 204
         }));
+        // Middleware adicional para asegurar headers CORS en todas las respuestas
+        this.app.use((req, res, next) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+            res.header('Access-Control-Allow-Credentials', 'true');
+            // Maneja las solicitudes OPTIONS (preflight)
+            if (req.method === 'OPTIONS') {
+                res.status(200).end();
+            }
+            else {
+                next();
+            }
+        });
+        this.app.use(express_1.default.json());
     }
     DBconnect() {
         return __awaiter(this, void 0, void 0, function* () {

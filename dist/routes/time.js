@@ -34,9 +34,10 @@ router.post("/api/horario/agregarRegistro", time_1.agregarRegistro);
 //Ruta para informe personal
 router.post("/api/horario/informePersonal", time_1.informePersonalById);
 //Ruta para informe novedades
-router.post("/api/horario/informeNovedad", time_1.informeNovedad);
+router.post("/api/horario/informeNovedad", time_1.nuevaNovedad);
 //Ruta para informe de peligro
 router.post("/api/horario/InformeRiesgo", time_1.informePeligro);
+router.post("/api/horario/NuevoInforme", time_1.informeNovedad);
 //Concatenar
 router.post("/api/horario/concatenar", upload.array('files'), time_1.concatenar);
 //Eliminar Registro 

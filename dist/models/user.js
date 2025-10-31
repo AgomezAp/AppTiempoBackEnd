@@ -15,7 +15,7 @@ User.init({
     Uid: {
         type: sequelize_1.DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true,
+        // autoIncrement: true,
     },
     name: {
         type: sequelize_1.DataTypes.STRING,

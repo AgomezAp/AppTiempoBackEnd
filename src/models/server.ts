@@ -1,6 +1,6 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express, { Application } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 
 import sequelize from '../database/connection';
 import RArea from '../routes/area';
@@ -49,12 +49,31 @@ class Server{
 
     }
     middlewares(){
-        this.app.use(express.json())
+        // CORS debe ir ANTES de express.json() y cualquier otra cosa
         this.app.use(cors({
             origin: '*', // Permite todas las solicitudes de origen cruzado
-            methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'], // Métodos permitidos
-            allowedHeaders: ['Content-Type', 'Authorization']
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Métodos permitidos (incluir OPTIONS)
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+            credentials: true,
+            optionsSuccessStatus: 200 // Algunos navegadores antiguos (IE11, varios SmartTVs) tienen problemas con 204
         }));
+        
+        // Middleware adicional para asegurar headers CORS en todas las respuestas
+        this.app.use((req: Request, res: Response, next: NextFunction) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+            res.header('Access-Control-Allow-Credentials', 'true');
+            
+            // Maneja las solicitudes OPTIONS (preflight)
+            if (req.method === 'OPTIONS') {
+                res.status(200).end();
+            } else {
+                next();
+            }
+        });
+        
+        this.app.use(express.json());
     }
     async DBconnect(){
         try{
