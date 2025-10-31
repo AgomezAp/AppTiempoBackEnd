@@ -23,29 +23,36 @@ export const sendMail = (to: string[], subject: string, text: string, attachment
       'Precedence': 'bulk',
       'Auto-Submitted': 'auto-generated',
       'X-Google-Thread-Id': crypto.randomUUID(),
-      // 'References': uniqueReferencesId
     },
     references: undefined,
     attachments: undefined as any,
     inReplyTo: undefined,
   };
-  if (attachments) {
-    const pdfFileName = 'documento.pdf'; // Nombre fijo para el PDF
-    
+  if (attachments && attachments !== null) {
+    const getFileType = (buffer: Buffer) => {
+      const header = buffer.toString('hex', 0, 4).toUpperCase();
+      if (header.startsWith('25504446')) return { ext: 'pdf', mime: 'application/pdf'};
+      if (header.startsWith('FFD8FF')) return { ext: 'jpg', mime: 'image/jpeg'};
+      if (header.startsWith('89504E47')) return { ext: 'png', mime: 'image/png'};
+      return { ext: 'pdf', mime: 'application/pdf' };
+    };
     if (Array.isArray(attachments)) {
-      mailOptions.attachments = attachments.map((buffer, index) => ({
-        filename: index === 0 ? pdfFileName : `documento_${index + 1}.pdf`, // documento.pdf, documento_2.pdf, etc.
-        content: buffer,
-        contentType: 'application/pdf', // Especificamos que es PDF
-      }));
+      mailOptions.attachments = attachments.map((buffer, index) => {
+        const fileTpye = getFileType(buffer);
+        return {
+          filename: index === 0 ? `documento.${fileTpye.ext}` : `documento_${index + 1}.${fileTpye.ext}`,
+          content: buffer,
+          contentType: fileTpye.mime
+        };
+      });
     } else {
+      const fileTpye = getFileType(attachments);
       mailOptions.attachments = [{
-        filename: pdfFileName,
+        filename: `documento.${fileTpye.ext}`,
         content: attachments,
-        contentType: 'application/pdf',
+        contentType: fileTpye.mime,
       }];
     }
   }
-
   return transporter.sendMail(mailOptions);
 };
