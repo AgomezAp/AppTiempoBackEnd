@@ -1,0 +1,90 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│        🔧 GUÍA RÁPIDA: ACTUALIZAR SALARIO MÍNIMO Y AUXILIO DE TRANSPORTE   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📍 UBICACIÓN DEL ARCHIVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   AppTiempoBackEnd/
+   └── src/
+       └── config/
+           └── nomina.config.ts  ⬅️ ABRIR ESTE ARCHIVO
+
+
+📝 PASOS PARA ACTUALIZAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   1️⃣  Esperar a que el gobierno decrete los nuevos valores (generalmente
+       a finales de diciembre o principios de enero)
+
+   2️⃣  Abrir el archivo: src/config/nomina.config.ts
+
+   3️⃣  Buscar estas líneas (están cerca del inicio del archivo):
+
+       ┌───────────────────────────────────────────────────┐
+       │  SALARIO_MINIMO: 1423500,        ⬅️ LÍNEA 11     │
+       │  AUXILIO_TRANSPORTE: 200000,     ⬅️ LÍNEA 19     │
+       └───────────────────────────────────────────────────┘
+
+   4️⃣  Cambiar los números por los nuevos valores
+
+   5️⃣  Actualizar la fecha en el comentario "Última actualización: 2025"
+
+   6️⃣  Agregar los nuevos valores al HISTORIAL DE CAMBIOS (al final del archivo)
+
+   7️⃣  Guardar el archivo (Ctrl + S)
+
+   8️⃣  Reiniciar el servidor backend
+
+
+💡 EJEMPLO PRÁCTICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Supongamos que para 2026 el gobierno decreta:
+   • Salario Mínimo: $1.500.000
+   • Auxilio de Transporte: $215.000
+
+   ANTES (2025):
+   ┌───────────────────────────────────────────┐
+   │  SALARIO_MINIMO: 1423500,                │
+   │  AUXILIO_TRANSPORTE: 200000,             │
+   └───────────────────────────────────────────┘
+
+   DESPUÉS (2026):
+   ┌───────────────────────────────────────────┐
+   │  SALARIO_MINIMO: 1500000,    ⬅️ CAMBIADO │
+   │  AUXILIO_TRANSPORTE: 215000, ⬅️ CAMBIADO │
+   └───────────────────────────────────────────┘
+
+
+⚠️  IMPORTANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ✅ Solo cambiar los NÚMEROS
+   ✅ Mantener las comas (,) al final de cada línea
+   ✅ NO cambiar los nombres (SALARIO_MINIMO, AUXILIO_TRANSPORTE)
+   ✅ NO modificar los porcentajes (4% salud, 4% pensión) a menos que la ley cambie
+
+
+🎯 ¿QUÉ AFECTA ESTE CAMBIO?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📄 Desprendibles de Pago
+      • Cálculo de auxilio de transporte (aplica si salario < 2 mínimos)
+      • Deducciones de salud y pensión
+      • Total devengado y total a pagar
+
+
+📞 CONTACTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Si tienes dudas, contacta a:
+   • Equipo de RRHH
+   • Equipo de Desarrollo
+
+   Fuentes oficiales:
+   • Ministerio del Trabajo: https://www.mintrabajo.gov.co
+   • Decretos presidenciales
+

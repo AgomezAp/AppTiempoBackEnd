@@ -45,7 +45,52 @@ User.init({
     Aid: {
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
-    }
+    },
+    salario: {
+        type: sequelize_1.DataTypes.FLOAT,
+        allowNull: true,
+        defaultValue: 0,
+    },
+    empresa: {
+        type: sequelize_1.DataTypes.ENUM('AP', 'AT', 'ME'),
+        allowNull: true,
+        defaultValue: 'AP',
+    },
+    documentoIdentificacion: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '',
+    },
+    fondoPension: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'PORVENIR',
+    },
+    fondoCesantias: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'PORVENIR',
+    },
+    cargo: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '',
+    },
+    tipoContrato: {
+        type: sequelize_1.DataTypes.ENUM('termino-indefinido', 'termino-fijo'),
+        allowNull: true,
+        defaultValue: 'termino-indefinido',
+    },
+    certificadosGenerados: {
+        type: sequelize_1.DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+    },
+    fechaIngreso: {
+        type: sequelize_1.DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     sequelize: connection_1.default,
     tableName: "users",

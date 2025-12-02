@@ -17,6 +17,7 @@ const multer_1 = __importDefault(require("multer"));
 const permisos_1 = require("../models/permisos");
 const user_1 = require("../models/user");
 const mailer_1 = require("../utils/mailer");
+const googleSheets_1 = require("../utils/googleSheets");
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -55,6 +56,16 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 soporte,
                 novedad,
                 Uid,
+            });
+            // Agregar permiso a Google Sheets
+            yield (0, googleSheets_1.appendPermisoToSheet)({
+                fecha,
+                nombre,
+                numeroDocumento,
+                tipo,
+                horaEntrada,
+                horaSalida,
+                observaciones,
             });
             //Envía correo electrónico al lider 
             const subject = 'Nuevo Permiso Solicitado';

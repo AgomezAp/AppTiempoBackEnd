@@ -7,6 +7,7 @@ import multer from 'multer';
 import { Permiso } from '../models/permisos';
 import { User } from '../models/user';
 import { sendMail } from '../utils/mailer';
+import { appendPermisoToSheet } from '../utils/googleSheets';
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage }).single('soporte');
@@ -51,6 +52,18 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         novedad,
         Uid,
       });
+
+      // Agregar permiso a Google Sheets
+      await appendPermisoToSheet({
+        fecha,
+        nombre,
+        numeroDocumento,
+        tipo,
+        horaEntrada,
+        horaSalida,
+        observaciones,
+      });
+
       //Envía correo electrónico al lider 
       const subject = 'Nuevo Permiso Solicitado';
       const text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.\n Fecha de salida: ${fecha}.\n Hora de salida: ${horaSalida}.\n Hora de regreso: ${horaEntrada}.\n\n Observaciones: ${observaciones}`;

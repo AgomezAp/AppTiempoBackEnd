@@ -24,12 +24,17 @@ const product_2 = __importDefault(require("../routes/product"));
 const user_1 = __importDefault(require("../routes/user"));
 const time_1 = __importDefault(require("../routes/time"));
 const novedad_1 = __importDefault(require("../routes/novedad"));
+const archivo_1 = __importDefault(require("../routes/archivo"));
+const certificado_1 = __importDefault(require("../routes/certificado"));
+const nominaConfig_1 = __importDefault(require("../routes/nominaConfig"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
 const role_1 = require("./role");
 const user_2 = require("./user");
 const time_2 = require("./time");
+const archivo_2 = require("./archivo");
+const nominaConfig_2 = __importDefault(require("./nominaConfig"));
 dotenv_1.default.config();
 class Server {
     constructor() {
@@ -54,6 +59,9 @@ class Server {
         this.app.use(area_1.default);
         this.app.use(time_1.default);
         this.app.use(novedad_1.default);
+        this.app.use('/api/archivos', archivo_1.default);
+        this.app.use('/api/certificados', certificado_1.default);
+        this.app.use('/api/nomina-config', nominaConfig_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -79,6 +87,9 @@ class Server {
             }
         });
         this.app.use(express_1.default.json());
+        // Servir archivos estáticos
+        this.app.use('/uploads', express_1.default.static('public/uploads'));
+        this.app.use('/public', express_1.default.static('public'));
     }
     DBconnect() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -87,7 +98,7 @@ class Server {
                 yield connection_1.default.authenticate();
                 yield role_1.Role.sync();
                 yield area_2.Area.sync({ alter: true });
-                yield user_2.User.sync();
+                yield user_2.User.sync({ alter: true });
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync({ alter: true });
                 // await Registro.sync({force: true});
@@ -96,6 +107,8 @@ class Server {
                 yield time_2.Sumatoria.sync();
                 yield time_2.Novedad.sync({ alter: true });
                 yield time_2.NovedadHistorico.sync({ alter: true });
+                yield archivo_2.Archivo.sync({ alter: true });
+                yield nominaConfig_2.default.sync({ alter: true });
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

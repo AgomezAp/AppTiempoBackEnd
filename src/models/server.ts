@@ -11,12 +11,17 @@ import RRole from '../routes/product';
 import rUser from '../routes/user';
 import RTime from '../routes/time';
 import RNovedad from '../routes/novedad';
+import RArchivo from '../routes/archivo';
+import RCertificado from '../routes/certificado';
+import RNominaConfig from '../routes/nominaConfig';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from './time'
+import { Archivo } from './archivo';
+import NominaConfig from './nominaConfig';
 
 dotenv.config();
 class Server{
@@ -46,6 +51,9 @@ class Server{
         this.app.use(RArea)
         this.app.use(RTime);
         this.app.use(RNovedad);
+        this.app.use('/api/archivos', RArchivo);
+        this.app.use('/api/certificados', RCertificado);
+        this.app.use('/api/nomina-config', RNominaConfig);
 
     }
     middlewares(){
@@ -74,6 +82,10 @@ class Server{
         });
         
         this.app.use(express.json());
+        
+        // Servir archivos estáticos
+        this.app.use('/uploads', express.static('public/uploads'));
+        this.app.use('/public', express.static('public'));
     }
     async DBconnect(){
         try{
@@ -82,7 +94,7 @@ class Server{
             
             await Role.sync();
             await Area.sync({alter: true});
-            await User.sync();
+            await User.sync({alter: true});
             await Product.sync();
             await Permiso.sync({alter: true});
             // await Registro.sync({force: true});
@@ -91,6 +103,8 @@ class Server{
             await Sumatoria.sync();
             await Novedad.sync({alter: true});
             await NovedadHistorico.sync({alter: true});
+            await Archivo.sync({alter: true});
+            await NominaConfig.sync({alter: true});
 
 
             console.log('Conexión establecida correctamente');

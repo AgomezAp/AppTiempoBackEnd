@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { Op } from "sequelize";
 
 import { Area } from "../models/area";
 import { Role } from "../models/role";
@@ -10,7 +11,7 @@ import { Novedad, NovedadHistorico } from "../models/time";
 
 // Registro de usuario con asignación de rol
 export const register = async (req: Request, res: Response): Promise<any> => {
-  const { Uid, name, lastName, password, email, Rid, Aid } = req.body;
+  const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
 
   // Verificar si el usuario ya existe
   const userOne = await User.findOne({ where: { email: email } });
@@ -42,6 +43,13 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       status: 1,
       Rid: Rid, // Asociar rol al usuario
       Aid: Aid,
+      salario: salario || 0,
+      empresa: empresa || 'AP',
+      documentoIdentificacion: documentoIdentificacion || '',
+      cargo: cargo || '',
+      fondoPension: fondoPension || 'PORVENIR',
+      fondoCesantias: fondoCesantias || 'PORVENIR',
+      fechaIngreso: fechaIngreso || null,
     });
 
     res.status(200).json({
@@ -59,60 +67,76 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
 // Login con validación de rol
 export const login = async (req: Request, res: Response): Promise<any> => {
-  const { password, email } = req.body;
+  try {
+    const { password, email } = req.body;
 
-  // Buscar usuario por email
-  const user: any = await User.findOne({
-    where: { email },
-    include: [
-      { model: Role, as: "role" },
-      { model: Area, as: "area" },
-    ], // Incluir rol en la consulta
-  });
+    // Validar que se envíen email y password
+    if (!email || !password) {
+      return res.status(400).json({
+        msg: "Email y contraseña son requeridos",
+      });
+    }
 
-  if (!user) {
-    return res.status(400).json({
-      msg: `Usuario no existe con el correo ${email}`,
+    // Buscar usuario por email
+    const user: any = await User.findOne({
+      where: { email },
+      include: [
+        { model: Role, as: "role" },
+        { model: Area, as: "area" },
+      ], // Incluir rol en la consulta
     });
-  }
 
-  // Verificar contraseña
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return res.status(400).json({
-      msg: "Contraseña incorrecta",
-    });
-  }
+    if (!user) {
+      return res.status(400).json({
+        msg: `Usuario no existe con el correo ${email}`,
+      });
+    }
 
-  // Crear token con datos del usuario y su rol
-  const token = jwt.sign(
-    {
+    // Verificar contraseña
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        msg: "Contraseña incorrecta",
+      });
+    }
+
+    // Crear token con datos del usuario y su rol
+    const token = jwt.sign(
+      {
+        userId: user.Uid,
+        email: user.email,
+        role: user.role.Rname, // Agregar nombre del rol al token
+        area: user.area.Aname,
+        Aid: user.Aid,
+        name: user.name,
+        lastname: user.lastName,
+        correolider: user.area.correolider,
+      },
+      process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS",
+      {
+        expiresIn: "30m",
+      }
+    );
+
+    res.json({
+      msg: "Inicio de sesión exitoso",
+      token,
+      role: user.role.Rname,
       userId: user.Uid,
-      email: user.email,
-      role: user.role.Rname, // Agregar nombre del rol al token
       area: user.area.Aname,
       Aid: user.Aid,
       name: user.name,
       lastname: user.lastName,
-      correolider: user.area.correolider,
-    },
-    process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS",
-    {
-      expiresIn: "30m",
-    }
-  );
-
-  res.json({
-    msg: "Inicio de sesión exitoso",
-    token,
-    role: user.role.Rname,
-    userId: user.Uid,
-    area: user.area.Aname,
-    Aid: user.Aid,
-    name: user.name,
-    lastname: user.lastName,
-    correolider: user.area.correoLider,
-  });
+      documentoIdentificacion: user.documentoIdentificacion || '',
+      correolider: user.area.correoLider,
+    });
+  } catch (error: any) {
+    console.error('ERROR EN LOGIN:', error);
+    return res.status(500).json({
+      msg: "Error en el servidor al intentar iniciar sesión",
+      error: error.message || error,
+    });
+  }
 };
 export const resetPassword = async (
   req: Request,
@@ -175,7 +199,7 @@ export const getListUser = async (
 
 export const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;
-  const { name, lastName, email, password, Rid, Aid } = req.body;
+  const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
   try {
     const user = await User.findByPk(Uid);
 
@@ -200,6 +224,13 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.email = email || user.email;
     user.Rid = Rid || user.Rid;
     user.Aid = Aid || user.Aid;
+    user.salario = salario !== undefined ? salario : user.salario;
+    user.empresa = empresa || user.empresa;
+    user.documentoIdentificacion = documentoIdentificacion || user.documentoIdentificacion;
+    user.cargo = cargo || user.cargo;
+    user.fondoPension = fondoPension || user.fondoPension;
+    user.fondoCesantias = fondoCesantias || user.fondoCesantias;
+    user.fechaIngreso = fechaIngreso !== undefined ? fechaIngreso : user.fechaIngreso;
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);
@@ -342,6 +373,48 @@ export const deleteUserById = async (
     res.status(500).json({
       msg: "Error al eliminar el usuario",
       error: error.message,
+    });
+  }
+};
+
+// Buscar usuarios por nombre o cédula
+export const searchUsers = async (req: Request, res: Response): Promise<any> => {
+  const { query } = req.query;
+
+  try {
+    if (!query || query.toString().trim() === '') {
+      return res.status(400).json({
+        msg: "Debe proporcionar un término de búsqueda"
+      });
+    }
+
+    const searchTerm = `%${query}%`;
+
+    const users = await User.findAll({
+      where: {
+        [Op.or]: [
+          { name: { [Op.iLike]: searchTerm } },
+          { lastName: { [Op.iLike]: searchTerm } },
+          { documentoIdentificacion: { [Op.iLike]: searchTerm } },
+          { email: { [Op.iLike]: searchTerm } }
+        ],
+        status: 1 // Solo usuarios activos
+      },
+      include: [
+        { model: Area, as: 'area' },
+        { model: Role, as: 'role' }
+      ],
+      limit: 10,
+      order: [['name', 'ASC']]
+    });
+
+    res.status(200).json(users);
+
+  } catch (error: any) {
+    console.error("Error al buscar usuarios:", error);
+    res.status(500).json({
+      msg: "Error al buscar usuarios",
+      error: error.message
     });
   }
 };

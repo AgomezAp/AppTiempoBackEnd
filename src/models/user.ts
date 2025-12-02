@@ -16,6 +16,16 @@ export class User extends Model {
   public status!: number;
   public Rid!: number;
   public Aid!: number;
+  public salario!: number;
+  public empresa!: 'AP' | 'AT' | 'ME';
+  public documentoIdentificacion!: string;
+  public fondoPension!: string;
+  public fondoCesantias!: string;
+  public cargo!: string;
+  public tipoContrato!: 'termino-indefinido' | 'termino-fijo';
+  public certificadosGenerados!: number;
+  public fechaIngreso!: Date;
+
 }
 
 User.init(
@@ -53,7 +63,52 @@ User.init(
     Aid: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    }
+    },
+    salario: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    empresa: {  
+      type: DataTypes.ENUM('AP', 'AT', 'ME'),
+      allowNull: true,
+      defaultValue: 'AP',
+    },
+    documentoIdentificacion: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: '',
+    },
+    fondoPension: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'PORVENIR',
+    },
+    fondoCesantias: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'PORVENIR',
+    },
+    cargo: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: '',
+    },
+    tipoContrato: {
+      type: DataTypes.ENUM('termino-indefinido', 'termino-fijo'),
+      allowNull: true,
+      defaultValue: 'termino-indefinido',
+    },
+    certificadosGenerados: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    fechaIngreso: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,

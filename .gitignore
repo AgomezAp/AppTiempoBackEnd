@@ -1,3 +1,8 @@
 .env
 node_modules/
 dist/
+GUIA_MIGRACION_PRODUCCION.md
+MIGRACION_PRODUCCION.sql
+NUEVAS_FUNCIONALIDADES.md
+package-lock.json
+TESTING.md
