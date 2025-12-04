@@ -55,10 +55,12 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
     );
 
     if (existingSheet) {
+      console.log(`✓ Usando hoja existente: ${sheetName}`);
       return sheetName;
     }
 
     // Crear nueva hoja si no existe
+    console.log(`→ Creando nueva hoja: ${sheetName}`);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
@@ -86,8 +88,14 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
       },
     });
 
+    console.log(`✓ Hoja creada con éxito: ${sheetName}`);
     return sheetName;
-  } catch (error) {
+  } catch (error: any) {
+    // Si el error es que la hoja ya existe (por solicitudes simultáneas), simplemente retornar el nombre
+    if (error?.message?.includes('already exists')) {
+      console.log(`✓ La hoja ya fue creada por otra solicitud: ${sheetName}`);
+      return sheetName;
+    }
     console.error('Error al obtener/crear hoja:', error);
     throw error;
   }

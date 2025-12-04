@@ -37,7 +37,6 @@ function defineDescuento(tipo, entrada, salida) {
         }
         case 'Incapacidad médica':
         case 'Día de la familia':
-        case 'Día extralegal':
         case 'Suspensión por proceso disciplinario':
         case 'Licencia de luto':
         case 'Media jornada por votación':

@@ -235,15 +235,18 @@ export const generarCertificadoLaboral = async (
     const salarioFormateado = formatCurrency(usuario.salario || 0);
     const salarioEnPalabras = numberToWords(Math.floor(usuario.salario || 0));
 
+    // Obtener la fecha de ingreso correcta
+    const fechaIngresoReal = usuario.fechaIngreso 
+      ? new Date(usuario.fechaIngreso) 
+      : new Date(usuario.createdAt || Date.now());
+
     const certificado = {
       empresa: empresaData.nombre,
       nit: empresaData.nit,
       nombreCompleto: `${usuario.name} ${usuario.lastName}`,
       documentoIdentificacion: usuario.documentoIdentificacion || "N/A",
-      cargo: usuario.area?.Aname || "Sin cargo asignado",
-      fechaIngreso: formatDateSpanish(
-        new Date(usuario.createdAt || Date.now())
-      ),
+      cargo: usuario.cargo || usuario.area?.Aname || "Sin cargo asignado",
+      fechaIngreso: formatDateSimple(fechaIngresoReal),
       salario: salarioFormateado,
       salarioEnPalabras: salarioEnPalabras,
       fechaCertificado: formatDateSpanish(new Date()),
@@ -492,9 +495,12 @@ export const generarCertificadoImagen = async (
     const salarioFormateado = formatCurrency(usuario.salario || 0);
     const salarioEnPalabras = numberToWords(Math.floor(usuario.salario || 0));
     const fechaCertificado = formatDateSpanish(new Date());
-    const fechaIngreso = formatDateSpanish(
-      new Date(usuario.createdAt || Date.now())
-    );
+    
+    // Usar fechaIngreso del usuario, no createdAt
+    const fechaIngresoReal = usuario.fechaIngreso 
+      ? new Date(usuario.fechaIngreso) 
+      : new Date(usuario.createdAt || Date.now());
+    const fechaIngreso = formatDateSimple(fechaIngresoReal);
 
     // Crear canvas (tamaño A4 en píxeles: 2480 x 3508 a 300 DPI)
     console.log("📄 Creando canvas...");
@@ -610,11 +616,12 @@ export const generarCertificadoImagen = async (
     if (usuario.empresa === "ME") yPos = tituloY + 480;
 
     // Construir el texto del certificado
+    // Usar cargo (rol) en lugar de area
+    const cargoUsuario = usuario.cargo || "Sin cargo asignado";
+    
     const parrafo1 = `Por medio de la presente, hacemos constar que el (la) señor (a) ${usuario.name.toUpperCase()} ${usuario.lastName.toUpperCase()}, identificado (a) con CÉDULA DE CIUDADANÍA ${
       usuario.documentoIdentificacion
-    }, labora en nuestra empresa como ${
-      usuario.area?.Aname || "Sin cargo"
-    } desde el ${fechaIngreso}, con un contrato a término indefinido y devengando un salario mensual de ${salarioFormateado} (${salarioEnPalabras} pesos).`;
+    }, labora en nuestra empresa como ${cargoUsuario} desde el ${fechaIngreso}, con un contrato a término indefinido y devengando un salario mensual de ${salarioFormateado} (${salarioEnPalabras} pesos).`;
 
     ctx.font = "42px Arial";
     ctx.fillStyle = "#000000";
@@ -893,9 +900,15 @@ export const generarCertificadoHTML = async (
     const salarioFormateado = formatCurrency(usuario.salario || 0);
     const salarioEnPalabras = numberToWords(Math.floor(usuario.salario || 0));
     const fechaCertificado = formatDateSpanish(new Date());
-    const fechaIngreso = formatDateSpanish(
-      new Date(usuario.createdAt || Date.now())
-    );
+    
+    // Usar fechaIngreso del usuario, no createdAt
+    const fechaIngresoReal = usuario.fechaIngreso 
+      ? new Date(usuario.fechaIngreso) 
+      : new Date(usuario.createdAt || Date.now());
+    const fechaIngreso = formatDateSimple(fechaIngresoReal);
+    
+    // Usar cargo (rol) en lugar de area
+    const cargoUsuario = usuario.cargo || usuario.area?.Aname || "Sin cargo";
 
     const html = `
     <!DOCTYPE html>
@@ -1000,9 +1013,7 @@ export const generarCertificadoHTML = async (
           identificado (a) con <strong>CÉDULA DE CIUDADANÍA ${
             usuario.documentoIdentificacion || "N/A"
           }</strong>; 
-          labora en nuestra empresa como <strong>${
-            usuario.area?.Aname || "Sin cargo"
-          }</strong> 
+          labora en nuestra empresa como <strong>${cargoUsuario}</strong> 
           desde el <strong>${fechaIngreso}</strong>; 
           con un contrato a término indefinido y devengando un salario mensual de 
           <strong>${salarioFormateado} (${salarioEnPalabras} pesos)</strong>.
@@ -2012,7 +2023,7 @@ export const generarCertificadoVacaciones = async (
     }
 
     // ========================================
-    // MARCA DE AGUA DEL LOGO (fondo)
+    // MARCA DE AGUA DEL LOGO (fondo) - SIN LOGO PRINCIPAL
     // ========================================
     const logoPath = path.join(__dirname, "../../public", empresaData.logo);
     if (fs.existsSync(logoPath)) {
@@ -2029,175 +2040,151 @@ export const generarCertificadoVacaciones = async (
       ctx.restore();
     }
 
-    // Logo principal en la parte superior central
-    if (fs.existsSync(logoPath)) {
-      const logo = await loadImage(logoPath);
-      const logoWidth = 400;
-      const logoHeight = (logo.height / logo.width) * logoWidth;
-      const logoX = (width - logoWidth) / 2;
-      ctx.drawImage(logo, logoX, 180, logoWidth, logoHeight);
-    }
-
-    // Encabezado - centrado y bien espaciado
+    // ========================================
+    // TÍTULO - CENTRADO Y MÁS ARRIBA
+    // ========================================
     ctx.fillStyle = "#000000";
-    ctx.font = "bold 58px Helvetica";
+    ctx.font = "bold 70px Helvetica";
     ctx.textAlign = "center";
-    const headerY = 750; // Posición fija para mejor simetría
-    ctx.fillText(empresaData.nombre, width / 2, headerY);
-    
-    ctx.font = "48px Helvetica";
-    ctx.fillText(empresaData.nit, width / 2, headerY + 90);
-    
-    // Línea decorativa
-    ctx.strokeStyle = "#FFD600";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(width / 2 - 400, headerY + 130);
-    ctx.lineTo(width / 2 + 400, headerY + 130);
-    ctx.stroke();
-    
-    ctx.font = "bold 72px Helvetica";
-    ctx.fillStyle = "#000000";
-    ctx.fillText("CERTIFICADO DE VACACIONES", width / 2, headerY + 250);
+    const tituloY = 250; // Posición del título
+    ctx.fillText("Solicitud de Vacaciones", width / 2, tituloY);
 
-    ctx.font = "bold 72px Helvetica";
-    ctx.fillStyle = "#000000";
-    ctx.fillText("CERTIFICADO DE VACACIONES", width / 2, headerY + 250);
+    // ========================================
+    // ENCABEZADO - JUSTIFICADO A LA IZQUIERDA (Formato Carta)
+    // ========================================
 
-    // Fecha actual - más espaciada
+    const encabezadoX = margin; // Alineado a la izquierda
+    let encabezadoY = tituloY + 200; // Más espacio después del título
+    
+    ctx.font = "44px Helvetica";
+    ctx.textAlign = "left"; // Cambiado a izquierda
+    ctx.fillStyle = "#000000";
+    
+    ctx.fillText(`Dirigido a: ${empresaData.nombre}`, encabezadoX, encabezadoY);
+    encabezadoY += 80; // Más espacio entre líneas
+    
+    ctx.fillText("Asunto: Solicitud de Vacaciones", encabezadoX, encabezadoY);
+    encabezadoY += 80;
+    
     const hoy = new Date();
     const fechaActual = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
-    ctx.font = "46px Helvetica";
-    ctx.fillText(`Fecha de expedición: ${fechaActual}`, width / 2, headerY + 360);
+    ctx.fillText(`Fecha de expedición: ${fechaActual}`, encabezadoX, encabezadoY);
 
-    // Contenido del certificado - centrado y prolijo
-    const contentY = headerY + 520; // Más espacio para mejor distribución
-    ctx.font = "48px Helvetica";
+    // ========================================
+    // CONTENIDO DE LA CARTA - JUSTIFICADO A LA IZQUIERDA
+    // ========================================
+    const contentY = encabezadoY + 200; // Más espacio después del encabezado
+    ctx.font = "46px Helvetica";
     ctx.textAlign = "left";
     ctx.fillStyle = "#000000";
 
-    const lineHeight = 90; // Mayor espaciado entre líneas
+    const lineHeight = 85; // Más espacio entre líneas
     let currentY = contentY;
 
-    // Texto principal con mejor formato
-    ctx.font = "46px Helvetica";
-    const texto1 = `Por medio de la presente, certificamos que:`;
-    ctx.fillText(texto1, margin, currentY);
-    currentY += lineHeight * 1.8;
+    // Texto principal de la carta
+    const cargo = usuario.cargo || area?.Aname || 'Colaborador';
+    const texto = `Mediante la presente carta, yo ${nombreCompleto}, identificado(a) con No. ${usuario.documentoIdentificacion}, quien me desempeño como ${cargo}, solicito formalmente la intención de tomar mis días de vacaciones correspondientes a:`;
+    
+    // Dividir el texto en líneas (wrap text manual)
+    const palabras = texto.split(' ');
+    let linea = '';
+    const maxWidth = contentWidth;
+    
+    for (let palabra of palabras) {
+      const testLinea = linea + palabra + ' ';
+      const metrics = ctx.measureText(testLinea);
+      
+      if (metrics.width > maxWidth && linea !== '') {
+        ctx.fillText(linea.trim(), margin, currentY);
+        currentY += lineHeight;
+        linea = palabra + ' ';
+      } else {
+        linea = testLinea;
+      }
+    }
+    if (linea.trim() !== '') {
+      ctx.fillText(linea.trim(), margin, currentY);
+      currentY += lineHeight;
+    }
 
-    // Nombre del empleado - destacado
-    ctx.font = "bold 56px Helvetica";
+    currentY += 100; // Más espacio antes del período
+
+    // ========================================
+    // PERÍODO DE VACACIONES - DESTACADO
+    // ========================================
+    ctx.font = "bold 48px Helvetica";
     ctx.fillStyle = "#1a5490";
-    ctx.fillText(nombreCompleto, margin, currentY);
-    ctx.fillStyle = "#000000";
-    currentY += lineHeight * 1.3;
-
-    // Cédula con mejor espaciado
-    ctx.font = "46px Helvetica";
-    ctx.fillText(`Identificado(a) con cédula de ciudadanía No. ${usuario.documentoIdentificacion}`, 
-                 margin, currentY);
-    currentY += lineHeight * 1.5;
-
-    // Área/Cargo
-    ctx.fillText(`Quien se desempeña como ${area?.Aname || usuario.cargo || 'Colaborador'}`,
-                 margin, currentY);
-    currentY += lineHeight * 1.8;
-
-    // Solicitud de vacaciones - destacado
-    ctx.font = "bold 50px Helvetica";
-    ctx.fillText(`Ha solicitado ${diasReales} ${diasReales === 1 ? 'día laboral' : 'días laborales'}`,
-                 margin, currentY);
+    ctx.fillText(`Período de vacaciones:`, margin, currentY);
     currentY += lineHeight;
     
     ctx.font = "46px Helvetica";
-    ctx.fillText(`de ${tipoVacaciones === 'vacaciones-pagos' ? 'vacaciones y días pagos' : 'vacaciones'}`,
-                 margin, currentY);
-    currentY += lineHeight * 1.8;
-
-    // Fechas en formato de tabla
-    ctx.font = "bold 46px Helvetica";
-    ctx.fillText(`Período de vacaciones:`, margin, currentY);
-    currentY += lineHeight * 1.2;
-    
-    ctx.font = "46px Helvetica";
+    ctx.fillStyle = "#000000";
     ctx.fillText(`    Desde:  ${fechaInicio}`, margin, currentY);
     currentY += lineHeight;
     
     ctx.fillText(`    Hasta:   ${fechaFin}`, margin, currentY);
-    currentY += lineHeight * 1.2;
+    currentY += lineHeight;
     
-    // Información de días laborales - destacada
+    // Información de días laborales
     ctx.font = "42px Helvetica";
     ctx.fillStyle = "#666666";
-    ctx.fillText(`✓ ${diasReales} días laborales (excluyendo fines de semana y festivos)`,
+    ctx.fillText(`    ${diasReales} días laborales (excluyendo fines de semana y festivos)`,
                  margin + 20, currentY);
     ctx.fillStyle = "#000000";
-    currentY += lineHeight * 1.8;
+    currentY += lineHeight * 1.5; // Más espacio después
 
-    ctx.fillStyle = "#000000";
-    currentY += lineHeight * 1.8;
-
-    // Detalle de días según tipo - mejorado visualmente
+    // Distribución según tipo
     if (tipoVacaciones === 'vacaciones-pagos') {
       const diasVacaciones = Math.min(diasReales, 15);
       const diasPagos = Math.max(0, diasReales - 15);
       
-      ctx.font = "bold 46px Helvetica";
-      ctx.fillText(`Distribución de días:`, margin, currentY);
-      currentY += lineHeight * 1.2;
-      
-      ctx.font = "46px Helvetica";
-      ctx.fillText(`    • Días de vacaciones: ${diasVacaciones}`,
-                   margin + 20, currentY);
+      ctx.font = "44px Helvetica";
+      ctx.fillText(`    • Días de vacaciones: ${diasVacaciones}`, margin + 20, currentY);
       currentY += lineHeight;
       
       if (diasPagos > 0) {
-        ctx.fillText(`    • Días pagos adicionales: ${diasPagos}`,
-                     margin + 20, currentY);
+        ctx.fillText(`    • Días pagos adicionales: ${diasPagos}`, margin + 20, currentY);
         currentY += lineHeight;
       }
-      currentY += lineHeight;
+      currentY += 80; // Más espacio después
     }
 
-    // Solicitud de cabaña - más destacado
+    // ========================================
+    // SOLICITUD DE CABAÑA - BIEN ESPACIADO CON CAJA MÁS ALTA
+    // ========================================
     if (solicitaCabana) {
+      currentY += 60; // Más espacio antes
+      
+      const paddingTop = 80; // Espacio interno superior
+      const paddingBottom = 80; // Espacio interno inferior
+      const boxHeight = 280; // Caja más alta (antes 220)
+      
       // Recuadro con fondo amarillo
       ctx.fillStyle = "#FFF9E6";
-      ctx.fillRect(margin - 30, currentY - 70, contentWidth + 60, 280);
+      ctx.fillRect(margin - 30, currentY - paddingTop, contentWidth + 60, boxHeight);
       
       // Borde del recuadro
       ctx.strokeStyle = "#FFD600";
       ctx.lineWidth = 5;
-      ctx.strokeRect(margin - 30, currentY - 70, contentWidth + 60, 280);
+      ctx.strokeRect(margin - 30, currentY - paddingTop, contentWidth + 60, boxHeight);
       
-      ctx.font = "bold 52px Helvetica";
-      ctx.fillStyle = "#B8860B"; // Color dorado oscuro
-      ctx.fillText(`🏡 SOLICITA CABAÑA DE DESCANSO`,
-                   margin, currentY);
-      currentY += lineHeight * 1.3;
+      ctx.font = "bold 46px Helvetica";
+      ctx.fillStyle = "#B8860B";
+      ctx.fillText(`🏡 SOLICITA CABAÑA DE DESCANSO`, margin, currentY);
+      currentY += lineHeight;
       
-      ctx.font = "44px Helvetica";
+      ctx.font = "42px Helvetica";
       ctx.fillStyle = "#000000";
-      const textoCabana = `El empleado ha solicitado hacer uso de la cabaña de la empresa`;
-      ctx.fillText(textoCabana, margin, currentY);
+      ctx.fillText(`El empleado ha solicitado hacer uso de la cabaña de la empresa`, margin, currentY);
       currentY += lineHeight;
       ctx.fillText(`durante el período de vacaciones.`, margin, currentY);
-      currentY += lineHeight * 1.8;
-    } else {
-      currentY += lineHeight * 0.5;
+      currentY += lineHeight + paddingBottom; // Más espacio después
     }
 
-    // Texto final - más profesional
-    ctx.font = "46px Helvetica";
-    ctx.fillStyle = "#000000";
-    ctx.fillText(`Se expide el presente certificado a solicitud del interesado para los fines`,
-                 margin, currentY);
-    currentY += lineHeight;
-    ctx.fillText(`que el empleado estime convenientes.`,
-                 margin, currentY);
-
-    // Firmas - MUCHO MÁS ABAJO y centradas
-    const firmaY = height - 500; // Casi al borde inferior
+    // ========================================
+    // FIRMAS - BIEN UBICADAS AL FINAL CON MÁS ESPACIO
+    // ========================================
+    const firmaY = height - 550; // Más arriba para tener más espacio
     
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 4;
@@ -2211,15 +2198,15 @@ export const generarCertificadoVacaciones = async (
     ctx.stroke();
     
     // Texto de firma - centrado y espaciado
-    ctx.font = "bold 46px Helvetica";
+    ctx.font = "bold 44px Helvetica";
     ctx.textAlign = "center";
     ctx.fillText("Firma y Sello Autorizado", width / 2, firmaY + 70);
     
-    ctx.font = "44px Helvetica";
+    ctx.font = "42px Helvetica";
     ctx.fillText("Recursos Humanos", width / 2, firmaY + 130);
     
-    // Pie de página con línea decorativa
-    const footerY = height - 200;
+    // Pie de página con línea decorativa - más abajo
+    const footerY = height - 240;
     ctx.strokeStyle = "#FFD600";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -2227,7 +2214,7 @@ export const generarCertificadoVacaciones = async (
     ctx.lineTo(width - margin, footerY);
     ctx.stroke();
     
-    ctx.font = "38px Helvetica";
+    ctx.font = "36px Helvetica";
     ctx.fillStyle = "#666666";
     ctx.fillText("Documento válido solo con firma y sello", width / 2, footerY + 50);
 
@@ -2247,6 +2234,637 @@ export const generarCertificadoVacaciones = async (
     console.error("Error generando certificado de vacaciones:", error);
     res.status(500).json({
       error: "Error al generar el certificado de vacaciones",
+      message: error.message || error,
+    });
+  }
+};
+
+// ============================================================
+// GENERAR NOTIFICACIÓN DE VACACIONES (SOLO ADMIN)
+// ============================================================
+export const generarNotificacionVacaciones = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const {
+      Uid,
+      fechaInicio,
+      fechaFin,
+      diasSolicitados,
+      ciudad,
+      fechaNotificacion,
+      periodoVacaciones // Nuevo campo para el período (ej: "2024-2025")
+    } = req.body;
+
+    if (!Uid || !fechaInicio || !fechaFin || !diasSolicitados) {
+      return res.status(400).json({ 
+        error: "Uid, fechas y días son requeridos" 
+      });
+    }
+
+    const usuario: any = await User.findByPk(Uid, {
+      include: [{ model: Area, as: "area" }],
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const nombreCompleto = `${usuario.name} ${usuario.lastName}`.toUpperCase();
+    const area: any = usuario.area;
+    const cargo = usuario.cargo || area?.Aname || 'N/A';
+
+    // Configuración de canvas (tamaño carta)
+    const width = 2480;
+    const height = 3508;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    // Fondo blanco
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    const margin = 200;
+    const contentWidth = width - margin * 2;
+
+    // Determinar empresa
+    let empresaData: any = {};
+    if (usuario.empresa === "ME") {
+      empresaData = {
+        nombre: "MARIA EVANGELINA AGUDELO GIL",
+        nit: "CC. 42094435",
+        logo: "Logo3.png"
+      };
+    } else if (usuario.empresa === "AP") {
+      empresaData = {
+        nombre: "ANDRÉS PUBLICIDAD TG SAS",
+        nit: "NIT 901.458.142-2",
+        logo: "Logo2.png"
+      };
+    } else {
+      empresaData = {
+        nombre: "ANDRÉS TOBÓN",
+        nit: "CC 1088254149",
+        logo: "Logo1.png"
+      };
+    }
+
+    // ========================================
+    // LOGO EN LA PARTE SUPERIOR IZQUIERDA
+    // ========================================
+    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
+    let logoHeight = 0;
+    if (fs.existsSync(logoPath)) {
+      try {
+        const logo = await loadImage(logoPath);
+        let logoWidth = 350;
+        let logoY = 120;
+        
+        logoHeight = (logo.height / logo.width) * logoWidth;
+        const logoX = margin;
+        
+        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+      } catch (logoError) {
+        console.error("Error al cargar logo:", logoError);
+      }
+    }
+
+    // ========================================
+    // MARCA DE AGUA
+    // ========================================
+    if (fs.existsSync(logoPath)) {
+      try {
+        ctx.save();
+        ctx.globalAlpha = 0.05;
+        
+        const logo = await loadImage(logoPath);
+        const watermarkSize = 1800;
+        const watermarkHeight = (logo.height / logo.width) * watermarkSize;
+        const watermarkX = (width - watermarkSize) / 2;
+        const watermarkY = (height - watermarkHeight) / 2;
+
+        ctx.drawImage(logo, watermarkX, watermarkY, watermarkSize, watermarkHeight);
+        ctx.restore();
+      } catch (err) {
+        console.error("Error al agregar marca de agua:", err);
+      }
+    }
+
+    // ========================================
+    // CIUDAD Y FECHA (arriba a la DERECHA, al lado del logo)
+    // ========================================
+    ctx.fillStyle = "#000000";
+    ctx.font = "44px Arial";
+    ctx.textAlign = "right";
+    
+    const ciudadTexto = ciudad || "Pereira";
+    const fechaNot = fechaNotificacion || new Date().toLocaleDateString('es-CO');
+    ctx.fillText(`${ciudadTexto}, ${fechaNot}`, width - margin, 180);
+    
+    // Posición Y - BAJAR TODO EL CONTENIDO SIGNIFICATIVAMENTE
+    let yPos = 650; // Empezar mucho más abajo
+
+    // ========================================
+    // TÍTULO
+    // ========================================
+    ctx.font = "bold 70px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("NOTIFICACIÓN DE VACACIONES", width / 2, yPos);
+    
+    yPos += 280; // Mucho más espacio después del título
+
+    // ========================================
+    // INFORMACIÓN DEL EMPLEADO
+    // ========================================
+    ctx.font = "bold 50px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText(nombreCompleto, margin, yPos);
+    yPos += 85;
+    
+    ctx.font = "48px Arial";
+    ctx.fillText(`CÉDULA ${usuario.documentoIdentificacion}`, margin, yPos);
+    yPos += 85;
+    
+    ctx.fillText(cargo, margin, yPos);
+    yPos += 180;
+
+    // ========================================
+    // SALUDO
+    // ========================================
+    ctx.fillText("Cordial Saludo;", margin, yPos);
+    yPos += 180;
+
+    // ========================================
+    // CUERPO DEL TEXTO
+    // ========================================
+    const lineHeight = 70;
+    
+    // Calcular días calendario
+    const [diaIni, mesIni, anioIni] = fechaInicio.split('/').map(Number);
+    const [diaFin, mesFin, anioFin] = fechaFin.split('/').map(Number);
+    const fechaIniDate = new Date(anioIni, mesIni - 1, diaIni);
+    const fechaFinDate = new Date(anioFin, mesFin - 1, diaFin);
+    
+    // Convertir fechas a texto
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    
+    const diaInicioTexto = dias[fechaIniDate.getDay()];
+    const mesInicioTexto = meses[fechaIniDate.getMonth()];
+    const diaFinTexto = dias[fechaFinDate.getDay()];
+    const mesFinTexto = meses[fechaFinDate.getMonth()];
+    
+    // Calcular fecha de retorno (siguiente día hábil)
+    const fechaRetorno = new Date(fechaFinDate);
+    fechaRetorno.setDate(fechaRetorno.getDate() + 1);
+    
+    // Si cae en sábado, mover a lunes
+    if (fechaRetorno.getDay() === 6) {
+      fechaRetorno.setDate(fechaRetorno.getDate() + 2);
+    }
+    // Si cae en domingo, mover a lunes
+    if (fechaRetorno.getDay() === 0) {
+      fechaRetorno.setDate(fechaRetorno.getDate() + 1);
+    }
+    
+    const diaRetornoTexto = dias[fechaRetorno.getDay()];
+    const mesRetornoTexto = meses[fechaRetorno.getMonth()];
+    const diaRetorno = fechaRetorno.getDate();
+    const anioRetorno = fechaRetorno.getFullYear();
+    
+    // Usar período proporcionado o calcular automáticamente
+    const periodo = periodoVacaciones || `${anioIni}-${anioIni + 1}`;
+    
+    ctx.font = "48px Arial";
+    const textoCuerpo = `Por medio de la presente me permito notificarle que usted podrá disfrutar de ${diasSolicitados} días hábiles de vacaciones que van desde el día ${diaInicioTexto} ${diaIni} de ${mesInicioTexto} hasta el día ${diaFinTexto} ${diaFin} de ${mesFinTexto} del ${anioFin} correspondientes al período ${periodo}, retornando a sus actividades laborales el día ${diaRetornoTexto} ${diaRetorno} de ${mesRetornoTexto} de ${anioRetorno}.`;
+    
+    const palabras = textoCuerpo.split(' ');
+    let linea = '';
+    
+    for (let palabra of palabras) {
+      const testLinea = linea + palabra + ' ';
+      const metrics = ctx.measureText(testLinea);
+      
+      if (metrics.width > contentWidth && linea !== '') {
+        ctx.fillText(linea.trim(), margin, yPos);
+        yPos += lineHeight;
+        linea = palabra + ' ';
+      } else {
+        linea = testLinea;
+      }
+    }
+    if (linea.trim() !== '') {
+      ctx.fillText(linea.trim(), margin, yPos);
+      yPos += lineHeight;
+    }
+
+    yPos += 120;
+
+    // ========================================
+    // AGRADECIMIENTO
+    // ========================================
+    ctx.fillText("Agradezco su compromiso con la empresa y le deseo felices vacaciones.", margin, yPos);
+    
+    // ========================================
+    // FIRMAS - Calcular posición para usar todo el espacio
+    // ========================================
+    const firmaY = height - 650; // Posicionar firmas más abajo para usar espacio
+    const firmaIzqX = width * 0.25;
+    const firmaDerX = width * 0.75;
+    
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 4;
+
+    // ========================================
+    // FIRMA IZQUIERDA - Representante Legal CON FIRMA IMAGEN
+    // ========================================
+    const firmaRepresentantePath = path.join(__dirname, "../../public/Firma2.jpg");
+    if (fs.existsSync(firmaRepresentantePath)) {
+      try {
+        const firmaImg = await loadImage(firmaRepresentantePath);
+        const firmaWidth = 500;
+        const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+        // Posicionar la firma ENCIMA de la línea
+        ctx.drawImage(firmaImg, firmaIzqX - firmaWidth/2, firmaY - firmaHeight + 30, firmaWidth, firmaHeight);
+      } catch (err) {
+        console.warn("Error al cargar firma representante:", err);
+      }
+    } else {
+      console.warn("Archivo de firma no encontrado:", firmaRepresentantePath);
+    }
+
+    // Línea firma izquierda
+    ctx.beginPath();
+    ctx.moveTo(firmaIzqX - 300, firmaY + 60);
+    ctx.lineTo(firmaIzqX + 300, firmaY + 60);
+    ctx.stroke();
+
+    ctx.font = "bold 46px Arial";
+    ctx.textAlign = "center";
+    
+    // Nombre del representante según empresa
+    let nombreRepresentante = "Carlos Andrés Tobón Agudelo";
+    if (usuario.empresa === "ME") {
+      nombreRepresentante = "Maria Evangelina Agudelo Gil";
+    } else if (usuario.empresa === "AP") {
+      nombreRepresentante = "Carlos Andrés Tobón Agudelo";
+    }
+    
+    ctx.fillText(nombreRepresentante, firmaIzqX, firmaY + 130);
+    ctx.font = "44px Arial";
+    ctx.fillText("Representante legal", firmaIzqX, firmaY + 190);
+
+    // ========================================
+    // FIRMA DERECHA - Empleado (solo línea y espacio para nombre/cédula)
+    // ========================================
+    ctx.beginPath();
+    ctx.moveTo(firmaDerX - 300, firmaY + 60);
+    ctx.lineTo(firmaDerX + 300, firmaY + 60);
+    ctx.stroke();
+
+    ctx.font = "bold 46px Arial";
+    ctx.fillText(nombreCompleto, firmaDerX, firmaY + 130);
+    ctx.font = "44px Arial";
+    ctx.fillText(`C.C. ${usuario.documentoIdentificacion}`, firmaDerX, firmaY + 190);
+
+    // ========================================
+    // FOOTER CON DATOS DE CONTACTO
+    // ========================================
+    const footerY = height - 120;
+    ctx.font = "38px Arial";
+    ctx.textAlign = "center";
+    
+    if (usuario.empresa === "AP") {
+      ctx.fillText("📍 Pereira, Risaralda - Colombia     ☎ (+57) 324 234 1917     ✉ andrespublicidadtg@gmail.com", width / 2, footerY);
+    }
+
+    // ========================================
+    // CONVERTIR Y ENVIAR
+    // ========================================
+    const buffer = canvas.toBuffer("image/png");
+    
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Disposition", 
+      `attachment; filename="notificacion_vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}.png"`);
+    res.send(buffer);
+
+  } catch (error: any) {
+    console.error("Error generando notificación de vacaciones:", error);
+    res.status(500).json({
+      error: "Error al generar la notificación de vacaciones",
+      message: error.message || error,
+    });
+  }
+};
+
+// ============================================================
+// GENERAR CERTIFICADO DÍA DE LA FAMILIA
+// ============================================================
+export const generarCertificadoDiaFamilia = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { Uid, fechaSolicitud, fechaDiaFamilia } = req.body;
+
+    if (!Uid || !fechaSolicitud || !fechaDiaFamilia) {
+      return res.status(400).json({ 
+        error: "Uid, fecha de solicitud y fecha del día de la familia son requeridos" 
+      });
+    }
+
+    const usuario: any = await User.findByPk(Uid, {
+      include: [{ model: Area, as: "area" }],
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const nombreCompleto = `${usuario.name} ${usuario.lastName}`.toUpperCase();
+
+    // Configuración de canvas (tamaño A4)
+    const width = 2480;
+    const height = 3508;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    // Fondo blanco
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    const margin = 200;
+    const contentWidth = width - margin * 2;
+
+    // Determinar empresa
+    let empresaData: any = {};
+    if (usuario.empresa === "ME") {
+      empresaData = {
+        nombre: "MARIA EVANGELINA AGUDELO GIL",
+        nit: "CC. 42094435",
+        logo: "Logo3.png"
+      };
+    } else if (usuario.empresa === "AP") {
+      empresaData = {
+        nombre: "ANDRÉS PUBLICIDAD TG SAS",
+        nit: "NIT 901.458.142-2",
+        logo: "Logo2.png"
+      };
+    } else {
+      empresaData = {
+        nombre: "ANDRÉS TOBÓN",
+        nit: "CC 1088254149",
+        logo: "Logo1.png"
+      };
+    }
+
+    // ========================================
+    // LOGO EN LA PARTE SUPERIOR
+    // ========================================
+    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
+    if (fs.existsSync(logoPath)) {
+      try {
+        const logo = await loadImage(logoPath);
+        let logoWidth = 400;
+        let logoY = 120;
+        
+        const logoHeight = (logo.height / logo.width) * logoWidth;
+        const logoX = (width - logoWidth) / 2;
+        
+        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+      } catch (logoError) {
+        console.error("Error al cargar logo:", logoError);
+      }
+    }
+
+    // ========================================
+    // MARCA DE AGUA
+    // ========================================
+    if (fs.existsSync(logoPath)) {
+      try {
+        ctx.save();
+        ctx.globalAlpha = 0.05;
+        
+        const logo = await loadImage(logoPath);
+        const watermarkSize = 1800;
+        const watermarkHeight = (logo.height / logo.width) * watermarkSize;
+        const watermarkX = (width - watermarkSize) / 2;
+        const watermarkY = (height - watermarkHeight) / 2;
+
+        ctx.drawImage(logo, watermarkX, watermarkY, watermarkSize, watermarkHeight);
+        ctx.restore();
+      } catch (err) {
+        console.error("Error al agregar marca de agua:", err);
+      }
+    }
+
+    // ========================================
+    // TÍTULO
+    // ========================================
+    let yPos = 850;
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 80px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("SOLICITUD PARA EL DÍA DE LA FAMILIA", width / 2, yPos);
+
+    yPos += 180;
+
+    // ========================================
+    // FECHA DE SOLICITUD
+    // ========================================
+    // Parsear fechaSolicitud que viene en formato DD/MM/YYYY
+    const partesFechaSol = fechaSolicitud.split('/');
+    const diaSol = partesFechaSol[0];
+    const mesSol = partesFechaSol[1];
+    const anioSol = partesFechaSol[2];
+    
+    ctx.font = "bold 44px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Fecha de la solicitud:", margin, yPos);
+    
+    yPos += 65;
+    
+    ctx.font = "44px Arial";
+    ctx.fillText(`Día: ${diaSol}     Mes: ${mesSol}     Año: ${anioSol}`, margin + 100, yPos);
+    
+    yPos += 100;
+
+    // ========================================
+    // INFORMACIÓN DEL COLABORADOR
+    // ========================================
+    ctx.font = "44px Arial";
+    ctx.fillText(`Nombre del colaborador: ${nombreCompleto}`, margin, yPos);
+    yPos += 65;
+    
+    ctx.fillText(`Número de documento: ${usuario.documentoIdentificacion}`, margin, yPos);
+    yPos += 120;
+
+    // ========================================
+    // TEXTO LEGAL - PRIMER PÁRRAFO
+    // ========================================
+    ctx.font = "44px Arial";
+    ctx.textAlign = "left";
+    
+    const textoPrefijo = "Dando cumplimiento a lo dispuesto en el artículo 3 de la Ley 1857 de 2017 adiciona el artículo 5A a la Ley 1361 de 2009 con el siguiente parágrafo:";
+    
+    const palabrasPrefijo = textoPrefijo.split(' ');
+    let linea = '';
+    const lineHeight = 60;
+    
+    for (let palabra of palabrasPrefijo) {
+      const testLinea = linea + palabra + ' ';
+      const metrics = ctx.measureText(testLinea);
+      
+      if (metrics.width > contentWidth && linea !== '') {
+        ctx.fillText(linea.trim(), margin, yPos);
+        yPos += lineHeight;
+        linea = palabra + ' ';
+      } else {
+        linea = testLinea;
+      }
+    }
+    if (linea.trim() !== '') {
+      ctx.fillText(linea.trim(), margin, yPos);
+      yPos += lineHeight;
+    }
+
+    yPos += 80;
+
+    // ========================================
+    // TEXTO LEGAL - PÁRRAFO EN CURSIVA (con "«Parágrafo" en negrilla)
+    // ========================================
+    
+    // Primero escribir "«Parágrafo" en negrilla cursiva
+    ctx.font = "bold italic 44px Arial";
+    const palabraParrafo = "«Parágrafo.";
+    ctx.fillText(palabraParrafo, margin, yPos);
+    
+    // Medir el ancho de "«Parágrafo" para continuar desde ahí
+    const anchoParrafo = ctx.measureText(palabraParrafo).width;
+    
+    // Continuar con el resto en cursiva normal
+    ctx.font = "italic 44px Arial";
+    
+    const restoTexto = " Los empleadores deberán facilitar, promover y gestionar una jornada semestral en la que sus empleados puedan compartir con su familia en un espacio suministrado por el empleador o en uno gestionado ante la caja de compensación familiar con la que cuentan los empleados. Si el empleador no logra gestionar esta jornada deberá permitir que los trabajadores tengan este espacio de tiempo con sus familias sin afectar los días de descanso, esto sin perjuicio de acordar el horario laboral complementario»,";
+    
+    const palabrasResto = restoTexto.split(' ');
+    linea = '';
+    let xPos = margin + anchoParrafo + 10; // Empezar después de "«Parágrafo"
+    let primeraLinea = true;
+    
+    for (let palabra of palabrasResto) {
+      const testLinea = linea + palabra + ' ';
+      const metrics = ctx.measureText(testLinea);
+      const anchoDisponible = primeraLinea ? (contentWidth - anchoParrafo - 10) : contentWidth;
+      
+      if (metrics.width > anchoDisponible && linea !== '') {
+        ctx.fillText(linea.trim(), xPos, yPos);
+        yPos += lineHeight;
+        linea = palabra + ' ';
+        xPos = margin;
+        primeraLinea = false;
+      } else {
+        linea = testLinea;
+      }
+    }
+    if (linea.trim() !== '') {
+      ctx.fillText(linea.trim(), xPos, yPos);
+      yPos += lineHeight;
+    }
+
+    yPos += 100;
+
+    // ========================================
+    // NOTIFICACIÓN
+    // ========================================
+    ctx.font = "bold 44px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Se notifica que se le concede un (1) día para compartir con la familia.", margin, yPos);
+    yPos += 120;
+
+    // ========================================
+    // FECHA DEL DÍA DE LA FAMILIA
+    // ========================================
+    // Parsear fechaDiaFamilia que viene en formato DD/MM/YYYY
+    const partesFechaFam = fechaDiaFamilia.split('/');
+    const diaFam = partesFechaFam[0];
+    const mesFam = partesFechaFam[1];
+    const anioFam = partesFechaFam[2];
+    
+    ctx.font = "bold 44px Arial";
+    ctx.fillText("Fecha para la cual se otorga el día de la familia:", margin, yPos);
+    yPos += 65;
+    
+    ctx.font = "44px Arial";
+    ctx.fillText(`Día: ${diaFam}     Mes: ${mesFam}     Año: ${anioFam}`, margin + 100, yPos);
+
+    // ========================================
+    // FIRMAS - COLABORADOR Y GESTIÓN HUMANA
+    // ========================================
+    const firmaY = height - 500;
+    const firmaIzqX = width * 0.30;
+    const firmaDerX = width * 0.70;
+    
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 4;
+
+    // Firma izquierda - Colaborador
+    ctx.beginPath();
+    ctx.moveTo(firmaIzqX - 300, firmaY);
+    ctx.lineTo(firmaIzqX + 300, firmaY);
+    ctx.stroke();
+
+    ctx.font = "bold 44px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Firma del colaborador", firmaIzqX, firmaY + 70);
+    
+    // Espacio para que el colaborador escriba su cédula manualmente
+    ctx.font = "44px Arial";
+    ctx.fillText("C.C. ___________________", firmaIzqX, firmaY + 130);
+
+    // Firma derecha - Gestión Humana
+    ctx.beginPath();
+    ctx.moveTo(firmaDerX - 300, firmaY);
+    ctx.lineTo(firmaDerX + 300, firmaY);
+    ctx.stroke();
+
+    // Agregar firma de Yessica
+    const firmaYessicaPath = path.join(__dirname, "../../public/Firma1.jpg");
+    if (fs.existsSync(firmaYessicaPath)) {
+      try {
+        const firmaYessicaImg = await loadImage(firmaYessicaPath);
+        const firmaWidth = 350;
+        const firmaHeight = (firmaYessicaImg.height / firmaYessicaImg.width) * firmaWidth;
+        ctx.drawImage(firmaYessicaImg, firmaDerX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+      } catch (err) {
+        console.warn("Error al cargar firma de Gestión Humana:", err);
+      }
+    }
+
+    ctx.font = "bold 44px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Firma de Gestión Humana", firmaDerX, firmaY + 70);
+
+    // ========================================
+    // CONVERTIR Y ENVIAR
+    // ========================================
+    const buffer = canvas.toBuffer("image/png");
+    
+    // Incrementar contador
+    usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
+    await usuario.save();
+    
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Disposition", 
+      `attachment; filename="dia_familia_${Uid}_${fechaDiaFamilia.replace(/\//g, '-')}.png"`);
+    res.send(buffer);
+
+  } catch (error: any) {
+    console.error("Error generando certificado día de la familia:", error);
+    res.status(500).json({
+      error: "Error al generar el certificado día de la familia",
       message: error.message || error,
     });
   }

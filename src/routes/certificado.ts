@@ -7,6 +7,8 @@ import {
   generarCertificadoTerminacion,
   generarDesprendiblePago,
   generarCertificadoVacaciones,
+  generarNotificacionVacaciones,
+  generarCertificadoDiaFamilia,
 } from "../controllers/certificado";
 import validateToken from "./validateToken";
 
@@ -32,5 +34,11 @@ router.post("/desprendible", validateToken, generarDesprendiblePago);
 
 // Generar Certificado de Vacaciones
 router.post("/vacaciones", validateToken, generarCertificadoVacaciones);
+
+// Generar Notificación de Vacaciones (solo admin)
+router.post("/notificacion-vacaciones", validateToken, generarNotificacionVacaciones);
+
+// Generar Certificado Día de la Familia
+router.post("/dia-familia", validateToken, generarCertificadoDiaFamilia);
 
 export default router;
