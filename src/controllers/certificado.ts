@@ -451,22 +451,6 @@ function esFestivo(fecha: Date, festivos: Date[]): boolean {
   );
 }
 
-// Función para verificar si es el primer sábado del mes
-function esPrimerSabadoDelMes(fecha: Date): boolean {
-  if (fecha.getDay() !== 6) return false; // No es sábado
-  
-  const primerDia = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-  const diaPrimerDia = primerDia.getDay();
-  
-  // Calcular qué día será el primer sábado
-  let diasHastaPrimerSabado = 6 - diaPrimerDia;
-  if (diasHastaPrimerSabado < 0) diasHastaPrimerSabado += 7;
-  
-  const primerSabado = 1 + diasHastaPrimerSabado;
-  
-  return fecha.getDate() === primerSabado;
-}
-
 // Función para calcular días laborales entre dos fechas
 function calcularDiasLaborales(fechaInicio: Date, fechaFin: Date): number {
   let diasLaborales = 0;
@@ -494,7 +478,6 @@ function calcularDiasLaborales(fechaInicio: Date, fechaFin: Date): number {
     const diaSemana = currentDate.getDay();
     const diaStr = currentDate.toLocaleDateString('es-CO');
     const esFestivoHoy = esFestivo(currentDate, festivos);
-    const esPrimerSabado = esPrimerSabadoDelMes(currentDate);
     
     let esLaboral = false;
     let razon = '';
@@ -504,16 +487,8 @@ function calcularDiasLaborales(fechaInicio: Date, fechaFin: Date): number {
       // Domingo - NO es laboral
       razon = '❌ Domingo';
     } else if (diaSemana === 6) {
-      // Sábado - solo es laboral si es el primer sábado del mes Y no es festivo
-      if (esPrimerSabado && !esFestivoHoy) {
-        esLaboral = true;
-        razon = '✅ Primer sábado del mes (LABORAL)';
-        diasLaborales++;
-      } else if (esPrimerSabado && esFestivoHoy) {
-        razon = '❌ Primer sábado pero es festivo';
-      } else {
-        razon = '❌ Sábado no laboral';
-      }
+      // Sábado - NO es laboral (ya no se cuenta ningún sábado)
+      razon = '❌ Sábado';
     } else {
       // Lunes a Viernes - es laboral si no es festivo
       if (!esFestivoHoy) {
