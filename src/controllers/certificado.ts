@@ -166,6 +166,30 @@ const formatDateSimple = (date: Date): string => {
   return `${day} de ${month} de ${year}`;
 };
 
+// Función para formatear fecha en formato "X días del mes de Y de Z"
+const formatDateForSignature = (date: Date): string => {
+  const months = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
+
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${day} días del mes de ${month} de ${year}`;
+};
+
 // Datos de las empresas
 const empresasData: any = {
   AP: {
@@ -301,6 +325,62 @@ function wrapText(
   }
   ctx.fillText(line, x, yPos);
   return yPos;
+}
+
+// Función auxiliar para escribir texto justificado
+function wrapTextJustified(
+  ctx: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number
+) {
+  const words = text.split(" ");
+  let lines: string[] = [];
+  let line = "";
+
+  // Primero, dividir el texto en líneas
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + " ";
+    const metrics = ctx.measureText(testLine);
+    const testWidth = metrics.width;
+
+    if (testWidth > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + " ";
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line.trim()); // Última línea
+
+  let yPos = y;
+
+  // Dibujar cada línea
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i];
+    const lineWords = currentLine.split(" ");
+    
+    // La última línea no se justifica
+    if (i === lines.length - 1 || lineWords.length === 1) {
+      ctx.fillText(currentLine, x, yPos);
+    } else {
+      // Justificar la línea
+      const totalWordsWidth = lineWords.reduce((acc, word) => acc + ctx.measureText(word).width, 0);
+      const totalSpaceWidth = maxWidth - totalWordsWidth;
+      const spaceWidth = totalSpaceWidth / (lineWords.length - 1);
+      
+      let currentX = x;
+      for (let j = 0; j < lineWords.length; j++) {
+        ctx.fillText(lineWords[j], currentX, yPos);
+        currentX += ctx.measureText(lineWords[j]).width + spaceWidth;
+      }
+    }
+    yPos += lineHeight;
+  }
+  
+  return yPos - lineHeight; // Retornar la posición Y de la última línea
 }
 
 // Función para obtener festivos de Colombia 2025-2026
@@ -1111,6 +1191,8 @@ export const generarCertificadoCesantias = async (
     const conceptoRetiro = req.query.conceptoRetiro as string || 'TERMINACIÓN DEL CONTRATO DE TRABAJO';
     const valorAutorizado = req.query.valorAutorizado as string || 'RETIRO TOTAL';
     const causa = req.query.causa as string || 'RETIRO CON INJUSTA CAUSA';
+    // Fecha de retiro del trabajador (solo para terminación de contrato)
+    const fechaRetiroCesantias = req.query.fechaRetiroCesantias as string || '';
     
     // Crear canvas
     const width = 2480;
@@ -1209,6 +1291,18 @@ export const generarCertificadoCesantias = async (
     
     yPos += 75;
     ctx.fillText(`CAUSA: ${causa.toUpperCase()}`, marginLeft, yPos);
+
+    // Si es terminación de contrato y hay fecha de retiro, mostrarla
+    if (conceptoRetiro.toUpperCase().includes('TERMINACIÓN') && fechaRetiroCesantias) {
+      yPos += 75;
+      // Formatear la fecha de retiro si viene en formato YYYY-MM-DD
+      let fechaRetiroFormateada = fechaRetiroCesantias;
+      if (fechaRetiroCesantias.includes('-')) {
+        const [year, month, day] = fechaRetiroCesantias.split('-');
+        fechaRetiroFormateada = `${day}/${month}/${year}`;
+      }
+      ctx.fillText(`FECHA DE RETIRO DEL TRABAJADOR: ${fechaRetiroFormateada}`, marginLeft, yPos);
+    }
 
     yPos += 180;
 
@@ -1495,7 +1589,7 @@ export const generarCertificadoTerminacion = async (
       ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
     }
 
-    // Título - más profesional y espaciado
+    // Título - cambiado a CERTIFICADO LABORAL
     ctx.font = "bold 95px 'Helvetica'";
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
@@ -1504,31 +1598,31 @@ export const generarCertificadoTerminacion = async (
     let tituloY = 900;
     if (empresaSeleccionada === 'ME') tituloY = 950;
     
-    ctx.fillText("CERTIFICADO DE TERMINACIÓN", width / 2, tituloY);
-    ctx.fillText("DE CONTRATO", width / 2, tituloY + 120);
+    ctx.fillText("CERTIFICADO LABORAL", width / 2, tituloY);
 
     // Info empresa - más abajo y con mejor espaciado
     ctx.font = "bold 56px 'Helvetica'";
-    ctx.fillText(empresaData.nombre, width / 2, tituloY + 300);
+    ctx.fillText(empresaData.nombre, width / 2, tituloY + 200);
     if (empresaData.nit) {
       ctx.font = "bold 46px 'Helvetica'";
-      ctx.fillText(empresaData.nit, width / 2, tituloY + 370);
+      ctx.fillText(empresaData.nit, width / 2, tituloY + 270);
     }
 
     // Contenido - mejor distribuido con más espacio entre secciones
     const marginLeft = 300;
     const contentWidth = width - 600;
-    let yPos = tituloY + 550; // Más espacio después del nombre de la empresa
+    let yPos = tituloY + 450; // Más espacio después del nombre de la empresa
 
     ctx.textAlign = "left";
     ctx.font = "46px 'Helvetica'"; // Texto ligeramente más grande para mejor lectura
     
     const parrafo = `Por medio de la presente, hacemos constar que el (la) señor (a) ${nombreCompleto.toUpperCase()}, identificado (a) con CÉDULA DE CIUDADANÍA ${cedula}, ${textoTerminacion}`;
     
-    yPos = wrapText(ctx, parrafo, marginLeft, yPos, contentWidth, 80) + 150;
+    // Usar texto justificado
+    yPos = wrapTextJustified(ctx, parrafo, marginLeft, yPos, contentWidth, 80) + 150;
 
-    const parrafo2 = `Para constancia, se firma a los ${formatDateSimple(new Date())}.`;
-    wrapText(ctx, parrafo2, marginLeft, yPos, contentWidth, 80);
+    const parrafo2 = `Para constancia, se firma a los ${formatDateForSignature(new Date())}.`;
+    wrapTextJustified(ctx, parrafo2, marginLeft, yPos, contentWidth, 80);
 
     // Firma - MUCHO MÁS ABAJO, casi al final
     const firmaY = height - 450; // Casi al borde inferior
@@ -1984,6 +2078,13 @@ export const generarCertificadoVacaciones = async (
           error: `Mínimo 6 días laborales de vacaciones para áreas diferentes a Gestión Administrativa. Días laborales calculados: ${diasReales}` 
         });
       }
+    } else {
+      // Para Gestión Administrativa, mínimo 3 días
+      if (diasReales < 3) {
+        return res.status(400).json({ 
+          error: `Mínimo 3 días laborales de vacaciones para Gestión Administrativa. Días laborales calculados: ${diasReales}` 
+        });
+      }
     }
 
     // Configuración de canvas
@@ -2254,7 +2355,8 @@ export const generarNotificacionVacaciones = async (
       diasSolicitados,
       ciudad,
       fechaNotificacion,
-      periodoVacaciones // Nuevo campo para el período (ej: "2024-2025")
+      periodoVacaciones, // Nuevo campo para el período (ej: "2024-2025")
+      solicitaCabana // Nuevo campo para solicitud de cabaña
     } = req.body;
 
     if (!Uid || !fechaInicio || !fechaFin || !diasSolicitados) {
