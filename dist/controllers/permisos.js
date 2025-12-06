@@ -26,7 +26,7 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (err) {
             return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
         }
-        const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, tipo, horaEntrada, horaSalida, observaciones } = req.body;
+        const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, fechaFin, tipo, horaEntrada, horaSalida, observaciones, diasLaborales } = req.body;
         const soporte = req.file ? req.file.buffer : null;
         const Uid = parseInt(req.body.Uid, 10);
         const novedad = false;
@@ -42,13 +42,17 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             });
         }
         try {
+            // Determinar si es un permiso de rango (varios días)
+            const esPermisoRango = fechaFin && fechaFin !== fecha;
+            const fechaInicioDate = new Date(fecha + 'T12:00:00');
+            const fechaFinDate = esPermisoRango ? new Date(fechaFin + 'T12:00:00') : fechaInicioDate;
             // Crear permiso asociado al usuario
             const newPermiso = yield permisos_1.Permiso.create({
                 emailPersonal,
                 emailLider,
                 nombre,
                 numeroDocumento,
-                fecha,
+                fecha: fechaInicioDate,
                 tipo,
                 horaSalida,
                 horaEntrada,
@@ -57,19 +61,33 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 novedad,
                 Uid,
             });
-            // Agregar permiso a Google Sheets
+            // Agregar permiso a Google Sheets (solo UNA VEZ)
             yield (0, googleSheets_1.appendPermisoToSheet)({
                 fecha,
                 nombre,
                 numeroDocumento,
-                tipo,
+                tipo: esPermisoRango ? `${tipo} (${diasLaborales || 'varios'} días)` : tipo,
                 horaEntrada,
                 horaSalida,
-                observaciones,
+                observaciones: esPermisoRango ? `${observaciones}\n\nFecha fin: ${fechaFin}` : observaciones,
             });
-            //Envía correo electrónico al lider 
+            // Enviar correo electrónico al líder (solo UNA VEZ)
             const subject = 'Nuevo Permiso Solicitado';
-            const text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.\n Fecha de salida: ${fecha}.\n Hora de salida: ${horaSalida}.\n Hora de regreso: ${horaEntrada}.\n\n Observaciones: ${observaciones}`;
+            let text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.`;
+            if (esPermisoRango) {
+                text += `\n Fecha de inicio: ${fecha}.\n Fecha de fin: ${fechaFin}.`;
+                if (diasLaborales) {
+                    text += `\n Días laborales: ${diasLaborales}.`;
+                }
+            }
+            else {
+                text += `\n Fecha: ${fecha}.`;
+            }
+            if (horaSalida)
+                text += `\n Hora de salida: ${horaSalida}.`;
+            if (horaEntrada)
+                text += `\n Hora de regreso: ${horaEntrada}.`;
+            text += `\n\n Observaciones: ${observaciones}`;
             const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
             yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
             res.status(200).json({

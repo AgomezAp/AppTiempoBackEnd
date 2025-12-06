@@ -2549,8 +2549,87 @@ export const generarNotificacionVacaciones = async (
     yPos += 120;
 
     // ========================================
+    // NOTA ESPECIAL SI SOLICITA CABAÑA
+    // ========================================
+    if (solicitaCabana) {
+      yPos += 60; // Espacio adicional antes de la nota
+      
+      // Texto de la nota especial
+      const notaCabana = 'Teniendo en cuenta que en su solicitud de vacaciones, manifestó que aplicará al beneficio de uso de cabaña y al bono de alimentación que la empresa otorga para este periodo, se procederá con la gestión correspondiente para la asignación de la cabaña y la entrega del bono de alimentación, conforme a las políticas internas vigentes.';
+      
+      // Recuadro con fondo amarillo claro
+      const paddingBox = 40;
+      const boxStartY = yPos - paddingBox;
+      
+      // Calcular altura del recuadro basado en líneas de texto
+      const palabrasNota = notaCabana.split(' ');
+      let lineaNota = '';
+      let numLineas = 0;
+      
+      for (let palabra of palabrasNota) {
+        const testLinea = lineaNota + palabra + ' ';
+        const metrics = ctx.measureText(testLinea);
+        
+        if (metrics.width > (contentWidth - paddingBox * 2) && lineaNota !== '') {
+          numLineas++;
+          lineaNota = palabra + ' ';
+        } else {
+          lineaNota = testLinea;
+        }
+      }
+      if (lineaNota.trim() !== '') {
+        numLineas++;
+      }
+      
+      const boxHeight = (numLineas * lineHeight) + (paddingBox * 2);
+      
+      // Dibujar recuadro
+      ctx.fillStyle = "#FFF9E6";
+      ctx.fillRect(margin - 30, boxStartY, contentWidth + 60, boxHeight);
+      
+      // Borde del recuadro
+      ctx.strokeStyle = "#FFD600";
+      ctx.lineWidth = 5;
+      ctx.strokeRect(margin - 30, boxStartY, contentWidth + 60, boxHeight);
+      
+      // Título de la nota
+      ctx.font = "bold 50px Arial";
+      ctx.fillStyle = "#B8860B";
+      ctx.textAlign = "left";
+      ctx.fillText("📋 NOTA IMPORTANTE:", margin, yPos);
+      yPos += lineHeight + 20;
+      
+      // Texto de la nota
+      ctx.font = "46px Arial";
+      ctx.fillStyle = "#000000";
+      
+      lineaNota = '';
+      for (let palabra of palabrasNota) {
+        const testLinea = lineaNota + palabra + ' ';
+        const metrics = ctx.measureText(testLinea);
+        
+        if (metrics.width > (contentWidth - paddingBox * 2) && lineaNota !== '') {
+          ctx.fillText(lineaNota.trim(), margin, yPos);
+          yPos += lineHeight;
+          lineaNota = palabra + ' ';
+        } else {
+          lineaNota = testLinea;
+        }
+      }
+      if (lineaNota.trim() !== '') {
+        ctx.fillText(lineaNota.trim(), margin, yPos);
+        yPos += lineHeight;
+      }
+      
+      yPos += paddingBox; // Espacio después del recuadro
+    }
+
+    // ========================================
     // AGRADECIMIENTO
     // ========================================
+    ctx.font = "48px Arial";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#000000";
     ctx.fillText("Agradezco su compromiso con la empresa y le deseo felices vacaciones.", margin, yPos);
     
     // ========================================

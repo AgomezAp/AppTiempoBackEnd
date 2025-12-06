@@ -120,7 +120,8 @@ export const appendPermisoToSheet = async (permisoData: {
     }
 
     const sheets = authenticateGoogleSheets();
-    const fecha = new Date(permisoData.fecha);
+    // Crear fecha desde string ISO agregando la hora para evitar problemas de zona horaria
+    const fecha = new Date(permisoData.fecha + 'T12:00:00');
     const sheetName = await getOrCreateWeekSheet(fecha);
 
     // Formatear fecha para mostrar

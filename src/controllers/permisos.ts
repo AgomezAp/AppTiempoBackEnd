@@ -18,7 +18,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
     }
 
-    const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, tipo, horaEntrada, horaSalida, observaciones } = req.body;
+    const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, fechaFin, tipo, horaEntrada, horaSalida, observaciones, diasLaborales } = req.body;
     const soporte = req.file ? req.file.buffer : null;
     const Uid = parseInt(req.body.Uid, 10);
     const novedad = false;
@@ -37,13 +37,18 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     }
 
     try {
+      // Determinar si es un permiso de rango (varios días)
+      const esPermisoRango = fechaFin && fechaFin !== fecha;
+      const fechaInicioDate = new Date(fecha + 'T12:00:00');
+      const fechaFinDate = esPermisoRango ? new Date(fechaFin + 'T12:00:00') : fechaInicioDate;
+      
       // Crear permiso asociado al usuario
       const newPermiso = await Permiso.create({
         emailPersonal,
         emailLider,
         nombre,
         numeroDocumento,
-        fecha,
+        fecha: fechaInicioDate,
         tipo,
         horaSalida,
         horaEntrada,
@@ -53,20 +58,34 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         Uid,
       });
 
-      // Agregar permiso a Google Sheets
+      // Agregar permiso a Google Sheets (solo UNA VEZ)
       await appendPermisoToSheet({
         fecha,
         nombre,
         numeroDocumento,
-        tipo,
+        tipo: esPermisoRango ? `${tipo} (${diasLaborales || 'varios'} días)` : tipo,
         horaEntrada,
         horaSalida,
-        observaciones,
+        observaciones: esPermisoRango ? `${observaciones}\n\nFecha fin: ${fechaFin}` : observaciones,
       });
 
-      //Envía correo electrónico al lider 
+      // Enviar correo electrónico al líder (solo UNA VEZ)
       const subject = 'Nuevo Permiso Solicitado';
-      const text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.\n Fecha de salida: ${fecha}.\n Hora de salida: ${horaSalida}.\n Hora de regreso: ${horaEntrada}.\n\n Observaciones: ${observaciones}`;
+      let text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.`;
+      
+      if (esPermisoRango) {
+        text += `\n Fecha de inicio: ${fecha}.\n Fecha de fin: ${fechaFin}.`;
+        if (diasLaborales) {
+          text += `\n Días laborales: ${diasLaborales}.`;
+        }
+      } else {
+        text += `\n Fecha: ${fecha}.`;
+      }
+      
+      if (horaSalida) text += `\n Hora de salida: ${horaSalida}.`;
+      if (horaEntrada) text += `\n Hora de regreso: ${horaEntrada}.`;
+      text += `\n\n Observaciones: ${observaciones}`;
+      
       const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
       await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
 
