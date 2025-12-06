@@ -2287,10 +2287,9 @@ export const generarCertificadoVacaciones = async (
     // Texto de firma - centrado y espaciado
     ctx.font = "bold 44px Helvetica";
     ctx.textAlign = "center";
-    ctx.fillText("Firma y Sello Autorizado", width / 2, firmaY + 70);
+    ctx.fillText("Firma del trabajador", width / 2, firmaY + 70);
     
     ctx.font = "42px Helvetica";
-    ctx.fillText("Recursos Humanos", width / 2, firmaY + 130);
     
     // Pie de página con línea decorativa - más abajo
     const footerY = height - 240;
@@ -2303,7 +2302,6 @@ export const generarCertificadoVacaciones = async (
     
     ctx.font = "36px Helvetica";
     ctx.fillStyle = "#666666";
-    ctx.fillText("Documento válido solo con firma y sello", width / 2, footerY + 50);
 
     // Convertir y enviar
     const buffer = canvas.toBuffer("image/png");
