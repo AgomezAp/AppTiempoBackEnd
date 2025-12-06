@@ -1439,6 +1439,17 @@ export const generarCertificadoCesantias = async (
       }
     }
 
+    // ========================================
+    // NIT/CC DE LA EMPRESA DEBAJO DE LOS ICONOS
+    // ========================================
+    if (empresaData.nit && empresaData.nit.trim() !== '') {
+      const nitY = footerY + 60; // Debajo de los iconos
+      ctx.font = "bold 38px 'Helvetica'";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#000000";
+      ctx.fillText(empresaData.nit, width / 2, nitY);
+    }
+
     // Convertir y enviar
     const buffer = canvas.toBuffer("image/png");
     
