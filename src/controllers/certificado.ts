@@ -2985,10 +2985,6 @@ export const generarCertificadoDiaFamilia = async (
     ctx.textAlign = "center";
     ctx.fillText("Firma del colaborador", firmaIzqX, firmaY + 70);
     
-    // Espacio para que el colaborador escriba su cédula manualmente
-    ctx.font = "44px Arial";
-    ctx.fillText("C.C. ___________________", firmaIzqX, firmaY + 130);
-
     // Firma derecha - Gestión Humana
     ctx.beginPath();
     ctx.moveTo(firmaDerX - 300, firmaY);
