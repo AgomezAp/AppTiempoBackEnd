@@ -20,8 +20,11 @@ router.get("/:Uid", validateToken, generarCertificadoLaboral);
 // Generar certificado en formato HTML (para visualizar o imprimir)
 router.get("/:Uid/html", validateToken, generarCertificadoHTML);
 
-// Generar certificado como IMAGEN PNG (seguro y no editable)
+// Generar certificado como IMAGEN (ahora devuelve PDF empaquetado)
 router.get("/:Uid/imagen", validateToken, generarCertificadoImagen);
+
+// Ruta explícita para descargar PDF (compatibilidad)
+router.get("/:Uid/pdf", validateToken, generarCertificadoImagen);
 
 // Generar certificado de Cesantías
 router.get("/:Uid/cesantias", validateToken, generarCertificadoCesantias);

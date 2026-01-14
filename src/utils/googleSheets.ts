@@ -23,7 +23,12 @@ const authenticateGoogleSheets = () => {
  */
 const getWeekOfMonth = (fecha: Date): number => {
   const day = fecha.getDate();
-  return Math.ceil(day / 7);
+  // Obtener el día de la semana del primer día del mes (0=domingo..6=sábado)
+  const firstDay = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+  const firstWeekday = firstDay.getDay();
+  // Calcular la semana del mes considerando semanas que empiezan en domingo
+  // Ejemplo: si el mes empieza en jueves (4) y el día es 11 -> (11 + 4)/7 = 15/7 = 2.14 -> ceil = 3
+  return Math.ceil((day + firstWeekday) / 7);
 };
 
 /**
@@ -32,6 +37,191 @@ const getWeekOfMonth = (fecha: Date): number => {
 const getMonthName = (fecha: Date): string => {
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   return months[fecha.getMonth()];
+};
+
+// Convierte índice 0-based a letra de columna (0 -> A)
+const colIndexToLetter = (index: number) => {
+  let letter = '';
+  let i = index + 1;
+  while (i > 0) {
+    const mod = (i - 1) % 26;
+    letter = String.fromCharCode(65 + mod) + letter;
+    i = Math.floor((i - mod) / 26);
+  }
+  return letter;
+};
+
+/**
+ * Actualiza/añade un resumen en columnas empezando desde la columna L:
+ * - Si ya existe una columna con la fecha (fila 1), añade el detalle en la primer fila vacía desde la fila 2.
+ * - Si no existe, usa la siguiente columna libre desde L, escribe la fecha en fila1 y el detalle en fila2.
+ */
+const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string, permisoData: any) => {
+  const sheets = authenticateGoogleSheets();
+  // Leer encabezados desde L1 hasta AZ1 (suficiente rango amplio)
+  const startColIndex = 11; // L = 12th column -> index 11
+  const headerRange = `${sheetName}!L1:AZ1`;
+  const headerRes = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
+  const headers = (headerRes.data.values && headerRes.data.values[0]) ? headerRes.data.values[0] : [];
+  // Convertir fecha dd/mm/yyyy a Date
+  const parseFecha = (s: string) => {
+    const parts = String(s).split('/');
+    if (parts.length !== 3) return null;
+    return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+  };
+
+  // Construir array de fechas existentes junto con su índice
+  const headerDates: Array<{ idx: number; date: Date | null; raw: string }> = headers.map((h: string, i: number) => ({ idx: i, date: parseFecha(h), raw: h }));
+
+  const targetDate = parseFecha(fechaFormateada);
+  // Si no se pudo parsear targetDate, fallback a comportamiento anterior: usar primera columna libre
+  if (!targetDate) {
+    let colOffset = headers.findIndex((h: string) => !h || String(h).trim() === '');
+    colOffset = colOffset === -1 ? headers.length : colOffset;
+    const targetColIndex = startColIndex + colOffset;
+    const targetColLetter = colIndexToLetter(targetColIndex);
+    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
+    const detail = buildDetailTexto(permisoData);
+    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+  } else {
+    // Buscar si ya existe columna con la misma fecha exacta
+    const existing = headerDates.find(hd => hd.raw === fechaFormateada);
+    if (existing) {
+      const colOffset = existing.idx;
+      const targetColIndex = startColIndex + colOffset;
+      const targetColLetter = colIndexToLetter(targetColIndex);
+      // encontrar primera fila vacía desde la fila 2
+      const colRange = `${sheetName}!${targetColLetter}2:${targetColLetter}`;
+      const colRes = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: colRange });
+      const colValues = colRes.data.values || [];
+      let emptyRow = 2;
+      for (let i = 0; i < colValues.length; i++) {
+        const v = colValues[i]?.[0];
+        if (!v || v === '') { emptyRow = 2 + i; break; }
+        emptyRow = 2 + i + 1;
+      }
+      const detail = buildDetailTexto(permisoData);
+      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}${emptyRow}`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+    } else {
+      // No existe: calcular posición de inserción para mantener headers ordenados ascendente
+      // Encontrar el primer header cuya fecha sea mayor que targetDate
+      let insertAt = headerDates.findIndex(hd => hd.date !== null && (hd.date as Date).getTime() > targetDate.getTime());
+      if (insertAt === -1) insertAt = headers.length; // al final
+
+      // Insertar columna en la posición (startColIndex + insertAt)
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+      const sheetMeta = meta.data.sheets?.find(s => s.properties?.title === sheetName);
+      const sheetId = sheetMeta?.properties?.sheetId;
+      if (sheetId === undefined) throw new Error('No sheetId');
+
+      const insertIndex = startColIndex + insertAt;
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [
+            {
+              insertDimension: {
+                range: {
+                  sheetId: sheetId,
+                  dimension: 'COLUMNS',
+                  startIndex: insertIndex,
+                  endIndex: insertIndex + 1,
+                },
+                inheritFromBefore: false,
+              },
+            },
+          ],
+        },
+      });
+
+      const targetColLetter = colIndexToLetter(insertIndex);
+      // Escribir fecha y detalle
+      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
+      const detail = buildDetailTexto(permisoData);
+      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+
+      // Aplicar formato (wrap + ancho) a la nueva columna
+      try {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          requestBody: {
+            requests: [
+              {
+                repeatCell: {
+                  range: { sheetId: sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: insertIndex, endColumnIndex: insertIndex + 1 },
+                  cell: { userEnteredFormat: { wrapStrategy: 'WRAP', verticalAlignment: 'TOP' } },
+                  fields: 'userEnteredFormat.wrapStrategy,userEnteredFormat.verticalAlignment',
+                },
+              },
+              {
+                updateDimensionProperties: {
+                  range: { sheetId: sheetId, dimension: 'COLUMNS', startIndex: insertIndex, endIndex: insertIndex + 1 },
+                  properties: { pixelSize: 280 },
+                  fields: 'pixelSize',
+                },
+              },
+            ],
+          },
+        });
+      } catch (err) {
+        console.warn('No se pudo formatear columna insertada:', err);
+      }
+    }
+  }
+
+  // Formateo final ya se aplica en las ramas donde se inserta/usa la columna.
+};
+
+const buildDetailTexto = (permisoData: any) => {
+  // Construir el texto del permiso sin incluir el número de documento
+  const parts: string[] = [];
+  if (permisoData.nombre) parts.push(permisoData.nombre);
+  if (permisoData.tipo) parts.push(`Tipo: ${permisoData.tipo}`);
+  if (permisoData.horaEntrada) parts.push(`Entrada: ${permisoData.horaEntrada}`);
+  if (permisoData.horaSalida) parts.push(`Salida: ${permisoData.horaSalida}`);
+  if (permisoData.observaciones) parts.push(permisoData.observaciones);
+  return parts.join('\n');
+};
+
+/**
+ * Aplica wrap (ajustar texto) a las columnas A:G de la hoja indicada.
+ */
+const applyWrapToMainTable = async (sheetName: string) => {
+  const sheets = authenticateGoogleSheets();
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const sheetMeta = meta.data.sheets?.find(s => s.properties?.title === sheetName);
+    const sheetId = sheetMeta?.properties?.sheetId;
+    if (sheetId === undefined) return;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 0,
+                endRowIndex: 1000,
+                startColumnIndex: 0,
+                endColumnIndex: 7,
+              },
+              cell: {
+                userEnteredFormat: {
+                  wrapStrategy: 'WRAP',
+                  verticalAlignment: 'TOP',
+                },
+              },
+              fields: 'userEnteredFormat.wrapStrategy,userEnteredFormat.verticalAlignment',
+            },
+          },
+        ],
+      },
+    });
+  } catch (err) {
+    console.warn('No se pudo aplicar wrap a A:G:', err);
+  }
 };
 
 /**
@@ -87,6 +277,13 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
         ],
       },
     });
+
+    // Aplicar wrap (ajustar texto) a las columnas principales A:G
+    try {
+      await applyWrapToMainTable(sheetName);
+    } catch (err) {
+      console.warn('No se pudo aplicar wrap al crear la hoja:', err);
+    }
 
     console.log(`✓ Hoja creada con éxito: ${sheetName}`);
     return sheetName;
@@ -146,6 +343,20 @@ export const appendPermisoToSheet = async (permisoData: {
         ],
       },
     });
+
+    // Asegurar que la tabla principal A:G tenga ajuste de texto
+    try {
+      await applyWrapToMainTable(sheetName);
+    } catch (err) {
+      console.warn('Error aplicando wrap a A:G:', err);
+    }
+
+    // Actualizar resumen en columnas empezando en L (fecha en fila1, detalle en filas siguientes, sin cédula)
+    try {
+      await updateSummaryInColumnL(sheetName, fechaFormateada, permisoData);
+    } catch (err) {
+      console.warn('Error actualizando resumen en L:', err);
+    }
 
     console.log(`Permiso agregado a Google Sheets: ${sheetName}`);
   } catch (error) {

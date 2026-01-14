@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { User } from "../models/user";
 import { Area } from "../models/area";
 import { createCanvas, loadImage, registerFont } from "canvas";
+import PdfPrinter from 'pdfmake';
 import path from "path";
 import fs from "fs";
 import NominaConfig from "../models/nominaConfig";
@@ -113,6 +114,41 @@ const numberToWords = (num: number): string => {
   }
 
   return words.trim().charAt(0).toUpperCase() + words.trim().slice(1);
+};
+
+// Helper: convierte un canvas a PNG buffer, lo envuelve en un PDF y lo envía al cliente
+const sendCanvasAsPdf = async (res: Response, canvas: any, filenameBase: string) => {
+  const buffer = canvas.toBuffer('image/png');
+  const imageData = 'data:image/png;base64,' + buffer.toString('base64');
+
+  const fonts = {
+    Helvetica: {
+      normal: 'Helvetica',
+      bold: 'Helvetica-Bold',
+      italics: 'Helvetica-Oblique',
+      bolditalics: 'Helvetica-BoldOblique'
+    }
+  };
+
+  const printer = new PdfPrinter(fonts);
+  const docDefinition: any = {
+    pageSize: 'A4',
+    pageMargins: [0, 0, 0, 0],
+    content: [ { image: imageData, width: 595 } ],
+  };
+
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+  const chunks: any[] = [];
+  pdfDoc.on('data', (chunk) => chunks.push(chunk));
+  const pdfBuffer: Buffer = await new Promise((resolve, reject) => {
+    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+    pdfDoc.on('error', (err: any) => reject(err));
+    pdfDoc.end();
+  });
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.pdf"`);
+  res.send(pdfBuffer);
 };
 
 // Función para formatear fecha en español
@@ -903,26 +939,10 @@ export const generarCertificadoImagen = async (
       }
     }
 
-    // ========================================
-    // CONVERTIR Y ENVIAR IMAGEN
-    // ========================================
-    console.log("🖼️ Convirtiendo canvas a PNG...");
-    const buffer = canvas.toBuffer("image/png");
-    console.log("✅ Buffer generado, tamaño:", buffer.length, "bytes");
-
-    // Incrementar contador de certificados generados
+    // Enviar como PDF usando helper
     usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
     await usuario.save();
-    console.log("✅ Contador de certificados actualizado:", usuario.certificadosGenerados);
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="certificado_${usuario.name}_${usuario.lastName}.png"`
-    );
-    console.log("📤 Enviando imagen PNG al cliente...");
-    res.send(buffer);
-    console.log("✅ CERTIFICADO ENVIADO CORRECTAMENTE");
+    await sendCanvasAsPdf(res, canvas, `certificado_${usuario.name}_${usuario.lastName}`);
   } catch (error: any) {
     console.error("❌❌❌ ERROR GENERANDO CERTIFICADO:", error);
     console.error("Stack:", error.stack);
@@ -1450,9 +1470,7 @@ export const generarCertificadoCesantias = async (
       ctx.fillText(empresaData.nit, width / 2, nitY);
     }
 
-    // Convertir y enviar
-    const buffer = canvas.toBuffer("image/png");
-    
+    // Convertir y enviar como PDF
     // Incrementar contador de certificados generados SOLO en la primera versión (sin firma)
     // Para evitar contar 2 veces cuando se generan ambas versiones (digital + manual)
     if (conFirma === 'false' || !conFirma) {
@@ -1460,10 +1478,8 @@ export const generarCertificadoCesantias = async (
       await usuario.save();
       console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
     }
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", `attachment; filename="cesantias_${Uid}.png"`);
-    res.send(buffer);
+
+    await sendCanvasAsPdf(res, canvas, `cesantias_${Uid}`);
 
   } catch (error: any) {
     console.error("Error generando certificado de cesantías:", error);
@@ -1681,20 +1697,13 @@ export const generarCertificadoTerminacion = async (
 
     // NO INCLUIR FOOTER DE CONTACTO PARA TERMINACIÓN
 
-    // Convertir y enviar
-    const buffer = canvas.toBuffer("image/png");
-    
-    // Incrementar contador de certificados generados SOLO en la primera versión (sin firma)
-    // Para evitar contar 2 veces cuando se generan ambas versiones (digital + manual)
+    // Enviar como PDF usando helper (mantener la lógica de incremento condicional)
     if (conFirma === 'false' || !conFirma) {
       usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
       await usuario.save();
       console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
     }
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", `attachment; filename="terminacion_${Uid}.png"`);
-    res.send(buffer);
+    await sendCanvasAsPdf(res, canvas, `terminacion_${Uid}`);
 
   } catch (error: any) {
     console.error("Error generando certificado de terminación:", error);
@@ -1980,16 +1989,10 @@ export const generarDesprendiblePago = async (
     ctx.textAlign = "right";
     ctx.fillText(formatCurrency(totalPagar), margin + contentWidth - 30, totalY + 52);
 
-    // Convertir y enviar
-    const buffer = canvas.toBuffer("image/png");
-    
-    // Incrementar contador de certificados generados
+    // Enviar como PDF usando helper
     usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
     await usuario.save();
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", `attachment; filename="desprendible_${Uid}_${fechaPago.replace(/\//g, '-')}.png"`);
-    res.send(buffer);
+    await sendCanvasAsPdf(res, canvas, `desprendible_${Uid}_${fechaPago.replace(/\//g, '-')}`);
 
   } catch (error: any) {
     console.error("Error generando desprendible de pago:", error);
@@ -2238,35 +2241,7 @@ export const generarCertificadoVacaciones = async (
 
     // ========================================
     // SOLICITUD DE CABAÑA - BIEN ESPACIADO CON CAJA MÁS ALTA
-    // ========================================
-    if (solicitaCabana) {
-      currentY += 60; // Más espacio antes
-      
-      const paddingTop = 80; // Espacio interno superior
-      const paddingBottom = 80; // Espacio interno inferior
-      const boxHeight = 280; // Caja más alta (antes 220)
-      
-      // Recuadro con fondo amarillo
-      ctx.fillStyle = "#FFF9E6";
-      ctx.fillRect(margin - 30, currentY - paddingTop, contentWidth + 60, boxHeight);
-      
-      // Borde del recuadro
-      ctx.strokeStyle = "#FFD600";
-      ctx.lineWidth = 5;
-      ctx.strokeRect(margin - 30, currentY - paddingTop, contentWidth + 60, boxHeight);
-      
-      ctx.font = "bold 46px Helvetica";
-      ctx.fillStyle = "#B8860B";
-      ctx.fillText(`🏡 SOLICITA CABAÑA DE DESCANSO`, margin, currentY);
-      currentY += lineHeight;
-      
-      ctx.font = "42px Helvetica";
-      ctx.fillStyle = "#000000";
-      ctx.fillText(`El empleado ha solicitado hacer uso de la cabaña de la empresa`, margin, currentY);
-      currentY += lineHeight;
-      ctx.fillText(`durante el período de vacaciones.`, margin, currentY);
-      currentY += lineHeight + paddingBottom; // Más espacio después
-    }
+   
 
     // ========================================
     // FIRMAS - BIEN UBICADAS AL FINAL CON MÁS ESPACIO
@@ -2303,17 +2278,10 @@ export const generarCertificadoVacaciones = async (
     ctx.font = "36px Helvetica";
     ctx.fillStyle = "#666666";
 
-    // Convertir y enviar
-    const buffer = canvas.toBuffer("image/png");
-    
-    // Incrementar contador
+    // Enviar como PDF usando helper
     usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
     await usuario.save();
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", 
-      `attachment; filename="vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}.png"`);
-    res.send(buffer);
+    await sendCanvasAsPdf(res, canvas, `vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}`);
 
   } catch (error: any) {
     console.error("Error generando certificado de vacaciones:", error);
@@ -2705,15 +2673,8 @@ export const generarNotificacionVacaciones = async (
       ctx.fillText("📍 Pereira, Risaralda - Colombia     ☎ (+57) 324 234 1917     ✉ andrespublicidadtg@gmail.com", width / 2, footerY);
     }
 
-    // ========================================
-    // CONVERTIR Y ENVIAR
-    // ========================================
-    const buffer = canvas.toBuffer("image/png");
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", 
-      `attachment; filename="notificacion_vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}.png"`);
-    res.send(buffer);
+    // Enviar como PDF usando helper
+    await sendCanvasAsPdf(res, canvas, `notificacion_vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}`);
 
   } catch (error: any) {
     console.error("Error generando notificación de vacaciones:", error);
@@ -3011,16 +2972,10 @@ export const generarCertificadoDiaFamilia = async (
     // ========================================
     // CONVERTIR Y ENVIAR
     // ========================================
-    const buffer = canvas.toBuffer("image/png");
-    
-    // Incrementar contador
+    // Enviar como PDF usando helper
     usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
     await usuario.save();
-    
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Content-Disposition", 
-      `attachment; filename="dia_familia_${Uid}_${fechaDiaFamilia.replace(/\//g, '-')}.png"`);
-    res.send(buffer);
+    await sendCanvasAsPdf(res, canvas, `dia_familia_${Uid}_${fechaDiaFamilia.replace(/\//g, '-')}`);
 
   } catch (error: any) {
     console.error("Error generando certificado día de la familia:", error);
