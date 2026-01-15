@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -27,6 +60,7 @@ const novedad_1 = __importDefault(require("../routes/novedad"));
 const archivo_1 = __importDefault(require("../routes/archivo"));
 const certificado_1 = __importDefault(require("../routes/certificado"));
 const nominaConfig_1 = __importDefault(require("../routes/nominaConfig"));
+const admin_1 = __importDefault(require("../routes/admin"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -62,6 +96,7 @@ class Server {
         this.app.use('/api/archivos', archivo_1.default);
         this.app.use('/api/certificados', certificado_1.default);
         this.app.use('/api/nomina-config', nominaConfig_1.default);
+        this.app.use('/api/admin', admin_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -97,18 +132,20 @@ class Server {
                 /* {force: true}{alter: true} */
                 yield connection_1.default.authenticate();
                 yield role_1.Role.sync();
-                yield area_2.Area.sync({ alter: true });
-                yield user_2.User.sync({ alter: true });
+                yield area_2.Area.sync({ alter: false });
+                yield user_2.User.sync({ alter: false });
                 yield product_3.Product.sync();
-                yield permisos_2.Permiso.sync({ alter: true });
-                // await Registro.sync({force: true});
-                // await Sumatoria.sync({force: true});
+                yield permisos_2.Permiso.sync({ alter: false });
+                // await Registro.sync({force: false});
+                // await Sumatoria.sync({force: false});
                 yield time_2.Registro.sync();
                 yield time_2.Sumatoria.sync();
-                yield time_2.Novedad.sync({ alter: true });
-                yield time_2.NovedadHistorico.sync({ alter: true });
-                yield archivo_2.Archivo.sync({ alter: true });
-                yield nominaConfig_2.default.sync({ alter: true });
+                yield time_2.Novedad.sync({ alter: false });
+                yield time_2.NovedadHistorico.sync({ alter: false });
+                yield archivo_2.Archivo.sync({ alter: false });
+                yield nominaConfig_2.default.sync({ alter: false });
+                const { Alert } = yield Promise.resolve().then(() => __importStar(require('./alert')));
+                yield Alert.sync({ alter: false });
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

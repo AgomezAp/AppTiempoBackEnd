@@ -14,6 +14,7 @@ import RNovedad from '../routes/novedad';
 import RArchivo from '../routes/archivo';
 import RCertificado from '../routes/certificado';
 import RNominaConfig from '../routes/nominaConfig';
+import RAdmin from '../routes/admin';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -54,6 +55,7 @@ class Server{
         this.app.use('/api/archivos', RArchivo);
         this.app.use('/api/certificados', RCertificado);
         this.app.use('/api/nomina-config', RNominaConfig);
+        this.app.use('/api/admin', RAdmin);
 
     }
     middlewares(){
@@ -93,18 +95,20 @@ class Server{
             await sequelize.authenticate();
             
             await Role.sync();
-            await Area.sync({alter: true});
-            await User.sync({alter: true});
+            await Area.sync({alter: false});
+            await User.sync({alter: false});
             await Product.sync();
-            await Permiso.sync({alter: true});
-            // await Registro.sync({force: true});
-            // await Sumatoria.sync({force: true});
+            await Permiso.sync({alter: false});
+            // await Registro.sync({force: false});
+            // await Sumatoria.sync({force: false});
             await Registro.sync();
             await Sumatoria.sync();
-            await Novedad.sync({alter: true});
-            await NovedadHistorico.sync({alter: true});
-            await Archivo.sync({alter: true});
-            await NominaConfig.sync({alter: true});
+            await Novedad.sync({alter: false});
+            await NovedadHistorico.sync({alter: false});
+            await Archivo.sync({alter: false});
+            await NominaConfig.sync({alter: false});
+            const { Alert } = await import('./alert');
+            await Alert.sync({ alter: false });
 
 
             console.log('Conexión establecida correctamente');
