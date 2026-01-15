@@ -12,7 +12,9 @@ const validateToken = (req: Request, res: Response, next:NextFunction)=>{
     if (headersToken != undefined && headersToken.startsWith('Bearer ')){
        try{
         const token = headersToken.slice(7);
-        jwt.verify(token,process.env.SECRET_KEY||'ptrYxZyMticytOs8eqKW17niMy8RR1JS')
+        const decoded = jwt.verify(token,process.env.SECRET_KEY||'ptrYxZyMticytOs8eqKW17niMy8RR1JS') as any;
+        (req as any).userId = decoded.userId;
+        (req as any).userRole = decoded.role; // Nombre del rol como "Admin", "User", etc.
         next()
        }catch (error){
         res.status(401).json({

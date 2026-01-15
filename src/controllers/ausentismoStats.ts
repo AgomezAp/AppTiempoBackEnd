@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import { NovedadHistorico } from '../models/time';
+import { NovedadHistorico, Registro } from '../models/time';
 import { User } from '../models/user';
 import { convertirHora, convertirMinuto } from '../services/novedad';
 
@@ -8,6 +8,15 @@ import { convertirHora, convertirMinuto } from '../services/novedad';
 function hoursToMinutes(horaStr?: string | null): number {
   if (!horaStr) return 0;
   return convertirHora(horaStr);
+}
+
+// Build YYYY-MM-DD key in local time (neutral to timezone offsets)
+function dateKeyLocal(date: Date): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  const y = local.getFullYear();
+  const m = String(local.getMonth() + 1).padStart(2, '0');
+  const d = String(local.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 // Round minutes down to multiples of 30 (only :00 or :30)
@@ -44,6 +53,15 @@ export const getAusentismoStats = async (req: Request, res: Response): Promise<a
       order: [['Fecha', 'DESC']],
     });
 
+    // Fetch Registros in range to cross-check marcaciones
+    const registroWhere: any = {};
+    if (from && to) {
+      registroWhere.Fecha = {
+        [Op.between]: [new Date(String(from)), new Date(String(to))],
+      };
+    }
+    const registros = await Registro.findAll({ where: registroWhere });
+
     // Fetch all users for mapping
     const users = await User.findAll();
     const userMap: Record<number, any> = {};
@@ -52,7 +70,7 @@ export const getAusentismoStats = async (req: Request, res: Response): Promise<a
     });
 
     // Calculate statistics
-    const stats = calculateStats(novedades, userMap);
+    const stats = calculateStats(novedades, registros, userMap);
 
     res.status(200).json({
       success: true,
@@ -65,7 +83,7 @@ export const getAusentismoStats = async (req: Request, res: Response): Promise<a
   }
 };
 
-function calculateStats(novedades: any[], userMap: Record<number, any>) {
+function calculateStats(novedades: any[], registros: any[], userMap: Record<number, any>) {
   // Allowed absence types to include in statistics
   const ALLOWED_TYPES = new Set<string>([
     'Permiso personal de todo el día',
@@ -77,12 +95,31 @@ function calculateStats(novedades: any[], userMap: Record<number, any>) {
     'Suspensión por proceso disciplinario',
   ]);
 
-  // Filter: only accepted (aceptacion === true) and allowed types
-  const filtered = novedades.filter((n: any) => {
-    const accepted = n.aceptacion === true;
-    const allowed = ALLOWED_TYPES.has(n.type || '');
-    return accepted && allowed;
+  // Expected workday duration in minutes (9h30)
+  const WORKDAY_MIN = 9 * 60 + 30;
+
+  // Index registros by user and date
+  const registroMap: Record<number, Record<string, { workedMinutes: number; totalStr?: string }>> = {};
+  registros.forEach((reg: any) => {
+    const uid = reg.Hid;
+    const key = dateKeyLocal(new Date(reg.Fecha));
+    if (!registroMap[uid]) registroMap[uid] = {};
+
+    const totalMinutes = reg.Total
+      ? hoursToMinutes(reg.Total)
+      : Math.max(0, Math.round((new Date(reg.Salida).getTime() - new Date(reg.Entrada).getTime()) / 60000));
+
+    if (!registroMap[uid][key]) {
+      registroMap[uid][key] = { workedMinutes: 0, totalStr: reg.Total };
+    }
+    registroMap[uid][key].workedMinutes += Math.max(0, totalMinutes);
   });
+
+  // Filter: only allowed types (aceptacion handled in logic below)
+  const filtered = novedades.filter((n: any) => ALLOWED_TYPES.has(n.type || ''));
+
+  console.log(`📊 Total novedades: ${novedades.length}, Filtradas por tipo permitido: ${filtered.length}`);
+  console.log('📋 Tipos permitidos:', Array.from(ALLOWED_TYPES));
 
   const byUser: Record<
     number,
@@ -97,13 +134,61 @@ function calculateStats(novedades: any[], userMap: Record<number, any>) {
   const byType: Record<string, { minutes: number; count: number }> = {};
   let totalMinutes = 0;
   let totalCount = 0;
+  let skippedCount = 0;
 
   filtered.forEach((nov: any) => {
     const uid = nov.Nid;
     const type = nov.type || 'Desconocido';
     const name = nov.Name || userMap[uid]?.name || 'N/A';
-    // Normalize each record to multiples of 30 minutes and use absolute value
-    const mins = floorToHalfHour(Math.abs(hoursToMinutes(nov.horas)));
+    const dateKey = dateKeyLocal(new Date(nov.Fecha));
+    const reg = registroMap[uid]?.[dateKey];
+
+    let absenceMinutes = 0;
+    let reason = '';
+
+    if (reg) {
+      // Hay registro ese día: calcular ausencia real como diferencia
+      const worked = reg.workedMinutes;
+      const missing = Math.max(0, WORKDAY_MIN - worked);
+      
+      // Solo contar si efectivamente trabajó menos de la jornada completa
+      if (missing > 0) {
+        const fromNovedad = Math.abs(hoursToMinutes(nov.horas));
+        // Usar el mayor entre lo que falta vs lo declarado en novedad
+        absenceMinutes = Math.max(missing, fromNovedad);
+        reason = `CON_REGISTRO: trabajó ${worked}min, faltó ${missing}min, novedad=${fromNovedad}min → cuenta ${absenceMinutes}min`;
+      } else {
+        // Trabajó jornada completa o más: el permiso no se usó
+        absenceMinutes = 0;
+        reason = `CON_REGISTRO: trabajó ${worked}min >= jornada ${WORKDAY_MIN}min → NO CUENTA (permiso no usado)`;
+      }
+    } else {
+      // Sin registro ese día: validar si es permiso de todo el día
+      const isFullDay = type === 'Permiso personal de todo el día' 
+        || type === 'Día de la familia' 
+        || type === 'Incapacidad médica'
+        || type === 'Suspensión por proceso disciplinario';
+      
+      if (isFullDay) {
+        // Permiso de día completo sin registro: contar jornada completa
+        const fromNovedad = Math.abs(hoursToMinutes(nov.horas));
+        absenceMinutes = fromNovedad || WORKDAY_MIN;
+        reason = `SIN_REGISTRO + DIA_COMPLETO: novedad=${fromNovedad}min → cuenta ${absenceMinutes}min`;
+      } else {
+        // Otros permisos sin registro: no contar (raro, pero puede pasar)
+        absenceMinutes = 0;
+        reason = `SIN_REGISTRO pero no es día completo (tipo: ${type}) → NO CUENTA`;
+      }
+    }
+
+    const mins = floorToHalfHour(absenceMinutes);
+    
+    console.log(`  ${nov.Fecha.toString().substring(0,10)} | ${name} | ${type} | ${reason} | Final: ${mins}min`);
+    
+    if (mins <= 0) {
+      skippedCount++;
+      return;
+    }
 
     // Aggregate by user
     if (!byUser[uid]) {
@@ -135,6 +220,8 @@ function calculateStats(novedades: any[], userMap: Record<number, any>) {
     totalMinutes += mins;
     totalCount += 1;
   });
+
+  console.log(`\n✅ Total contados: ${totalCount}, ❌ Excluidos: ${skippedCount}`);
 
   // Convert to arrays and sort
   const userStats = Object.entries(byUser)
@@ -193,13 +280,22 @@ export const getAusentismoSummary = async (req: Request, res: Response): Promise
     }
 
     const novedades = await NovedadHistorico.findAll({ where });
+
+    const registroWhere: any = {};
+    if (from && to) {
+      registroWhere.Fecha = {
+        [Op.between]: [new Date(String(from)), new Date(String(to))],
+      };
+    }
+    const registros = await Registro.findAll({ where: registroWhere });
+
     const users = await User.findAll();
     const userMap: Record<number, any> = {};
     users.forEach((u: any) => {
       userMap[u.Uid] = { name: u.nombre };
     });
 
-    const stats = calculateStats(novedades, userMap);
+    const stats = calculateStats(novedades, registros, userMap);
 
     res.status(200).json({
       success: true,

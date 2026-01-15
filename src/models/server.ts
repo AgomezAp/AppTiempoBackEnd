@@ -15,6 +15,8 @@ import RArchivo from '../routes/archivo';
 import RCertificado from '../routes/certificado';
 import RNominaConfig from '../routes/nominaConfig';
 import RAdmin from '../routes/admin';
+import RRoom from '../routes/room';
+import RReservation from '../routes/reservation';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -23,6 +25,8 @@ import { User } from './user';
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from './time'
 import { Archivo } from './archivo';
 import NominaConfig from './nominaConfig';
+import { Room } from './room';
+import { Reservation } from './reservation';
 
 dotenv.config();
 class Server{
@@ -56,7 +60,8 @@ class Server{
         this.app.use('/api/certificados', RCertificado);
         this.app.use('/api/nomina-config', RNominaConfig);
         this.app.use('/api/admin', RAdmin);
-
+        this.app.use(RRoom);
+        this.app.use(RReservation);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -109,6 +114,8 @@ class Server{
             await NominaConfig.sync({alter: false});
             const { Alert } = await import('./alert');
             await Alert.sync({ alter: false });
+            await Room.sync({ alter: false });
+            await Reservation.sync({ alter: false });
 
 
             console.log('Conexión establecida correctamente');

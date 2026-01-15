@@ -10,7 +10,9 @@ const validateToken = (req, res, next) => {
     if (headersToken != undefined && headersToken.startsWith('Bearer ')) {
         try {
             const token = headersToken.slice(7);
-            jsonwebtoken_1.default.verify(token, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS');
+            const decoded = jsonwebtoken_1.default.verify(token, process.env.SECRET_KEY || 'ptrYxZyMticytOs8eqKW17niMy8RR1JS');
+            req.userId = decoded.userId;
+            req.userRole = decoded.role; // Nombre del rol como "Admin", "User", etc.
             next();
         }
         catch (error) {

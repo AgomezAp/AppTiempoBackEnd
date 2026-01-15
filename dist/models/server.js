@@ -61,6 +61,8 @@ const archivo_1 = __importDefault(require("../routes/archivo"));
 const certificado_1 = __importDefault(require("../routes/certificado"));
 const nominaConfig_1 = __importDefault(require("../routes/nominaConfig"));
 const admin_1 = __importDefault(require("../routes/admin"));
+const room_1 = __importDefault(require("../routes/room"));
+const reservation_1 = __importDefault(require("../routes/reservation"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -69,6 +71,8 @@ const user_2 = require("./user");
 const time_2 = require("./time");
 const archivo_2 = require("./archivo");
 const nominaConfig_2 = __importDefault(require("./nominaConfig"));
+const room_2 = require("./room");
+const reservation_2 = require("./reservation");
 dotenv_1.default.config();
 class Server {
     constructor() {
@@ -97,6 +101,8 @@ class Server {
         this.app.use('/api/certificados', certificado_1.default);
         this.app.use('/api/nomina-config', nominaConfig_1.default);
         this.app.use('/api/admin', admin_1.default);
+        this.app.use(room_1.default);
+        this.app.use(reservation_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -146,6 +152,8 @@ class Server {
                 yield nominaConfig_2.default.sync({ alter: false });
                 const { Alert } = yield Promise.resolve().then(() => __importStar(require('./alert')));
                 yield Alert.sync({ alter: false });
+                yield room_2.Room.sync({ alter: false });
+                yield reservation_2.Reservation.sync({ alter: false });
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {
