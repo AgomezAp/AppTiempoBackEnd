@@ -79,7 +79,7 @@ const isWorkDay = (date: string): boolean => {
     }
 
     const day = dateObj.day();
-    return day >= 0 && day <= 5; // 0 = Lunes, 5 = Sábado, 6 = Domingo
+    return day >= 1 && day <= 6; // 1 = Lunes, 6 = Sábado, 0 = Domingo (no laboral)
   } catch (error) {
     console.error('Error validando día laboral:', date, error);
     return false;
