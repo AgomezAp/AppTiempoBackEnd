@@ -56,12 +56,11 @@ const isValidReservationDate = (date: string): boolean => {
   }
 };
 
-// Validar que sea día laboral (lunes a sábado)
-const isWorkDay = (date: string): boolean => {
+// Obtener el día de la semana (0 = domingo, 1 = lunes, ...)
+const getDayOfWeek = (date: string): number | null => {
   try {
     let dateObj;
 
-    // Intentar parsear con diferentes formatos
     if (date.includes('/')) {
       // Formato DD/MM/YYYY
       const [day, month, year] = date.split('/');
@@ -75,15 +74,39 @@ const isWorkDay = (date: string): boolean => {
 
     if (!dateObj.isValid()) {
       console.error('Invalid date for workday check:', date);
-      return false;
+      return null;
     }
 
-    const day = dateObj.day();
-    return day >= 1 && day <= 6; // 1 = Lunes, 6 = Sábado, 0 = Domingo (no laboral)
+    return dateObj.day();
   } catch (error) {
     console.error('Error validando día laboral:', date, error);
+    return null;
+  }
+};
+
+// Validar que sea día laboral (solo lunes y viernes)
+const isWorkDay = (date: string): boolean => {
+  const day = getDayOfWeek(date);
+  if (day === null) {
     return false;
   }
+
+  return day === 1 || day === 5; // 1 = Lunes, 5 = Viernes. Martes-Jueves y Sábado no laborales
+};
+
+// Validar que una sala pueda reservarse en el día indicado
+const isRoomAllowedDay = (roomName: string, date: string): boolean => {
+  const day = getDayOfWeek(date);
+  if (day === null) {
+    return false;
+  }
+
+  // Todas las salas solo se pueden reservar lunes (1) y viernes (5)
+  const normalizedName = String(roomName).trim().toLowerCase();
+  const isRoom204 = normalizedName === '204' || normalizedName.includes('204');
+
+  // Ambas (sala 204 y otras) ahora tienen la misma restricción
+  return day === 1 || day === 5; // Solo lunes y viernes
 };
 
 // Validar que la hora esté dentro del horario laboral
@@ -127,6 +150,25 @@ export const getAvailableSlots = async (req: Request, res: Response): Promise<an
       return res.status(400).json({
         success: false,
         message: 'Las reservas solo se pueden hacer de lunes a sábado',
+      });
+    }
+
+    // Validar sala y reglas específicas
+    const room = await Room.findByPk(Number(roomId));
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sala no encontrada',
+      });
+    }
+
+    if (!isRoomAllowedDay(room.name, date as string)) {
+      const isRoom204 = room.name.trim().toLowerCase() === '204';
+      return res.status(400).json({
+        success: false,
+        message: isRoom204
+          ? 'La sala 204 solo se puede reservar los lunes y viernes'
+          : 'Las reservas para esta sala no están permitidas en esta fecha',
       });
     }
 
@@ -244,6 +286,16 @@ export const createReservation = async (req: Request, res: Response): Promise<an
       return res.status(404).json({
         success: false,
         message: 'Sala no encontrada',
+      });
+    }
+
+    if (!isRoomAllowedDay(room.name, date)) {
+      const isRoom204 = room.name.trim().toLowerCase() === '204';
+      return res.status(400).json({
+        success: false,
+        message: isRoom204
+          ? 'La sala 204 solo se puede reservar los lunes y viernes'
+          : 'Las reservas para esta sala no están permitidas en esta fecha',
       });
     }
 
@@ -492,6 +544,17 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
     const newDate = date || reservation.date;
     const newStartTime = startTime || reservation.startTime;
     const newEndTime = endTime || reservation.endTime;
+
+    const room = await Room.findByPk(reservation.Rid);
+    if (room && !isRoomAllowedDay(room.name, newDate)) {
+      const isRoom204 = room.name.trim().toLowerCase() === '204';
+      return res.status(400).json({
+        success: false,
+        message: isRoom204
+          ? 'La sala 204 solo se puede reservar los lunes y viernes'
+          : 'Las reservas para esta sala no están permitidas en esta fecha',
+      });
+    }
 
     // Verificar conflictos
     const conflict = await Reservation.findOne({

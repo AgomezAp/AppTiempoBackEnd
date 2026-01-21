@@ -1233,10 +1233,15 @@ export const generarCertificadoCesantias = async (
     ctx.font = "44px 'Helvetica'";
     ctx.fillStyle = "#000000";
     ctx.textAlign = "left";
+     let fechaRetiroFormateada = fechaRetiroCesantias;
+      if (fechaRetiroCesantias.includes('-')) {
+        const [year, month, day] = fechaRetiroCesantias.split('-');
+        fechaRetiroFormateada = `${day}/${month}/${year}`;
+      }
     
     let fechaY = 700;
     if (empresaSeleccionada === 'ME') fechaY = 800;
-    ctx.fillText(`Pereira, ${fecha}`, 200, fechaY);
+    ctx.fillText(`Pereira, ${fechaRetiroFormateada}`, 200, fechaY);
 
     // Espacio grande después de la fecha
     let yPos = fechaY + 170;
