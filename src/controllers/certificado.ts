@@ -151,6 +151,68 @@ const sendCanvasAsPdf = async (res: Response, canvas: any, filenameBase: string)
   res.send(pdfBuffer);
 };
 
+// Helper: convierte múltiples canvas en un solo PDF de varias páginas
+const sendMultipleCanvasAsPdf = async (res: Response, canvases: any[], filenameBase: string) => {
+  try {
+    console.log(`📄 Generando PDF múltiple con ${canvases.length} páginas...`);
+    
+    const fonts = {
+      Helvetica: {
+        normal: 'Helvetica',
+        bold: 'Helvetica-Bold',
+        italics: 'Helvetica-Oblique',
+        bolditalics: 'Helvetica-BoldOblique'
+      }
+    };
+
+    const printer = new PdfPrinter(fonts);
+    
+    // Crear contenido con todas las imágenes, cada una en una página separada
+    const content: any[] = [];
+    for (let index = 0; index < canvases.length; index++) {
+      const canvas = canvases[index];
+      console.log(`  📝 Procesando canvas ${index + 1}...`);
+      // Usar JPEG con calidad reducida para evitar PDFs muy grandes
+      const buffer = canvas.toBuffer('image/jpeg', { quality: 0.85 });
+      const imageData = 'data:image/jpeg;base64,' + buffer.toString('base64');
+      console.log(`  📝 Canvas ${index + 1} convertido, tamaño buffer: ${buffer.length} bytes`);
+      
+      if (index > 0) {
+        // Agregar salto de página antes de cada imagen excepto la primera
+        content.push({ image: imageData, width: 595, pageBreak: 'before' });
+      } else {
+        content.push({ image: imageData, width: 595 });
+      }
+    }
+
+    console.log(`  ✅ Contenido creado, generando documento PDF...`);
+
+    const docDefinition: any = {
+      pageSize: 'A4',
+      pageMargins: [0, 0, 0, 0],
+      content: content,
+    };
+
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    const chunks: any[] = [];
+    pdfDoc.on('data', (chunk) => chunks.push(chunk));
+    const pdfBuffer: Buffer = await new Promise((resolve, reject) => {
+      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+      pdfDoc.on('error', (err: any) => reject(err));
+      pdfDoc.end();
+    });
+
+    console.log(`  ✅ PDF generado, tamaño: ${pdfBuffer.length} bytes`);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('❌ Error en sendMultipleCanvasAsPdf:', error);
+    throw error;
+  }
+};
+
 // Función para formatear fecha en español
 const formatDateSpanish = (date: Date): string => {
   const months = [
@@ -1156,12 +1218,299 @@ export const generarCertificadoHTML = async (
 // ========================================
 // CERTIFICADO DE AUTORIZACIÓN DE RETIRO DE CESANTÍAS
 // ========================================
+
+// Helper interno para generar el canvas del certificado de cesantías
+const generarCanvasCesantias = async (
+  usuario: any,
+  empresaData: any,
+  empresaSeleccionada: string,
+  params: {
+    nombreCompleto: string;
+    cedula: string;
+    fondoCesantias: string;
+    tipoRetiro: string;
+    conceptoRetiro: string;
+    valorAutorizado: string;
+    causa: string;
+    fechaRetiroCesantias: string;
+  },
+  conFirma: boolean
+): Promise<any> => {
+  const width = 2480;
+  const height = 3508;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // Fondo blanco
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, height);
+
+  // ========================================
+  // MARCA DE AGUA DEL LOGO (fondo)
+  // ========================================
+  const logoPath = path.join(__dirname, "../../public", empresaData.logo);
+  if (fs.existsSync(logoPath)) {
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    
+    const logoWatermark = await loadImage(logoPath);
+    const watermarkSize = 2000;
+    const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
+    const watermarkX = (width - watermarkSize) / 2;
+    const watermarkY = (height - watermarkHeight) / 2;
+
+    ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
+    ctx.restore();
+  }
+
+  // ========================================
+  // LOGO EN LA PARTE SUPERIOR
+  // ========================================
+  if (fs.existsSync(logoPath)) {
+    const logo = await loadImage(logoPath);
+    const logoWidth = 500;
+    const logoHeight = (logo.height / logo.width) * logoWidth;
+    const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
+    ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
+  }
+
+  // Fecha
+  ctx.font = "44px 'Helvetica'";
+  ctx.fillStyle = "#000000";
+  ctx.textAlign = "left";
+  let fechaRetiroFormateada = params.fechaRetiroCesantias;
+  if (params.fechaRetiroCesantias.includes('-')) {
+    const [year, month, day] = params.fechaRetiroCesantias.split('-');
+    fechaRetiroFormateada = `${day}/${month}/${year}`;
+  }
+  
+  let fechaY = 700;
+  if (empresaSeleccionada === 'ME') fechaY = 800;
+  ctx.fillText(`Pereira, ${fechaRetiroFormateada}`, 200, fechaY);
+
+  let yPos = fechaY + 170;
+
+  // Título "Señores"
+  ctx.font = "44px 'Helvetica'";
+  ctx.fillText("Señores", 200, yPos);
+  yPos += 55;
+  ctx.font = "bold 44px 'Helvetica'";
+  ctx.fillText(params.fondoCesantias.toUpperCase(), 200, yPos);
+
+  yPos += 140;
+
+  // Referencia
+  ctx.font = "44px 'Helvetica'";
+  ctx.fillText("Referencia: ", 200, yPos);
+  ctx.font = "bold 44px 'Helvetica'";
+  ctx.fillText("AUTORIZACIÓN DE RETIRO DE CESANTÍAS.", 450, yPos);
+
+  yPos += 140;
+
+  // Primer párrafo
+  const marginLeft = 200;
+  const contentWidth = width - 400;
+
+  ctx.font = "42px 'Helvetica'";
+  ctx.textAlign = "left";
+  const texto = `Mediante el presente documento yo ${empresaData.gerente.toUpperCase()} identificado con cedula de ciudadanía número ${empresaData.cedulaGerente} y con domicilio en Pereira, actuando en calidad de empleador, con razón social ${empresaData.nombre}${empresaData.nit ? ' ' + empresaData.nit : ''} me permito informar que he AUTORIZADO el ${params.tipoRetiro.toUpperCase()} de cesantías del trabajador (a) así,`;
+  
+  yPos = wrapText(ctx, texto, marginLeft, yPos, contentWidth, 65);
+
+  yPos += 150;
+
+  // EMPLEADO
+  ctx.font = "42px 'Helvetica'";
+  ctx.fillText(`EMPLEADO: ${params.nombreCompleto.toUpperCase()}`, marginLeft, yPos);
+  
+  yPos += 75;
+  ctx.fillText(`CEDULA DE CIUDADANIA: ${params.cedula}`, marginLeft, yPos);
+  
+  yPos += 75;
+  ctx.fillText(`CONCEPTO DE RETIRO: ${params.conceptoRetiro.toUpperCase()}`, marginLeft, yPos);
+  
+  yPos += 75;
+  ctx.fillText(`VALOR AUTORIZADO: ${params.valorAutorizado.toUpperCase()}`, marginLeft, yPos);
+  
+  yPos += 75;
+  ctx.fillText(`CAUSA: ${params.causa.toUpperCase()}`, marginLeft, yPos);
+
+  // Si es terminación de contrato y hay fecha de retiro, mostrarla
+  if (params.conceptoRetiro.toUpperCase().includes('TERMINACIÓN') && params.fechaRetiroCesantias) {
+    yPos += 75;
+    let fechaRetiroFormateadaInner = params.fechaRetiroCesantias;
+    if (params.fechaRetiroCesantias.includes('-')) {
+      const [year, month, day] = params.fechaRetiroCesantias.split('-');
+      fechaRetiroFormateadaInner = `${day}/${month}/${year}`;
+    }
+    ctx.fillText(`FECHA DE RETIRO DEL TRABAJADOR: ${fechaRetiroFormateadaInner}`, marginLeft, yPos);
+  }
+
+  yPos += 180;
+
+  // Último párrafo
+  const textoFinal = `Lo anterior de conformidad con lo establecido en el decreto 1072 de 2024, artículos 2.2.1.3.15 a 2.2.1.3.19 y el Decreto 1562 de 2019.`;
+  wrapText(ctx, textoFinal, marginLeft, yPos, contentWidth, 65);
+
+  // ========================================
+  // FIRMA Y PIE DE PÁGINA
+  // ========================================
+  const firmaY = height - 650;
+
+  if (conFirma) {
+    // FIRMA DEL GERENTE (IZQUIERDA) - 20% del ancho
+    const firmaGerenteX = width * 0.20;
+    
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaPath = path.join(__dirname, "../../public", firmaFileName);
+    
+    if (fs.existsSync(firmaPath)) {
+      const firmaImg = await loadImage(firmaPath);
+      const firmaWidth = 350;
+      const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+      ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+    }
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(firmaGerenteX - 350, firmaY);
+    ctx.lineTo(firmaGerenteX + 350, firmaY);
+    ctx.stroke();
+
+    ctx.font = "bold 42px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillText(empresaData.gerente, firmaGerenteX, firmaY + 60);
+    ctx.font = "38px 'Helvetica'";
+    ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaGerenteX, firmaY + 105);
+    ctx.fillText("Representante Legal", firmaGerenteX, firmaY + 150);
+    ctx.fillText(empresaData.nombre, firmaGerenteX, firmaY + 195);
+
+    // FIRMA DEL EMPLEADO (DERECHA) - 80% del ancho
+    const firmaEmpleadoX = width * 0.80;
+    
+    ctx.font = "40px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillText("FIRMA: _____________________________", firmaEmpleadoX, firmaY);
+    ctx.fillText("CÉDULA: ____________________________", firmaEmpleadoX, firmaY + 100);
+    
+  } else {
+    // SOLO FIRMA DEL GERENTE (CENTRADA)
+    const firmaX = width / 2;
+    
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaPath = path.join(__dirname, "../../public", firmaFileName);
+    
+    if (fs.existsSync(firmaPath)) {
+      const firmaImg = await loadImage(firmaPath);
+      const firmaWidth = 350;
+      const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+      ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+    }
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(firmaX - 350, firmaY);
+    ctx.lineTo(firmaX + 350, firmaY);
+    ctx.stroke();
+
+    ctx.font = "bold 46px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#000000";
+    ctx.fillText(empresaData.gerente, firmaX, firmaY + 60);
+    
+    ctx.font = "42px 'Helvetica'";
+    ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaX, firmaY + 110);
+    ctx.fillText("Representante Legal", firmaX, firmaY + 160);
+    ctx.fillText(empresaData.nombre, firmaX, firmaY + 210);
+  }
+
+  // ========================================
+  // ICONOS DE CONTACTO EN EL PIE DE PÁGINA
+  // ========================================
+  const footerY = height - 120;
+  const iconSize = 45;
+  
+  const iconPaths = {
+    location: path.join(__dirname, "../../public/map-pin.svg"),
+    phone: path.join(__dirname, "../../public/phone.svg"),
+    email: path.join(__dirname, "../../public/mail.svg")
+  };
+
+  ctx.font = "36px 'Helvetica'";
+  
+  let totalWidth = 0;
+  if (empresaData.direccion) {
+    totalWidth += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
+  }
+  if (empresaData.telefono) {
+    totalWidth += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
+  }
+  if (empresaData.email) {
+    totalWidth += iconSize + 10 + ctx.measureText(empresaData.email).width;
+  }
+
+  let currentX = (width - totalWidth) / 2;
+
+  if (empresaData.direccion) {
+    try {
+      if (fs.existsSync(iconPaths.location)) {
+        const iconLocation = await loadImage(iconPaths.location);
+        ctx.drawImage(iconLocation, currentX, footerY - 32, iconSize, iconSize);
+      }
+      ctx.textAlign = "left";
+      ctx.fillText(empresaData.direccion, currentX + iconSize + 10, footerY);
+      currentX += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
+    } catch (err) {
+      console.warn("Error al cargar icono ubicación:", err);
+    }
+  }
+
+  if (empresaData.telefono) {
+    try {
+      if (fs.existsSync(iconPaths.phone)) {
+        const iconPhone = await loadImage(iconPaths.phone);
+        ctx.drawImage(iconPhone, currentX, footerY - 32, iconSize, iconSize);
+      }
+      ctx.textAlign = "left";
+      ctx.fillText(empresaData.telefono, currentX + iconSize + 10, footerY);
+      currentX += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
+    } catch (err) {
+      console.warn("Error al cargar icono teléfono:", err);
+    }
+  }
+
+  if (empresaData.email) {
+    try {
+      if (fs.existsSync(iconPaths.email)) {
+        const iconEmail = await loadImage(iconPaths.email);
+        ctx.drawImage(iconEmail, currentX, footerY - 32, iconSize, iconSize);
+      }
+      ctx.textAlign = "left";
+      ctx.fillText(empresaData.email, currentX + iconSize + 10, footerY);
+    } catch (err) {
+      console.warn("Error al cargar icono email:", err);
+    }
+  }
+
+  if (empresaData.nit && empresaData.nit.trim() !== '') {
+    const nitY = footerY + 60;
+    ctx.font = "bold 38px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#000000";
+    ctx.fillText(empresaData.nit, width / 2, nitY);
+  }
+
+  return canvas;
+};
+
 export const generarCertificadoCesantias = async (
   req: Request,
   res: Response
 ): Promise<any> => {
   const { Uid } = req.params;
-  const { conFirma, empresa } = req.query; // 'true' o 'false' + empresa (AP, AT, ME)
+  const { empresa } = req.query;
   
   try {
     const usuario: any = await User.findByPk(Uid, {
@@ -1174,317 +1523,33 @@ export const generarCertificadoCesantias = async (
       });
     }
 
-    // Usar empresa del query o la del usuario
     const empresaSeleccionada = (empresa as string) || usuario.empresa || "AP";
     const empresaData = empresasData[empresaSeleccionada];
     
-    // Obtener datos del query o usar datos del usuario
-    const nombreCompleto = (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`;
-    const cedula = (req.query.cedula as string) || usuario.documentoIdentificacion;
-    const fondoCesantias = (req.query.fondoCesantias as string) || usuario.fondoCesantias || 'PORVENIR';
-    const tipoRetiro = (req.query.tipoRetiro as string) || 'RETIRO TOTAL';
-    const conceptoRetiro = req.query.conceptoRetiro as string || 'TERMINACIÓN DEL CONTRATO DE TRABAJO';
-    const valorAutorizado = req.query.valorAutorizado as string || 'RETIRO TOTAL';
-    const causa = req.query.causa as string || 'RETIRO CON INJUSTA CAUSA';
-    // Fecha de retiro del trabajador (solo para terminación de contrato)
-    const fechaRetiroCesantias = req.query.fechaRetiroCesantias as string || '';
-    
-    // Crear canvas
-    const width = 2480;
-    const height = 3508;
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-
-    // Fondo blanco
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
-
-    // ========================================
-    // MARCA DE AGUA DEL LOGO (fondo)
-    // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    if (fs.existsSync(logoPath)) {
-      ctx.save();
-      ctx.globalAlpha = 0.05; // Muy transparente para marca de agua
-      
-      const logoWatermark = await loadImage(logoPath);
-      const watermarkSize = 2000;
-      const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
-      const watermarkX = (width - watermarkSize) / 2;
-      const watermarkY = (height - watermarkHeight) / 2;
-
-      ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-      ctx.restore();
-    }
-
-    // ========================================
-    // LOGO EN LA PARTE SUPERIOR
-    // ========================================
-    if (fs.existsSync(logoPath)) {
-      const logo = await loadImage(logoPath);
-      const logoWidth = 500;
-      const logoHeight = (logo.height / logo.width) * logoWidth;
-      const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
-      ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
-    }
-
-    // Fecha - más abajo
-    const fecha = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
-    ctx.font = "44px 'Helvetica'";
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-     let fechaRetiroFormateada = fechaRetiroCesantias;
-      if (fechaRetiroCesantias.includes('-')) {
-        const [year, month, day] = fechaRetiroCesantias.split('-');
-        fechaRetiroFormateada = `${day}/${month}/${year}`;
-      }
-    
-    let fechaY = 700;
-    if (empresaSeleccionada === 'ME') fechaY = 800;
-    ctx.fillText(`Pereira, ${fechaRetiroFormateada}`, 200, fechaY);
-
-    // Espacio grande después de la fecha
-    let yPos = fechaY + 170;
-
-    // Título "Señores"
-    ctx.font = "44px 'Helvetica'";
-    ctx.fillText("Señores", 200, yPos);
-    yPos += 55;
-    ctx.font = "bold 44px 'Helvetica'";
-    ctx.fillText(fondoCesantias.toUpperCase(), 200, yPos);
-
-    yPos += 140;
-
-    // Referencia
-    ctx.font = "44px 'Helvetica'";
-    ctx.fillText("Referencia: ", 200, yPos);
-    ctx.font = "bold 44px 'Helvetica'";
-    ctx.fillText("AUTORIZACIÓN DE RETIRO DE CESANTÍAS.", 450, yPos);
-
-    yPos += 140;
-
-    // Primer párrafo
-    const marginLeft = 200;
-    const contentWidth = width - 400;
-
-    ctx.font = "42px 'Helvetica'";
-    ctx.textAlign = "left";
-    const texto = `Mediante el presente documento yo ${empresaData.gerente.toUpperCase()} identificado con cedula de ciudadanía número ${empresaData.cedulaGerente} y con domicilio en Pereira, actuando en calidad de empleador, con razón social ${empresaData.nombre}${empresaData.nit ? ' ' + empresaData.nit : ''} me permito informar que he AUTORIZADO el ${tipoRetiro.toUpperCase()} de cesantías del trabajador (a) así,`;
-    
-    yPos = wrapText(ctx, texto, marginLeft, yPos, contentWidth, 65);
-
-    // Espacio entre párrafos
-    yPos += 150;
-
-    // EMPLEADO
-    ctx.font = "42px 'Helvetica'";
-    ctx.fillText(`EMPLEADO: ${nombreCompleto.toUpperCase()}`, marginLeft, yPos);
-    
-    yPos += 75;
-    ctx.fillText(`CEDULA DE CIUDADANIA: ${cedula}`, marginLeft, yPos);
-    
-    yPos += 75;
-    ctx.fillText(`CONCEPTO DE RETIRO: ${conceptoRetiro.toUpperCase()}`, marginLeft, yPos);
-    
-    yPos += 75;
-    ctx.fillText(`VALOR AUTORIZADO: ${valorAutorizado.toUpperCase()}`, marginLeft, yPos);
-    
-    yPos += 75;
-    ctx.fillText(`CAUSA: ${causa.toUpperCase()}`, marginLeft, yPos);
-
-    // Si es terminación de contrato y hay fecha de retiro, mostrarla
-    if (conceptoRetiro.toUpperCase().includes('TERMINACIÓN') && fechaRetiroCesantias) {
-      yPos += 75;
-      // Formatear la fecha de retiro si viene en formato YYYY-MM-DD
-      let fechaRetiroFormateada = fechaRetiroCesantias;
-      if (fechaRetiroCesantias.includes('-')) {
-        const [year, month, day] = fechaRetiroCesantias.split('-');
-        fechaRetiroFormateada = `${day}/${month}/${year}`;
-      }
-      ctx.fillText(`FECHA DE RETIRO DEL TRABAJADOR: ${fechaRetiroFormateada}`, marginLeft, yPos);
-    }
-
-    yPos += 180;
-
-    // Último párrafo
-    const textoFinal = `Lo anterior de conformidad con lo establecido en el decreto 1072 de 2024, artículos 2.2.1.3.15 a 2.2.1.3.19 y el Decreto 1562 de 2019.`;
-    wrapText(ctx, textoFinal, marginLeft, yPos, contentWidth, 65);
-
-    // ========================================
-    // FIRMA Y PIE DE PÁGINA - MUCHO MÁS ABAJO
-    // ========================================
-    const firmaY = height - 650; // Casi al final de la página
-
-    // Si conFirma='true', mostrar AMBAS firmas (gerente + espacio para empleado)
-    if (conFirma === 'true') {
-      // FIRMA DEL GERENTE (IZQUIERDA) - 20% del ancho
-      const firmaGerenteX = width * 0.20;
-      
-      // Determinar qué firma usar según la empresa
-      const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
-      const firmaPath = path.join(__dirname, "../../public", firmaFileName);
-      
-      if (fs.existsSync(firmaPath)) {
-        const firmaImg = await loadImage(firmaPath);
-        const firmaWidth = 350;
-        const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-        ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-      }
-
-      // Línea de firma del gerente
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(firmaGerenteX - 350, firmaY);
-      ctx.lineTo(firmaGerenteX + 350, firmaY);
-      ctx.stroke();
-
-      // Información del gerente
-      ctx.font = "bold 42px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillText(empresaData.gerente, firmaGerenteX, firmaY + 60);
-      ctx.font = "38px 'Helvetica'";
-      ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaGerenteX, firmaY + 105);
-      ctx.fillText("Representante Legal", firmaGerenteX, firmaY + 150);
-      ctx.fillText(empresaData.nombre, firmaGerenteX, firmaY + 195);
-
-      // FIRMA DEL EMPLEADO (DERECHA) - 80% del ancho
-      const firmaEmpleadoX = width * 0.80;
-      
-      ctx.font = "40px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillText("FIRMA: _____________________________", firmaEmpleadoX, firmaY);
-      ctx.fillText("CÉDULA: ____________________________", firmaEmpleadoX, firmaY + 100);
-      
-    } else {
-      // SOLO FIRMA DEL GERENTE (CENTRADA)
-      const firmaX = width / 2;
-      
-      // Determinar qué firma usar según la empresa
-      const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
-      const firmaPath = path.join(__dirname, "../../public", firmaFileName);
-      
-      if (fs.existsSync(firmaPath)) {
-        const firmaImg = await loadImage(firmaPath);
-        const firmaWidth = 350;
-        const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-        ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-      }
-
-      // Línea de firma
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(firmaX - 350, firmaY);
-      ctx.lineTo(firmaX + 350, firmaY);
-      ctx.stroke();
-
-      // Información del firmante
-      ctx.font = "bold 46px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#000000";
-      ctx.fillText(empresaData.gerente, firmaX, firmaY + 60);
-      
-      ctx.font = "42px 'Helvetica'";
-      ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaX, firmaY + 110);
-      ctx.fillText("Representante Legal", firmaX, firmaY + 160);
-      ctx.fillText(empresaData.nombre, firmaX, firmaY + 210);
-    }
-
-    // ========================================
-    // ICONOS DE CONTACTO EN EL PIE DE PÁGINA - MUCHO MÁS ABAJO
-    // ========================================
-    const footerY = height - 120; // Casi al borde inferior
-    const iconSize = 45;
-    
-    // Cargar iconos
-    const iconPaths = {
-      location: path.join(__dirname, "../../public/map-pin.svg"),
-      phone: path.join(__dirname, "../../public/phone.svg"),
-      email: path.join(__dirname, "../../public/mail.svg")
+    const params = {
+      nombreCompleto: (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`,
+      cedula: (req.query.cedula as string) || usuario.documentoIdentificacion,
+      fondoCesantias: (req.query.fondoCesantias as string) || usuario.fondoCesantias || 'PORVENIR',
+      tipoRetiro: (req.query.tipoRetiro as string) || 'RETIRO TOTAL',
+      conceptoRetiro: (req.query.conceptoRetiro as string) || 'TERMINACIÓN DEL CONTRATO DE TRABAJO',
+      valorAutorizado: (req.query.valorAutorizado as string) || 'RETIRO TOTAL',
+      causa: (req.query.causa as string) || 'RETIRO CON INJUSTA CAUSA',
+      fechaRetiroCesantias: (req.query.fechaRetiroCesantias as string) || '',
     };
 
-    ctx.font = "36px 'Helvetica'";
-    
-    // Calcular ancho total para centrar
-    let totalWidth = 0;
-    if (empresaData.direccion) {
-      totalWidth += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-    }
-    if (empresaData.telefono) {
-      totalWidth += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-    }
-    if (empresaData.email) {
-      totalWidth += iconSize + 10 + ctx.measureText(empresaData.email).width;
-    }
+    // Generar ambas versiones del certificado
+    // Primero: versión SIN firma (digital)
+    const canvasSinFirma = await generarCanvasCesantias(usuario, empresaData, empresaSeleccionada, params, false);
+    // Segundo: versión CON firma (para firmar manualmente)
+    const canvasConFirma = await generarCanvasCesantias(usuario, empresaData, empresaSeleccionada, params, true);
 
-    let currentX = (width - totalWidth) / 2;
+    // Incrementar contador de certificados generados (solo una vez)
+    usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
+    await usuario.save();
+    console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
 
-    // UBICACIÓN
-    if (empresaData.direccion) {
-      try {
-        if (fs.existsSync(iconPaths.location)) {
-          const iconLocation = await loadImage(iconPaths.location);
-          ctx.drawImage(iconLocation, currentX, footerY - 32, iconSize, iconSize);
-        }
-        ctx.textAlign = "left";
-        ctx.fillText(empresaData.direccion, currentX + iconSize + 10, footerY);
-        currentX += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-      } catch (err) {
-        console.warn("Error al cargar icono ubicación:", err);
-      }
-    }
-
-    // TELÉFONO
-    if (empresaData.telefono) {
-      try {
-        if (fs.existsSync(iconPaths.phone)) {
-          const iconPhone = await loadImage(iconPaths.phone);
-          ctx.drawImage(iconPhone, currentX, footerY - 32, iconSize, iconSize);
-        }
-        ctx.textAlign = "left";
-        ctx.fillText(empresaData.telefono, currentX + iconSize + 10, footerY);
-        currentX += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-      } catch (err) {
-        console.warn("Error al cargar icono teléfono:", err);
-      }
-    }
-
-    // EMAIL
-    if (empresaData.email) {
-      try {
-        if (fs.existsSync(iconPaths.email)) {
-          const iconEmail = await loadImage(iconPaths.email);
-          ctx.drawImage(iconEmail, currentX, footerY - 32, iconSize, iconSize);
-        }
-        ctx.textAlign = "left";
-        ctx.fillText(empresaData.email, currentX + iconSize + 10, footerY);
-      } catch (err) {
-        console.warn("Error al cargar icono email:", err);
-      }
-    }
-
-    // ========================================
-    // NIT/CC DE LA EMPRESA DEBAJO DE LOS ICONOS
-    // ========================================
-    if (empresaData.nit && empresaData.nit.trim() !== '') {
-      const nitY = footerY + 60; // Debajo de los iconos
-      ctx.font = "bold 38px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#000000";
-      ctx.fillText(empresaData.nit, width / 2, nitY);
-    }
-
-    // Convertir y enviar como PDF
-    // Incrementar contador de certificados generados SOLO en la primera versión (sin firma)
-    // Para evitar contar 2 veces cuando se generan ambas versiones (digital + manual)
-    if (conFirma === 'false' || !conFirma) {
-      usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
-      await usuario.save();
-      console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
-    }
-
-    await sendCanvasAsPdf(res, canvas, `cesantias_${Uid}`);
+    // Enviar ambas versiones en un solo PDF (primero sin firma, luego con firma)
+    await sendMultipleCanvasAsPdf(res, [canvasSinFirma, canvasConFirma], `cesantias_${Uid}`);
 
   } catch (error: any) {
     console.error("Error generando certificado de cesantías:", error);
@@ -1498,12 +1563,168 @@ export const generarCertificadoCesantias = async (
 // ========================================
 // CERTIFICADO DE TERMINACIÓN DE CONTRATO
 // ========================================
+
+// Helper interno para generar el canvas del certificado de terminación
+const generarCanvasTerminacion = async (
+  usuario: any,
+  empresaData: any,
+  empresaSeleccionada: string,
+  params: {
+    nombreCompleto: string;
+    cedula: string;
+    cargo: string;
+    fechaIngreso: string;
+    fechaSalida: string;
+    textoTerminacion: string;
+  },
+  conFirma: boolean
+): Promise<any> => {
+  const width = 2480;
+  const height = 3508;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, height);
+
+  // ========================================
+  // MARCA DE AGUA DEL LOGO (fondo)
+  // ========================================
+  const logoPath = path.join(__dirname, "../../public", empresaData.logo);
+  if (fs.existsSync(logoPath)) {
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    
+    const logoWatermark = await loadImage(logoPath);
+    const watermarkSize = 2000;
+    const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
+    const watermarkX = (width - watermarkSize) / 2;
+    const watermarkY = (height - watermarkHeight) / 2;
+
+    ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
+    ctx.restore();
+  }
+
+  // ========================================
+  // LOGO EN LA PARTE SUPERIOR
+  // ========================================
+  if (fs.existsSync(logoPath)) {
+    const logo = await loadImage(logoPath);
+    const logoWidth = 500;
+    const logoHeight = (logo.height / logo.width) * logoWidth;
+    const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
+    ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
+  }
+
+  // Título
+  ctx.font = "bold 95px 'Helvetica'";
+  ctx.fillStyle = "#000000";
+  ctx.textAlign = "center";
+  
+  let tituloY = 900;
+  if (empresaSeleccionada === 'ME') tituloY = 950;
+  
+  ctx.fillText("CERTIFICADO LABORAL", width / 2, tituloY);
+
+  // Info empresa
+  ctx.font = "bold 56px 'Helvetica'";
+  ctx.fillText(empresaData.nombre, width / 2, tituloY + 200);
+  if (empresaData.nit) {
+    ctx.font = "bold 46px 'Helvetica'";
+    ctx.fillText(empresaData.nit, width / 2, tituloY + 270);
+  }
+
+  // Contenido
+  const marginLeft = 300;
+  const contentWidth = width - 600;
+  let yPos = tituloY + 450;
+
+  ctx.textAlign = "left";
+  ctx.font = "46px 'Helvetica'";
+  
+  const parrafo = `Por medio de la presente, hacemos constar que el (la) señor (a) ${params.nombreCompleto.toUpperCase()}, identificado (a) con CÉDULA DE CIUDADANÍA ${params.cedula}, ${params.textoTerminacion}`;
+  
+  yPos = wrapTextJustified(ctx, parrafo, marginLeft, yPos, contentWidth, 80) + 150;
+
+  const parrafo2 = `Para constancia, se firma a los ${formatDateForSignature(new Date())}.`;
+  wrapTextJustified(ctx, parrafo2, marginLeft, yPos, contentWidth, 80);
+
+  // Firma
+  const firmaY = height - 450;
+
+  if (conFirma) {
+    // FIRMA DEL GERENTE (IZQUIERDA)
+    const firmaGerenteX = width * 0.20;
+    
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaPath = path.join(__dirname, "../../public", firmaFileName);
+    
+    if (fs.existsSync(firmaPath)) {
+      const firmaImg = await loadImage(firmaPath);
+      const firmaWidth = 350;
+      const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+      ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+    }
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(firmaGerenteX - 350, firmaY);
+    ctx.lineTo(firmaGerenteX + 350, firmaY);
+    ctx.stroke();
+
+    ctx.font = "bold 40px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillText(empresaData.gerente, firmaGerenteX, firmaY + 60);
+    ctx.font = "36px 'Helvetica'";
+    ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaGerenteX, firmaY + 105);
+    ctx.fillText("Representante Legal", firmaGerenteX, firmaY + 150);
+    ctx.fillText(empresaData.nombre, firmaGerenteX, firmaY + 195);
+
+    // FIRMA DEL EMPLEADO (DERECHA)
+    const firmaEmpleadoX = width * 0.80;
+    ctx.font = "38px 'Helvetica'";
+    ctx.fillText("FIRMA: _____________________________", firmaEmpleadoX, firmaY);
+    ctx.fillText("CÉDULA: ____________________________", firmaEmpleadoX, firmaY + 100);
+    
+  } else {
+    // SOLO FIRMA DEL GERENTE (CENTRADA)
+    const firmaX = width / 2;
+    
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaPath = path.join(__dirname, "../../public", firmaFileName);
+    
+    if (fs.existsSync(firmaPath)) {
+      const firmaImg = await loadImage(firmaPath);
+      const firmaWidth = 350;
+      const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+      ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+    }
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(firmaX - 300, firmaY);
+    ctx.lineTo(firmaX + 300, firmaY);
+    ctx.stroke();
+
+    ctx.font = "bold 40px 'Helvetica'";
+    ctx.textAlign = "center";
+    ctx.fillText(empresaData.gerente, firmaX, firmaY + 60);
+    ctx.font = "36px 'Helvetica'";
+    ctx.fillText("Gerente General", firmaX, firmaY + 105);
+    ctx.fillText(empresaData.nit || `CC: ${empresaData.cedulaGerente}`, firmaX, firmaY + 150);
+  }
+
+  return canvas;
+};
+
 export const generarCertificadoTerminacion = async (
   req: Request,
   res: Response
 ): Promise<any> => {
   const { Uid } = req.params;
-  const { conFirma, empresa } = req.query;
+  const { empresa } = req.query;
   
   try {
     const usuario: any = await User.findByPk(Uid, {
@@ -1516,27 +1737,22 @@ export const generarCertificadoTerminacion = async (
       });
     }
 
-    // Usar empresa del query o la del usuario
     const empresaSeleccionada = (empresa as string) || usuario.empresa || "AP";
     const empresaData = empresasData[empresaSeleccionada];
     
-    // Obtener datos
     const nombreCompleto = (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`;
     const cedula = (req.query.cedula as string) || usuario.documentoIdentificacion;
     const cargo = (req.query.cargo as string) || usuario.cargo || 'Sin cargo';
     const salario = parseFloat(req.query.salario as string) || usuario.salario || 0;
     
-    // Formatear fechas correctamente
     const fechaIngresoRaw = usuario.fechaIngreso ? new Date(usuario.fechaIngreso) : new Date(usuario.createdAt);
     const fechaIngreso = formatDateSimple(fechaIngresoRaw);
     
-    // Convertir fechaSalida de formato YYYY-MM-DD a texto legible
     const fechaSalidaQuery = req.query.fechaSalida as string || '';
     const fechaSalida = fechaSalidaQuery ? formatDateSimple(new Date(fechaSalidaQuery)) : '';
     
     const tipoTerminacion = req.query.tipoTerminacion as string || 'terminacion-unilateral-voluntaria';
     
-    // Obtener tipo de contrato del usuario o del query
     const tipoContrato = (req.query.tipoContrato as string) || usuario.tipoContrato || 'termino-indefinido';
     const textoContrato = tipoContrato === 'termino-fijo' ? 'a término fijo' : 'a término indefinido';
     
@@ -1557,158 +1773,28 @@ export const generarCertificadoTerminacion = async (
         break;
     }
 
-    // Crear canvas
-    const width = 2480;
-    const height = 3508;
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
+    const params = {
+      nombreCompleto,
+      cedula,
+      cargo,
+      fechaIngreso,
+      fechaSalida,
+      textoTerminacion,
+    };
 
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
+    // Generar ambas versiones del certificado
+    // Primero: versión SIN firma (digital)
+    const canvasSinFirma = await generarCanvasTerminacion(usuario, empresaData, empresaSeleccionada, params, false);
+    // Segundo: versión CON firma (para firmar manualmente)
+    const canvasConFirma = await generarCanvasTerminacion(usuario, empresaData, empresaSeleccionada, params, true);
 
-    // ========================================
-    // MARCA DE AGUA DEL LOGO (fondo)
-    // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    if (fs.existsSync(logoPath)) {
-      ctx.save();
-      ctx.globalAlpha = 0.05; // Muy transparente para marca de agua
-      
-      const logoWatermark = await loadImage(logoPath);
-      const watermarkSize = 2000;
-      const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
-      const watermarkX = (width - watermarkSize) / 2;
-      const watermarkY = (height - watermarkHeight) / 2;
+    // Incrementar contador de certificados generados (solo una vez)
+    usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
+    await usuario.save();
+    console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
 
-      ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-      ctx.restore();
-    }
-
-    // ========================================
-    // LOGO EN LA PARTE SUPERIOR
-    // ========================================
-    if (fs.existsSync(logoPath)) {
-      const logo = await loadImage(logoPath);
-      const logoWidth = 500;
-      const logoHeight = (logo.height / logo.width) * logoWidth;
-      // Para ME, bajar más el logo
-      const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
-      ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
-    }
-
-    // Título - cambiado a CERTIFICADO LABORAL
-    ctx.font = "bold 95px 'Helvetica'";
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "center";
-    
-    // Bajar más el título
-    let tituloY = 900;
-    if (empresaSeleccionada === 'ME') tituloY = 950;
-    
-    ctx.fillText("CERTIFICADO LABORAL", width / 2, tituloY);
-
-    // Info empresa - más abajo y con mejor espaciado
-    ctx.font = "bold 56px 'Helvetica'";
-    ctx.fillText(empresaData.nombre, width / 2, tituloY + 200);
-    if (empresaData.nit) {
-      ctx.font = "bold 46px 'Helvetica'";
-      ctx.fillText(empresaData.nit, width / 2, tituloY + 270);
-    }
-
-    // Contenido - mejor distribuido con más espacio entre secciones
-    const marginLeft = 300;
-    const contentWidth = width - 600;
-    let yPos = tituloY + 450; // Más espacio después del nombre de la empresa
-
-    ctx.textAlign = "left";
-    ctx.font = "46px 'Helvetica'"; // Texto ligeramente más grande para mejor lectura
-    
-    const parrafo = `Por medio de la presente, hacemos constar que el (la) señor (a) ${nombreCompleto.toUpperCase()}, identificado (a) con CÉDULA DE CIUDADANÍA ${cedula}, ${textoTerminacion}`;
-    
-    // Usar texto justificado
-    yPos = wrapTextJustified(ctx, parrafo, marginLeft, yPos, contentWidth, 80) + 150;
-
-    const parrafo2 = `Para constancia, se firma a los ${formatDateForSignature(new Date())}.`;
-    wrapTextJustified(ctx, parrafo2, marginLeft, yPos, contentWidth, 80);
-
-    // Firma - MUCHO MÁS ABAJO, casi al final
-    const firmaY = height - 450; // Casi al borde inferior
-
-    if (conFirma === 'true') {
-      // FIRMA DEL GERENTE (IZQUIERDA) - 20% del ancho
-      const firmaGerenteX = width * 0.20;
-      
-      // Determinar qué firma usar según la empresa
-      const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
-      const firmaPath = path.join(__dirname, "../../public", firmaFileName);
-      
-      if (fs.existsSync(firmaPath)) {
-        const firmaImg = await loadImage(firmaPath);
-        const firmaWidth = 350;
-        const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-        ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-      }
-
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(firmaGerenteX - 350, firmaY);
-      ctx.lineTo(firmaGerenteX + 350, firmaY);
-      ctx.stroke();
-
-      ctx.font = "bold 40px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillText(empresaData.gerente, firmaGerenteX, firmaY + 60);
-      ctx.font = "36px 'Helvetica'";
-      ctx.fillText(`Cédula: ${empresaData.cedulaGerente}`, firmaGerenteX, firmaY + 105);
-      ctx.fillText("Representante Legal", firmaGerenteX, firmaY + 150);
-      ctx.fillText(empresaData.nombre, firmaGerenteX, firmaY + 195);
-
-      // FIRMA DEL EMPLEADO (DERECHA) - 80% del ancho
-      const firmaEmpleadoX = width * 0.80;
-      ctx.font = "38px 'Helvetica'";
-      ctx.fillText("FIRMA: _____________________________", firmaEmpleadoX, firmaY);
-      ctx.fillText("CÉDULA: ____________________________", firmaEmpleadoX, firmaY + 100);
-      
-    } else {
-      // SOLO FIRMA DEL GERENTE (CENTRADA)
-      const firmaX = width / 2;
-      
-      // Determinar qué firma usar según la empresa
-      const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
-      const firmaPath = path.join(__dirname, "../../public", firmaFileName);
-      
-      if (fs.existsSync(firmaPath)) {
-        const firmaImg = await loadImage(firmaPath);
-        const firmaWidth = 350;
-        const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-        ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-      }
-
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(firmaX - 300, firmaY);
-      ctx.lineTo(firmaX + 300, firmaY);
-      ctx.stroke();
-
-      ctx.font = "bold 40px 'Helvetica'";
-      ctx.textAlign = "center";
-      ctx.fillText(empresaData.gerente, firmaX, firmaY + 60);
-      ctx.font = "36px 'Helvetica'";
-      ctx.fillText("Gerente General", firmaX, firmaY + 105);
-      ctx.fillText(empresaData.nit || `CC: ${empresaData.cedulaGerente}`, firmaX, firmaY + 150);
-    }
-
-    // NO INCLUIR FOOTER DE CONTACTO PARA TERMINACIÓN
-
-    // Enviar como PDF usando helper (mantener la lógica de incremento condicional)
-    if (conFirma === 'false' || !conFirma) {
-      usuario.certificadosGenerados = (usuario.certificadosGenerados || 0) + 1;
-      await usuario.save();
-      console.log(`✅ Contador incrementado para ${usuario.name} ${usuario.lastName}: ${usuario.certificadosGenerados}`);
-    }
-    await sendCanvasAsPdf(res, canvas, `terminacion_${Uid}`);
+    // Enviar ambas versiones en un solo PDF (primero sin firma, luego con firma)
+    await sendMultipleCanvasAsPdf(res, [canvasSinFirma, canvasConFirma], `terminacion_${Uid}`);
 
   } catch (error: any) {
     console.error("Error generando certificado de terminación:", error);
