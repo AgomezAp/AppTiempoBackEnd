@@ -63,6 +63,7 @@ const nominaConfig_1 = __importDefault(require("../routes/nominaConfig"));
 const admin_1 = __importDefault(require("../routes/admin"));
 const room_1 = __importDefault(require("../routes/room"));
 const reservation_1 = __importDefault(require("../routes/reservation"));
+const asistencia_1 = __importDefault(require("../routes/asistencia"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -103,6 +104,7 @@ class Server {
         this.app.use('/api/admin', admin_1.default);
         this.app.use(room_1.default);
         this.app.use(reservation_1.default);
+        this.app.use('/api/asistencia', asistencia_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -142,8 +144,6 @@ class Server {
                 yield user_2.User.sync({ alter: false });
                 yield product_3.Product.sync();
                 yield permisos_2.Permiso.sync({ alter: false });
-                // await Registro.sync({force: false});
-                // await Sumatoria.sync({force: false});
                 yield time_2.Registro.sync();
                 yield time_2.Sumatoria.sync();
                 yield time_2.Novedad.sync({ alter: false });
@@ -154,6 +154,10 @@ class Server {
                 yield Alert.sync({ alter: false });
                 yield room_2.Room.sync({ alter: false });
                 yield reservation_2.Reservation.sync({ alter: false });
+                // Sincronizar modelos de asistencia
+                const { RegistroAsistencia, ParticipanteAsistencia } = yield Promise.resolve().then(() => __importStar(require('./asistencia')));
+                yield RegistroAsistencia.sync();
+                yield ParticipanteAsistencia.sync();
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

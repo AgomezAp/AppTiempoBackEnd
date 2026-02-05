@@ -17,6 +17,7 @@ import RNominaConfig from '../routes/nominaConfig';
 import RAdmin from '../routes/admin';
 import RRoom from '../routes/room';
 import RReservation from '../routes/reservation';
+import RAsistencia from '../routes/asistencia';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -62,6 +63,7 @@ class Server{
         this.app.use('/api/admin', RAdmin);
         this.app.use(RRoom);
         this.app.use(RReservation);
+        this.app.use('/api/asistencia', RAsistencia);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -104,8 +106,6 @@ class Server{
             await User.sync({alter: false});
             await Product.sync();
             await Permiso.sync({alter: false});
-            // await Registro.sync({force: false});
-            // await Sumatoria.sync({force: false});
             await Registro.sync();
             await Sumatoria.sync();
             await Novedad.sync({alter: false});
@@ -116,6 +116,11 @@ class Server{
             await Alert.sync({ alter: false });
             await Room.sync({ alter: false });
             await Reservation.sync({ alter: false });
+            
+            // Sincronizar modelos de asistencia
+            const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
+            await RegistroAsistencia.sync();
+            await ParticipanteAsistencia.sync();
 
 
             console.log('Conexión establecida correctamente');

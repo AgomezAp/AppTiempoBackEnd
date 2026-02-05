@@ -376,3 +376,227 @@ export const sendReservationEmail = async (
     throw error;
   }
 };
+
+// Función para enviar correo de registro de asistencia
+export const sendAsistenciaEmail = async (
+  to: string,
+  userName: string,
+  data: {
+    fecha: string;
+    tema: string;
+    facilitador: string;
+    enlaceFirma: string;
+  }
+): Promise<void> => {
+  const fechaFormateada = new Date(data.fecha).toLocaleDateString("es-CO", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const styles = {
+    container: `
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    `,
+    header: `
+      background-color: #141414;
+      padding: 25px 30px;
+      text-align: center;
+    `,
+    headerTitle: `
+      color: #FFD600;
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+    `,
+    headerSubtitle: `
+      color: #ffffff;
+      font-size: 14px;
+      margin: 8px 0 0 0;
+      opacity: 0.9;
+    `,
+    body: `
+      padding: 30px;
+    `,
+    greeting: `
+      font-size: 16px;
+      color: #141414;
+      margin: 0 0 15px 0;
+    `,
+    message: `
+      font-size: 15px;
+      color: #555555;
+      line-height: 1.6;
+      margin: 0 0 20px 0;
+    `,
+    detailsBox: `
+      background-color: #f9f9f9;
+      border-left: 4px solid #FFD600;
+      border-radius: 0 6px 6px 0;
+      padding: 20px;
+      margin: 20px 0;
+    `,
+    detailsTitle: `
+      font-size: 16px;
+      font-weight: 700;
+      color: #141414;
+      margin: 0 0 15px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #FFD600;
+    `,
+    detailItem: `
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #eeeeee;
+      font-size: 14px;
+    `,
+    detailLabel: `
+      color: #141414;
+      font-weight: 600;
+      min-width: 100px;
+    `,
+    detailValue: `
+      color: #555555;
+    `,
+    button: `
+      display: inline-block;
+      background-color: #FFD600;
+      color: #141414;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 16px;
+      margin-top: 20px;
+    `,
+    footer: `
+      background-color: #141414;
+      padding: 20px 30px;
+      text-align: center;
+    `,
+    footerText: `
+      color: #ffffff;
+      font-size: 13px;
+      margin: 0;
+      opacity: 0.9;
+    `,
+    footerBrand: `
+      color: #FFD600;
+      font-weight: 700;
+    `,
+    warning: `
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #856404;
+    `,
+  };
+
+  const subject = `✍️ Registro de Asistencia - ${data.tema}`;
+  
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Registro de Asistencia</title>
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #f5f5f5;">
+      <div style="${styles.container}">
+        <!-- Header -->
+        <div style="${styles.header}">
+          <h1 style="${styles.headerTitle}">✍️ Registro de Asistencia</h1>
+          <p style="${styles.headerSubtitle}">Se requiere tu firma</p>
+        </div>
+        
+        <!-- Body -->
+        <div style="${styles.body}">
+          <p style="${styles.greeting}">Hola <strong>${userName}</strong>,</p>
+          <p style="${styles.message}">
+            Has sido convocado a una actividad y necesitamos que registres tu asistencia 
+            mediante tu firma digital.
+          </p>
+          
+          <!-- Detalles -->
+          <div style="${styles.detailsBox}">
+            <h3 style="${styles.detailsTitle}">📋 Detalles del Evento</h3>
+            
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr style="${styles.detailItem}">
+                <td style="${styles.detailLabel}">📅 Fecha:</td>
+                <td style="${styles.detailValue}">${fechaFormateada}</td>
+              </tr>
+              <tr style="${styles.detailItem}">
+                <td style="${styles.detailLabel}">📝 Tema:</td>
+                <td style="${styles.detailValue}">${data.tema}</td>
+              </tr>
+              <tr style="${styles.detailItem}; border-bottom: none;">
+                <td style="${styles.detailLabel}">👤 Facilitador:</td>
+                <td style="${styles.detailValue}">${data.facilitador}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <!-- Botón de firma -->
+          <div style="text-align: center;">
+            <a href="${data.enlaceFirma}" style="${styles.button}">
+              ✍️ FIRMAR ASISTENCIA
+            </a>
+          </div>
+          
+          <!-- Advertencia -->
+          <div style="${styles.warning}">
+            <strong>⚠️ Importante:</strong> Este enlace es personal e intransferible. 
+            Al firmar confirmas tu participación en esta actividad.
+          </div>
+          
+          <p style="${styles.message}; margin-top: 25px; font-size: 13px; color: #888888;">
+            Si no puedes hacer clic en el botón, copia y pega el siguiente enlace en tu navegador:<br>
+            <a href="${data.enlaceFirma}" style="color: #141414; word-break: break-all;">${data.enlaceFirma}</a>
+          </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="${styles.footer}">
+          <p style="${styles.footerText}">
+            Sistema de Registro de Asistencia<br>
+            <span style="${styles.footerBrand}">Andrés Publicidad</span>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: to,
+    subject: subject,
+    html: htmlBody,
+    headers: {
+      "Message-ID": `<${crypto.randomUUID()}@${process.env.EMAIL_SERVICE}.com>`,
+      "X-Entity-Ref-ID": crypto.randomUUID(),
+      Precedence: "bulk",
+      "Auto-Submitted": "auto-generated",
+    },
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email de asistencia enviado a ${to}`);
+  } catch (error) {
+    console.error(`Error al enviar email de asistencia:`, error);
+    throw error;
+  }
+};
