@@ -52,7 +52,7 @@ export const generarActaPDF = async (
       });
 
       // Cargar logo
-      let logoContent: Content;
+      let logoContent: TableCell;
       const logoPath = path.join(__dirname, '../../public', LOGOS[empresa] || 'Logo2.png');
       
       if (fs.existsSync(logoPath)) {
@@ -64,7 +64,7 @@ export const generarActaPDF = async (
           width: 100,
           height: 60,
           alignment: 'center'
-        };
+        } as TableCell;
       } else {
         logoContent = {
           text: empresa,
@@ -72,11 +72,11 @@ export const generarActaPDF = async (
           bold: true,
           alignment: 'center',
           margin: [0, 20, 0, 0]
-        };
+        } as TableCell;
       }
 
       // Generar filas de participantes
-      const participantRows: TableCell[][] = participantes.map((p) => {
+      const participantRows: TableCell[][] = participantes.map((p): TableCell[] => {
         let firmaContent: TableCell;
         
         if (p.firma && p.firmado) {
@@ -104,7 +104,7 @@ export const generarActaPDF = async (
           { text: p.documentoIdentificacion || '', fontSize: 8, alignment: 'center', margin: [2, 8, 2, 8] } as TableCell,
           { text: p.cargo || '', fontSize: 8, alignment: 'center', margin: [2, 8, 2, 8] } as TableCell,
           firmaContent
-        ];
+        ] as TableCell[];
       });
 
       // Agregar filas vacías para completar mínimo 10
@@ -135,11 +135,7 @@ export const generarActaPDF = async (
               body: [
                 [
                   // Logo
-                  {
-                    ...logoContent,
-                    alignment: 'center',
-                    margin: [0, 5, 0, 0]
-                  } as TableCell,
+                  Object.assign({}, logoContent, { margin: [0, 5, 0, 0] }) as TableCell,
                   // Título
                   {
                     text: 'REGISTRO DE ASISTENCIA',
@@ -156,12 +152,12 @@ export const generarActaPDF = async (
                         [{ text: `Código: ${registro.codigo}`, fontSize: 8, border: [false, false, false, true], margin: [2, 2, 2, 2] } as TableCell],
                         [{ text: `Versión: ${registro.version}`, fontSize: 8, border: [false, false, false, true], margin: [2, 2, 2, 2] } as TableCell],
                         [{ text: `Fecha: ${fechaFormateada}`, fontSize: 8, border: [false, false, false, false], margin: [2, 2, 2, 2] } as TableCell]
-                      ]
+                      ] as TableCell[][]
                     },
                     layout: 'noBorders'
                   } as TableCell
-                ]
-              ]
+                ] as TableCell[]
+              ] as TableCell[][]
             }
           },
           
@@ -188,16 +184,16 @@ export const generarActaPDF = async (
                 [
                   { text: 'FECHA:', bold: true, fontSize: 10, fillColor: '#f5f5f5', margin: [5, 8, 5, 8] } as TableCell,
                   { text: fechaFormateada, fontSize: 10, margin: [5, 8, 5, 8] } as TableCell
-                ],
+                ] as TableCell[],
                 [
                   { text: 'NOMBRE DEL FACILITADOR:', bold: true, fontSize: 10, fillColor: '#f5f5f5', margin: [5, 8, 5, 8] } as TableCell,
                   { text: registro.facilitadorNombre, fontSize: 10, margin: [5, 8, 5, 8] } as TableCell
-                ],
+                ] as TableCell[],
                 [
                   { text: 'TEMA:', bold: true, fontSize: 10, fillColor: '#f5f5f5', margin: [5, 8, 5, 8] } as TableCell,
                   { text: registro.tema, fontSize: 10, margin: [5, 8, 5, 8] } as TableCell
-                ]
-              ]
+                ] as TableCell[]
+              ] as TableCell[][]
             }
           },
           
@@ -217,8 +213,8 @@ export const generarActaPDF = async (
                     fillColor: '#e0e0e0',
                     margin: [0, 6, 0, 6]
                   } as TableCell
-                ]
-              ]
+                ] as TableCell[]
+              ] as TableCell[][]
             }
           },
           
@@ -234,10 +230,10 @@ export const generarActaPDF = async (
                   { text: 'No. CÉDULA', bold: true, fontSize: 9, alignment: 'center', fillColor: '#d0d0d0', margin: [2, 6, 2, 6] } as TableCell,
                   { text: 'CARGO', bold: true, fontSize: 9, alignment: 'center', fillColor: '#d0d0d0', margin: [2, 6, 2, 6] } as TableCell,
                   { text: 'FIRMA', bold: true, fontSize: 9, alignment: 'center', fillColor: '#d0d0d0', margin: [2, 6, 2, 6] } as TableCell
-                ],
+                ] as TableCell[],
                 // Datos de participantes
                 ...participantRows
-              ]
+              ] as TableCell[][]
             }
           }
         ]
