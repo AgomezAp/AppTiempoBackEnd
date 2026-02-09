@@ -77,7 +77,12 @@ export const sendReservationEmail = async (
   type: "confirmation" | "invitation"
 ): Promise<void> => {
   const roomName = reservation.Room?.name || "Sala desconocida";
-  const date = new Date(reservation.date).toLocaleDateString("es-CO", {
+  // IMPORTANTE: No usar new Date('YYYY-MM-DD') porque interpreta como UTC
+  // y en zonas horarias negativas (ej. Colombia UTC-5) se desplaza un día atrás.
+  // Parseamos manualmente para crear la fecha en hora local.
+  const [yearStr, monthStr, dayStr] = String(reservation.date).split('-');
+  const localDate = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
+  const date = localDate.toLocaleDateString("es-CO", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -388,7 +393,11 @@ export const sendAsistenciaEmail = async (
     enlaceFirma: string;
   }
 ): Promise<void> => {
-  const fechaFormateada = new Date(data.fecha).toLocaleDateString("es-CO", {
+  // Parsear la fecha manualmente para evitar el bug de UTC offset
+  // new Date('YYYY-MM-DD') interpreta como UTC, lo que en Colombia (UTC-5) desplaza un día atrás
+  const [yearF, monthF, dayF] = String(data.fecha).split('-');
+  const fechaLocal = new Date(Number(yearF), Number(monthF) - 1, Number(dayF));
+  const fechaFormateada = fechaLocal.toLocaleDateString("es-CO", {
     weekday: "long",
     year: "numeric",
     month: "long",

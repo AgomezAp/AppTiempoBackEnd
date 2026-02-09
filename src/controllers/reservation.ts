@@ -64,10 +64,11 @@ const getDayOfWeek = (date: string): number | null => {
     if (date.includes('/')) {
       // Formato DD/MM/YYYY
       const [day, month, year] = date.split('/');
-      dateObj = dayjs(`${year}-${month}-${day}`, 'YYYY-MM-DD');
+      dateObj = dayjs(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
     } else if (date.includes('-')) {
-      // Formato YYYY-MM-DD
-      dateObj = dayjs(date, 'YYYY-MM-DD');
+      // Formato YYYY-MM-DD - usar parse estricto para evitar offset UTC
+      const [y, m, d] = date.split('-');
+      dateObj = dayjs(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
     } else {
       dateObj = dayjs(date);
     }
@@ -84,14 +85,14 @@ const getDayOfWeek = (date: string): number | null => {
   }
 };
 
-// Validar que sea día laboral (solo lunes y viernes)
+// Validar que sea día laboral para reservas (solo lunes y viernes)
 const isWorkDay = (date: string): boolean => {
   const day = getDayOfWeek(date);
   if (day === null) {
     return false;
   }
 
-  return day === 1 || day === 5; // 1 = Lunes, 5 = Viernes. Martes-Jueves y Sábado no laborales
+  return day === 1 || day === 5; // 1 = Lunes, 5 = Viernes
 };
 
 // Validar que una sala pueda reservarse en el día indicado
@@ -101,12 +102,8 @@ const isRoomAllowedDay = (roomName: string, date: string): boolean => {
     return false;
   }
 
-  // Todas las salas solo se pueden reservar lunes (1) y viernes (5)
-  const normalizedName = String(roomName).trim().toLowerCase();
-  const isRoom204 = normalizedName === '204' || normalizedName.includes('204');
-
-  // Ambas (sala 204 y otras) ahora tienen la misma restricción
-  return day === 1 || day === 5; // Solo lunes y viernes
+  // Solo se pueden reservar los lunes (1) y viernes (5)
+  return day === 1 || day === 5;
 };
 
 // Validar que la hora esté dentro del horario laboral
@@ -149,7 +146,7 @@ export const getAvailableSlots = async (req: Request, res: Response): Promise<an
       console.error('No es día laboral:', date);
       return res.status(400).json({
         success: false,
-        message: 'Las reservas solo se pueden hacer de lunes a sábado',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
@@ -163,12 +160,9 @@ export const getAvailableSlots = async (req: Request, res: Response): Promise<an
     }
 
     if (!isRoomAllowedDay(room.name, date as string)) {
-      const isRoom204 = room.name.trim().toLowerCase() === '204';
       return res.status(400).json({
         success: false,
-        message: isRoom204
-          ? 'La sala 204 solo se puede reservar los lunes y viernes'
-          : 'Las reservas para esta sala no están permitidas en esta fecha',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
@@ -262,7 +256,7 @@ export const createReservation = async (req: Request, res: Response): Promise<an
     if (!isWorkDay(date)) {
       return res.status(400).json({
         success: false,
-        message: 'Las reservas solo se pueden hacer de lunes a sábado',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
@@ -290,12 +284,9 @@ export const createReservation = async (req: Request, res: Response): Promise<an
     }
 
     if (!isRoomAllowedDay(room.name, date)) {
-      const isRoom204 = room.name.trim().toLowerCase() === '204';
       return res.status(400).json({
         success: false,
-        message: isRoom204
-          ? 'La sala 204 solo se puede reservar los lunes y viernes'
-          : 'Las reservas para esta sala no están permitidas en esta fecha',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
@@ -523,7 +514,7 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
     if (date && !isWorkDay(date)) {
       return res.status(400).json({
         success: false,
-        message: 'Las reservas solo se pueden hacer de lunes a sábado',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
@@ -547,12 +538,9 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
 
     const room = await Room.findByPk(reservation.Rid);
     if (room && !isRoomAllowedDay(room.name, newDate)) {
-      const isRoom204 = room.name.trim().toLowerCase() === '204';
       return res.status(400).json({
         success: false,
-        message: isRoom204
-          ? 'La sala 204 solo se puede reservar los lunes y viernes'
-          : 'Las reservas para esta sala no están permitidas en esta fecha',
+        message: 'Las reservas solo están disponibles los lunes y viernes',
       });
     }
 
