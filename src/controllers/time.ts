@@ -216,7 +216,7 @@ export const getHorarioByIdFecha = async (req: Request, res: Response): Promise<
         if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
         return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
     }; 
-    const fechaactual = dayjs.utc(fecha).format('YYYY-MM-DDTHH:mm:ss[Z]');
+    const fechaactual = dayjs.utc(typeof fecha === 'string' ? fecha : fecha[0]).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
         const registro = await Registro.findOne({
             where: { Hid: id , Fecha: fechaactual},
