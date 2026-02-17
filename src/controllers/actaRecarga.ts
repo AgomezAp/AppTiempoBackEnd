@@ -561,7 +561,7 @@ export const eliminarActa = async (req: Request, res: Response): Promise<any> =>
     const { id } = req.params;
     const userId = (req as any).userId;
 
-    const acta = await ActaRecarga.findByPk(id);
+    const acta = await ActaRecarga.findByPk(parseId(id));
     if (!acta) {
       return res.status(404).json({ msg: 'Acta no encontrada' });
     }
@@ -643,7 +643,7 @@ export const actualizarAcceso = async (req: Request, res: Response): Promise<any
     const { id } = req.params;
     const { puedeVer, puedeEditar } = req.body;
 
-    const acceso = await ActaRecargaAcceso.findByPk(id);
+    const acceso = await ActaRecargaAcceso.findByPk(parseId(id));
     if (!acceso) {
       return res.status(404).json({ msg: 'Acceso no encontrado' });
     }
@@ -671,7 +671,7 @@ export const eliminarAcceso = async (req: Request, res: Response): Promise<any> 
   try {
     const { id } = req.params;
 
-    const acceso = await ActaRecargaAcceso.findByPk(id);
+    const acceso = await ActaRecargaAcceso.findByPk(parseId(id));
     if (!acceso) {
       return res.status(404).json({ msg: 'Acceso no encontrado' });
     }

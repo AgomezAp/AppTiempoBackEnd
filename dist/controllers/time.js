@@ -237,7 +237,7 @@ const getHorarioByFecha = (req, res) => __awaiter(void 0, void 0, void 0, functi
             return null; // Manejar fechas nulas o no definidas
         return dayjs_1.default.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
     };
-    const fechaactual = dayjs_1.default.utc(fecha).format('YYYY-MM-DDTHH:mm:ss[Z]');
+    const fechaactual = dayjs_1.default.utc(typeof fecha === 'string' ? fecha : fecha[0]).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
         const registro = yield time_1.Registro.findAll({
             where: { Fecha: fechaactual },
@@ -827,7 +827,7 @@ const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void
         const registro = yield time_1.Registro.findOne({
             where: {
                 Hid,
-                Fecha: dayjs_1.default.tz(Fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
+                Fecha: dayjs_1.default.tz(typeof Fecha === 'string' ? Fecha : Fecha[0], 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
             },
         });
         if (!registro) {

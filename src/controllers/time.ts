@@ -8,6 +8,7 @@ import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes, informeNovedadNuevo} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
+import { parseId } from '../utils/parseId';
 import multer from 'multer';
 import dayjs from 'dayjs';
 import { Op } from 'sequelize';
@@ -247,7 +248,7 @@ export const getHorarioByFecha = async (req: Request, res: Response): Promise<an
         if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
         return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
     }; 
-    const fechaactual = dayjs.utc(fecha).format('YYYY-MM-DDTHH:mm:ss[Z]');
+    const fechaactual = dayjs.utc(typeof fecha === 'string' ? fecha : fecha[0]).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
         const registro = await Registro.findAll({
             where: {Fecha: fechaactual},
@@ -919,7 +920,7 @@ export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): 
       const registro = await Registro.findOne({
         where: {
           Hid,
-          Fecha: dayjs.tz(Fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
+          Fecha: dayjs.tz(typeof Fecha === 'string' ? Fecha : Fecha[0], 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
         },
       });
   
