@@ -1,310 +1,263 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import { NovedadHistorico, Registro } from '../models/time';
+import { Permiso } from '../models/permisos';
 import { User } from '../models/user';
-import { convertirHora, convertirMinuto } from '../services/novedad';
+import { NominaConfig } from '../models/nominaConfig';
 
-// Helper to convert HH:MM string to minutes
-function hoursToMinutes(horaStr?: string | null): number {
-  if (!horaStr) return 0;
-  return convertirHora(horaStr);
+// Tipos de permiso médico que generan costo para la empresa
+const TIPOS_CITA_MEDICA = ['Cita médica', 'Cita odontológica'];
+
+// Cada cita médica/odontológica = 2 horas de permiso
+const HORAS_POR_CITA = 2;
+
+// Jornada laboral: 9h30m → 9.5 horas/día, 30 días/mes
+const HORAS_JORNADA_DIA = 9.5;
+const DIAS_MES = 30;
+
+/**
+ * Calcula la tarifa por hora de un empleado.
+ * tarifa_hora = salario_mensual / 30 / 9.5
+ */
+function calcularTarifaHora(salarioMensual: number): number {
+  if (!salarioMensual || salarioMensual <= 0) return 0;
+  return salarioMensual / DIAS_MES / HORAS_JORNADA_DIA;
 }
 
-// Build YYYY-MM-DD key in local time (neutral to timezone offsets)
-function dateKeyLocal(date: Date): string {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  const y = local.getFullYear();
-  const m = String(local.getMonth() + 1).padStart(2, '0');
-  const d = String(local.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
+/**
+ * DEBUG ENDPOINT: Ver todos los tipos de permisos en BD
+ */
+export const getPermisosTypes = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const permisos = await Permiso.findAll({ raw: true, attributes: ['tipo'] });
+    const tiposUnicos = [...new Set(permisos.map((p: any) => p.tipo))];
+    const totalUsers = await User.count();
+    res.status(200).json({
+      tipos_encontrados: tiposUnicos,
+      total_permisos: permisos.length,
+      total_users: totalUsers,
+      tipos_buscados: TIPOS_CITA_MEDICA,
+    });
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+};
 
-// Round minutes down to multiples of 30 (only :00 or :30)
-function floorToHalfHour(mins: number): number {
-  const sign = mins < 0 ? -1 : 1;
-  const abs = Math.abs(mins);
-  const hours = Math.floor(abs / 60);
-  const remainder = abs % 60;
-  const rounded = remainder < 30 ? 0 : 30; // floor to 0 or 30
-  return sign * (hours * 60 + rounded);
-}
+/**
+ * PATCH /api/admin/ausentismo/permiso/:id/toggle-cancelado
+ * Marca o desmarca un permiso como cancelado (no tomado).
+ */
+export const togglePermisoCancelado = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const permiso = await Permiso.findByPk(id);
+    
+    if (!permiso) {
+      return res.status(404).json({ success: false, message: 'Permiso no encontrado' });
+    }
 
-// Helper to convert minutes to HH:MM string applying floor to :00/:30
-function minutesToHours(mins: number): string {
-  const rounded = floorToHalfHour(mins);
-  return convertirMinuto(rounded);
-}
+    // Toggle del campo cancelado
+    const nuevoEstado = !permiso.getDataValue('cancelado');
+    await permiso.update({ cancelado: nuevoEstado });
 
+    console.log(`🔄 Permiso ${id} marcado como ${nuevoEstado ? 'CANCELADO' : 'ACTIVO'}`);
+
+    res.status(200).json({
+      success: true,
+      message: nuevoEstado ? 'Permiso marcado como no tomado' : 'Permiso restaurado',
+      cancelado: nuevoEstado,
+    });
+  } catch (error: any) {
+    console.error('Error toggling permiso cancelado:', error);
+    res.status(500).json({ error: error.message || error });
+  }
+};
+
+/**
+ * GET /api/admin/ausentismo/stats
+ * 
+ * ENFOQUE: Consulta TODOS los usuarios activos de la tabla users,
+ * luego cuenta cuántos permisos médicos/odontológicos tiene cada uno.
+ * Los permisos marcados como cancelados NO se cuentan en el costo.
+ */
 export const getAusentismoStats = async (req: Request, res: Response): Promise<any> => {
   try {
     const { from, to } = req.query;
-    const where: any = {};
 
-    // Filter by date range if provided
+    // 1. Obtener TODOS los usuarios activos (status = 1)
+    const allUsers = await User.findAll({
+      where: { status: 1 },
+      attributes: ['Uid', 'name', 'lastName', 'email', 'salario', 'empresa', 'cargo'],
+      raw: true,
+    });
+
+    console.log(`👥 Total usuarios activos: ${allUsers.length}`);
+
+    // 2. Obtener salario mínimo vigente como fallback
+    const configVigente = await NominaConfig.findOne({ where: { vigente: true } });
+    const salarioMinimo = configVigente ? Number(configVigente.getDataValue('salarioMinimo')) : 1423500;
+    console.log(`💰 Salario mínimo fallback: ${salarioMinimo}`);
+
+    // 3. Obtener los permisos médicos/odontológicos (con filtro de fecha opcional)
+    const permisoWhere: any = {
+      tipo: { [Op.in]: TIPOS_CITA_MEDICA },
+    };
     if (from && to) {
-      where.Fecha = {
-        [Op.between]: [new Date(String(from)), new Date(String(to))],
+      permisoWhere.fecha = {
+        [Op.between]: [new Date(String(from) + 'T00:00:00'), new Date(String(to) + 'T23:59:59')],
       };
     }
 
-    // Fetch all NovedadHistorico records (already processed/approved)
-    const novedades = await NovedadHistorico.findAll({
-      where,
-      order: [['Fecha', 'DESC']],
+    const permisosRaw = await Permiso.findAll({
+      where: permisoWhere,
+      order: [['fecha', 'DESC']],
+      raw: true,
+    });
+    console.log(`🩺 Total permisos médicos/odonto encontrados: ${permisosRaw.length}`);
+
+    // 4. Agrupar permisos por Uid (incluyendo info de cancelado)
+    const permisosPorUsuario: Record<number, Array<{ id: number; fecha: string; tipo: string; cancelado: boolean }>> = {};
+    permisosRaw.forEach((p: any) => {
+      if (!permisosPorUsuario[p.Uid]) {
+        permisosPorUsuario[p.Uid] = [];
+      }
+      permisosPorUsuario[p.Uid].push({
+        id: p.id,
+        fecha: p.fecha ? new Date(p.fecha).toISOString().substring(0, 10) : 'N/A',
+        tipo: p.tipo,
+        cancelado: p.cancelado || false,
+      });
     });
 
-    // Fetch Registros in range to cross-check marcaciones
-    const registroWhere: any = {};
-    if (from && to) {
-      registroWhere.Fecha = {
-        [Op.between]: [new Date(String(from)), new Date(String(to))],
+    // 5. Construir el array byUser con TODOS los empleados
+    let totalPermisosGlobal = 0;
+    let totalHorasGlobal = 0;
+    let totalCostoGlobal = 0;
+    let empleadosConPermisos = 0;
+
+    const byUser = allUsers.map((user: any) => {
+      const salario = user.salario && Number(user.salario) > 0
+        ? Number(user.salario)
+        : salarioMinimo;
+      const tarifaHora = calcularTarifaHora(salario);
+
+      const permisosUsuario = permisosPorUsuario[user.Uid] || [];
+      
+      // Solo contar permisos NO cancelados para el costo
+      const permisosActivos = permisosUsuario.filter(p => !p.cancelado);
+      const citasMedicas = permisosActivos.filter(p => p.tipo === 'Cita médica').length;
+      const citasOdontologicas = permisosActivos.filter(p => p.tipo === 'Cita odontológica').length;
+      const totalPermisos = citasMedicas + citasOdontologicas;
+      const totalHoras = totalPermisos * HORAS_POR_CITA;
+      const costoPorPermiso = tarifaHora * HORAS_POR_CITA;
+      const costoTotal = totalPermisos * costoPorPermiso;
+
+      // Acumular totales globales (solo activos)
+      totalPermisosGlobal += totalPermisos;
+      totalHorasGlobal += totalHoras;
+      totalCostoGlobal += costoTotal;
+      if (totalPermisos > 0) empleadosConPermisos++;
+
+      return {
+        Uid: user.Uid,
+        nombre: `${user.name || ''} ${user.lastName || ''}`.trim() || 'N/A',
+        cargo: user.cargo || 'N/A',
+        empresa: user.empresa || 'N/A',
+        salario: Math.round(salario),
+        tarifaHora: Math.round(tarifaHora),
+        citasMedicas,
+        citasOdontologicas,
+        totalPermisos,
+        totalHoras,
+        costoTotal: Math.round(costoTotal),
+        // Incluir TODOS los permisos (activos y cancelados) con su estado
+        permisos: permisosUsuario.map(p => ({
+          id: p.id,
+          fecha: p.fecha,
+          tipo: p.tipo,
+          costo: p.cancelado ? 0 : Math.round(costoPorPermiso),
+          cancelado: p.cancelado,
+        })),
       };
-    }
-    const registros = await Registro.findAll({ where: registroWhere });
-
-    // Fetch all users for mapping
-    const users = await User.findAll();
-    const userMap: Record<number, any> = {};
-    users.forEach((u: any) => {
-      userMap[u.Uid] = { name: u.nombre, email: u.email, area: u.Area };
+    })
+    // Ordenar: primero los que tienen permisos (mayor costo primero), luego el resto por nombre
+    .sort((a, b) => {
+      if (b.costoTotal !== a.costoTotal) return b.costoTotal - a.costoTotal;
+      return a.nombre.localeCompare(b.nombre);
     });
 
-    // Calculate statistics
-    const stats = calculateStats(novedades, registros, userMap);
+    const stats = {
+      summary: {
+        totalPermisos: totalPermisosGlobal,
+        totalHoras: totalHorasGlobal,
+        totalCosto: Math.round(totalCostoGlobal),
+        empleadosAfectados: empleadosConPermisos,
+        horasPorCita: HORAS_POR_CITA,
+        salarioMinimoReferencia: salarioMinimo,
+      },
+      byUser,
+    };
 
-    res.status(200).json({
-      success: true,
-      stats,
-      records: novedades,
-    });
+    console.log(`📊 Stats: ${byUser.length} usuarios, ${totalPermisosGlobal} permisos activos, costo total: $${Math.round(totalCostoGlobal)}`);
+
+    res.status(200).json({ success: true, stats });
   } catch (error: any) {
-    console.error('Error calculating ausentismo stats:', error);
+    console.error('Error calculando estadísticas de costo médico:', error);
     res.status(500).json({ error: error.message || error });
   }
 };
 
-function calculateStats(novedades: any[], registros: any[], userMap: Record<number, any>) {
-  // Allowed absence types to include in statistics
-  const ALLOWED_TYPES = new Set<string>([
-    'Permiso personal de todo el día',
-    'Salida Temprano',
-    'Permiso personal por horas',
-    'Llegada tarde por factores externos',
-    'Incapacidad médica',
-    'Día de la familia',
-    'Suspensión por proceso disciplinario',
-  ]);
-
-  // Expected workday duration in minutes (9h30)
-  const WORKDAY_MIN = 9 * 60 + 30;
-
-  // Index registros by user and date
-  const registroMap: Record<number, Record<string, { workedMinutes: number; totalStr?: string }>> = {};
-  registros.forEach((reg: any) => {
-    const uid = reg.Hid;
-    const key = dateKeyLocal(new Date(reg.Fecha));
-    if (!registroMap[uid]) registroMap[uid] = {};
-
-    const totalMinutes = reg.Total
-      ? hoursToMinutes(reg.Total)
-      : Math.max(0, Math.round((new Date(reg.Salida).getTime() - new Date(reg.Entrada).getTime()) / 60000));
-
-    if (!registroMap[uid][key]) {
-      registroMap[uid][key] = { workedMinutes: 0, totalStr: reg.Total };
-    }
-    registroMap[uid][key].workedMinutes += Math.max(0, totalMinutes);
-  });
-
-  // Filter: only allowed types (aceptacion handled in logic below)
-  const filtered = novedades.filter((n: any) => ALLOWED_TYPES.has(n.type || ''));
-
-  console.log(`📊 Total novedades: ${novedades.length}, Filtradas por tipo permitido: ${filtered.length}`);
-  console.log('📋 Tipos permitidos:', Array.from(ALLOWED_TYPES));
-
-  const byUser: Record<
-    number,
-    {
-      name: string;
-      totalMinutes: number;
-      count: number;
-      byType: Record<string, { minutes: number; count: number }>;
-    }
-  > = {};
-
-  const byType: Record<string, { minutes: number; count: number }> = {};
-  let totalMinutes = 0;
-  let totalCount = 0;
-  let skippedCount = 0;
-
-  filtered.forEach((nov: any) => {
-    const uid = nov.Nid;
-    const type = nov.type || 'Desconocido';
-    const name = nov.Name || userMap[uid]?.name || 'N/A';
-    const dateKey = dateKeyLocal(new Date(nov.Fecha));
-    const reg = registroMap[uid]?.[dateKey];
-
-    let absenceMinutes = 0;
-    let reason = '';
-
-    if (reg) {
-      // Hay registro ese día: calcular ausencia real como diferencia
-      const worked = reg.workedMinutes;
-      const missing = Math.max(0, WORKDAY_MIN - worked);
-      
-      // Solo contar si efectivamente trabajó menos de la jornada completa
-      if (missing > 0) {
-        const fromNovedad = Math.abs(hoursToMinutes(nov.horas));
-        // Usar el mayor entre lo que falta vs lo declarado en novedad
-        absenceMinutes = Math.max(missing, fromNovedad);
-        reason = `CON_REGISTRO: trabajó ${worked}min, faltó ${missing}min, novedad=${fromNovedad}min → cuenta ${absenceMinutes}min`;
-      } else {
-        // Trabajó jornada completa o más: el permiso no se usó
-        absenceMinutes = 0;
-        reason = `CON_REGISTRO: trabajó ${worked}min >= jornada ${WORKDAY_MIN}min → NO CUENTA (permiso no usado)`;
-      }
-    } else {
-      // Sin registro ese día: validar si es permiso de todo el día
-      const isFullDay = type === 'Permiso personal de todo el día' 
-        || type === 'Día de la familia' 
-        || type === 'Incapacidad médica'
-        || type === 'Suspensión por proceso disciplinario';
-      
-      if (isFullDay) {
-        // Permiso de día completo sin registro: contar jornada completa
-        const fromNovedad = Math.abs(hoursToMinutes(nov.horas));
-        absenceMinutes = fromNovedad || WORKDAY_MIN;
-        reason = `SIN_REGISTRO + DIA_COMPLETO: novedad=${fromNovedad}min → cuenta ${absenceMinutes}min`;
-      } else {
-        // Otros permisos sin registro: no contar (raro, pero puede pasar)
-        absenceMinutes = 0;
-        reason = `SIN_REGISTRO pero no es día completo (tipo: ${type}) → NO CUENTA`;
-      }
-    }
-
-    const mins = floorToHalfHour(absenceMinutes);
-    
-    console.log(`  ${nov.Fecha.toString().substring(0,10)} | ${name} | ${type} | ${reason} | Final: ${mins}min`);
-    
-    if (mins <= 0) {
-      skippedCount++;
-      return;
-    }
-
-    // Aggregate by user
-    if (!byUser[uid]) {
-      byUser[uid] = {
-        name,
-        totalMinutes: 0,
-        count: 0,
-        byType: {},
-      };
-    }
-    byUser[uid].totalMinutes += mins;
-    byUser[uid].count += 1;
-
-    // Per-user breakdown by type
-    if (!byUser[uid].byType[type]) {
-      byUser[uid].byType[type] = { minutes: 0, count: 0 };
-    }
-    byUser[uid].byType[type].minutes += mins;
-    byUser[uid].byType[type].count += 1;
-
-    // Aggregate by type
-    if (!byType[type]) {
-      byType[type] = { minutes: 0, count: 0 };
-    }
-    byType[type].minutes += mins;
-    byType[type].count += 1;
-
-    // Global totals
-    totalMinutes += mins;
-    totalCount += 1;
-  });
-
-  console.log(`\n✅ Total contados: ${totalCount}, ❌ Excluidos: ${skippedCount}`);
-
-  // Convert to arrays and sort
-  const userStats = Object.entries(byUser)
-    .map(([uid, data]) => ({
-      Uid: Number(uid),
-      Name: data.name,
-      totalHours: minutesToHours(data.totalMinutes),
-      totalMinutes: data.totalMinutes,
-      count: data.count,
-      // Average duration per record in minutes, floored to multiples of 30
-      average: Math.floor((data.totalMinutes / (data.count || 1)) / 30) * 30,
-      byType: Object.entries(data.byType).map(([t, d]) => ({
-        type: t,
-        hours: minutesToHours(d.minutes),
-        minutes: d.minutes,
-        count: d.count,
-      })),
-    }))
-    .sort((a, b) => b.totalMinutes - a.totalMinutes);
-
-  const typeStats = Object.entries(byType)
-    .map(([type, data]) => ({
-      type,
-      hours: minutesToHours(data.minutes),
-      minutes: data.minutes,
-      count: data.count,
-      percentage: ((data.count / totalCount) * 100).toFixed(2),
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  return {
-    summary: {
-      totalRecords: totalCount,
-      totalHours: minutesToHours(totalMinutes),
-      totalMinutes,
-      // Overall average in minutes, floored to :00/:30
-      averagePerRecord: Math.floor((totalMinutes / (totalCount || 1)) / 30) * 30,
-      uniqueUsers: Object.keys(byUser).length,
-    },
-    byUser: userStats,
-    byType: typeStats,
-    topAbsentees: userStats.slice(0, 10),
-  };
-}
-
-// Get summary statistics (for KPI cards)
+/**
+ * GET /api/admin/ausentismo/summary
+ * Resumen rápido para KPI cards (solo permisos activos).
+ */
 export const getAusentismoSummary = async (req: Request, res: Response): Promise<any> => {
   try {
     const { from, to } = req.query;
-    const where: any = {};
+    const where: any = {
+      tipo: { [Op.in]: TIPOS_CITA_MEDICA },
+      [Op.or]: [{ cancelado: false }, { cancelado: null }], // Solo permisos activos
+    };
 
     if (from && to) {
-      where.Fecha = {
-        [Op.between]: [new Date(String(from)), new Date(String(to))],
+      where.fecha = {
+        [Op.between]: [new Date(String(from) + 'T00:00:00'), new Date(String(to) + 'T23:59:59')],
       };
     }
 
-    const novedades = await NovedadHistorico.findAll({ where });
+    const permisosRaw = await Permiso.findAll({ where, raw: true });
+    const users = await User.findAll({ attributes: ['Uid', 'salario'], raw: true });
 
-    const registroWhere: any = {};
-    if (from && to) {
-      registroWhere.Fecha = {
-        [Op.between]: [new Date(String(from)), new Date(String(to))],
-      };
-    }
-    const registros = await Registro.findAll({ where: registroWhere });
-
-    const users = await User.findAll();
     const userMap: Record<number, any> = {};
     users.forEach((u: any) => {
-      userMap[u.Uid] = { name: u.nombre };
+      userMap[u.Uid] = u;
     });
 
-    const stats = calculateStats(novedades, registros, userMap);
+    const configVigente = await NominaConfig.findOne({ where: { vigente: true } });
+    const salarioMinimo = configVigente ? Number(configVigente.getDataValue('salarioMinimo')) : 1423500;
+
+    let totalCosto = 0;
+    const uidSet = new Set<number>();
+
+    permisosRaw.forEach((p: any) => {
+      const user = userMap[p.Uid];
+      const salario = user?.salario && Number(user.salario) > 0 ? Number(user.salario) : salarioMinimo;
+      totalCosto += calcularTarifaHora(salario) * HORAS_POR_CITA;
+      uidSet.add(p.Uid);
+    });
 
     res.status(200).json({
       success: true,
-      summary: stats.summary,
-      topAbsentees: stats.topAbsentees.slice(0, 5),
-      typeDistribution: stats.byType.slice(0, 5),
+      summary: {
+        totalPermisos: permisosRaw.length,
+        totalHoras: permisosRaw.length * HORAS_POR_CITA,
+        totalCosto: Math.round(totalCosto),
+        empleadosAfectados: uidSet.size,
+      },
     });
   } catch (error: any) {
-    console.error('Error calculating summary:', error);
+    console.error('Error calculando resumen:', error);
     res.status(500).json({ error: error.message || error });
   }
 };
+  
+

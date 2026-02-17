@@ -60,6 +60,11 @@ Permiso.init({
         type: sequelize_1.DataTypes.BOOLEAN,
         allowNull: true
     },
+    cancelado: {
+        type: sequelize_1.DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+    },
     Uid: {
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,

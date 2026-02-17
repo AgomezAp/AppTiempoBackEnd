@@ -1,6 +1,5 @@
+import 'dotenv/config'; // DEBE ser la primera línea - carga .env antes de todo
 import Server from "./models/server";
-import dotenv from 'dotenv'
 import './utils/cron'
 
-dotenv.config();
 const server = new Server();

@@ -18,6 +18,7 @@ import RAdmin from '../routes/admin';
 import RRoom from '../routes/room';
 import RReservation from '../routes/reservation';
 import RAsistencia from '../routes/asistencia';
+import RActaRecarga from '../routes/actaRecarga';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -64,6 +65,7 @@ class Server{
         this.app.use(RRoom);
         this.app.use(RReservation);
         this.app.use('/api/asistencia', RAsistencia);
+        this.app.use('/api/actas-recargas', RActaRecarga);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -121,6 +123,12 @@ class Server{
             const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
             await RegistroAsistencia.sync();
             await ParticipanteAsistencia.sync();
+
+            // Sincronizar modelos de actas de recargas
+            const { ActaRecarga } = await import('./actaRecarga');
+            const { ActaRecargaAcceso } = await import('./actaRecargaAcceso');
+            await ActaRecarga.sync({ force: true });
+            await ActaRecargaAcceso.sync({ alter: false });
 
 
             console.log('Conexión establecida correctamente');

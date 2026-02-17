@@ -20,6 +20,7 @@ export class Permiso extends Model {
   public observaciones?: string;
   public soporte?: Buffer;
   public Uid!: number; // Foreign key to User
+  public cancelado!: boolean; // Para marcar permisos no tomados
 }
 
 Permiso.init(
@@ -72,6 +73,11 @@ Permiso.init(
     novedad: {
       type: DataTypes.BOOLEAN,
       allowNull: true
+    },
+    cancelado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
     Uid: {
       type: DataTypes.INTEGER,

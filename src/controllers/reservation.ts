@@ -624,7 +624,12 @@ export const cancelReservation = async (req: Request, res: Response): Promise<an
     const { id } = req.params;
     const userId = (req as any).userId;
 
-    const reservation = await Reservation.findByPk(id);
+    const reservation = await Reservation.findByPk(id, {
+      include: [
+        { model: User, attributes: ['Uid', 'name', 'lastName', 'email'] },
+        { model: Room, attributes: ['Rid', 'name'] },
+      ],
+    });
 
     if (!reservation) {
       return res.status(404).json({
@@ -639,6 +644,52 @@ export const cancelReservation = async (req: Request, res: Response): Promise<an
         success: false,
         message: 'No tienes permiso para cancelar esta reserva',
       });
+    }
+
+    // Guardar datos antes de eliminar para enviar emails
+    const reservationData = {
+      date: reservation.date,
+      startTime: reservation.startTime,
+      endTime: reservation.endTime,
+      reason: reservation.reason,
+      participants: reservation.participants,
+      User: (reservation as any).User,
+      Room: (reservation as any).Room,
+    };
+
+    // Enviar email de cancelación al creador
+    try {
+      const creatorUser = reservationData.User;
+      if (creatorUser && creatorUser.email) {
+        await sendReservationEmail(
+          creatorUser.email,
+          `${creatorUser.name} ${creatorUser.lastName}`,
+          reservationData,
+          'cancellation'
+        );
+      }
+
+      // Enviar email de cancelación a todos los participantes
+      if (reservationData.participants && reservationData.participants.length > 0) {
+        const participantUsers = await User.findAll({
+          where: { Uid: { [Op.in]: reservationData.participants } },
+          attributes: ['Uid', 'name', 'lastName', 'email'],
+        });
+
+        for (const participant of participantUsers) {
+          if (participant.email) {
+            await sendReservationEmail(
+              (participant as any).email,
+              `${(participant as any).name} ${(participant as any).lastName}`,
+              reservationData,
+              'cancellation'
+            );
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error al enviar emails de cancelación:', emailError);
+      // No bloquear la cancelación si falla el envío de emails
     }
 
     await reservation.destroy();

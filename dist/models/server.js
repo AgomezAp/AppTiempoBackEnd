@@ -64,6 +64,7 @@ const admin_1 = __importDefault(require("../routes/admin"));
 const room_1 = __importDefault(require("../routes/room"));
 const reservation_1 = __importDefault(require("../routes/reservation"));
 const asistencia_1 = __importDefault(require("../routes/asistencia"));
+const actaRecarga_1 = __importDefault(require("../routes/actaRecarga"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -105,6 +106,7 @@ class Server {
         this.app.use(room_1.default);
         this.app.use(reservation_1.default);
         this.app.use('/api/asistencia', asistencia_1.default);
+        this.app.use('/api/actas-recargas', actaRecarga_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -158,6 +160,11 @@ class Server {
                 const { RegistroAsistencia, ParticipanteAsistencia } = yield Promise.resolve().then(() => __importStar(require('./asistencia')));
                 yield RegistroAsistencia.sync();
                 yield ParticipanteAsistencia.sync();
+                // Sincronizar modelos de actas de recargas
+                const { ActaRecarga } = yield Promise.resolve().then(() => __importStar(require('./actaRecarga')));
+                const { ActaRecargaAcceso } = yield Promise.resolve().then(() => __importStar(require('./actaRecargaAcceso')));
+                yield ActaRecarga.sync({ force: true });
+                yield ActaRecargaAcceso.sync({ alter: false });
                 console.log('Conexión establecida correctamente');
             }
             catch (error) {

@@ -48,7 +48,51 @@ export const validateAdmin = (req: any, res: Response, next: any): any => {
       });
     }
 
+    const userId = decoded.userId ?? decoded.Uid;
+    if (!userId) {
+      return res.status(401).json({
+        msg: "Token inválido",
+      });
+    }
+
     req.user = decoded;
+    req.userId = Number(userId);
+    req.userRole = decoded.role;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      msg: "Token inválido",
+    });
+  }
+};
+
+// Middleware para validar token (sin verificar rol)
+export const validateToken = (req: any, res: Response, next: any): any => {
+  const token = req.headers["authorization"];
+  
+  if (!token) {
+    return res.status(401).json({
+      msg: "Acceso denegado - Token no proporcionado",
+    });
+  }
+
+  try {
+    const jwt = require("jsonwebtoken");
+    const decoded: any = jwt.verify(
+      token.slice(7),
+      process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS"
+    );
+
+    const userId = decoded.userId ?? decoded.Uid;
+    if (!userId) {
+      return res.status(401).json({
+        msg: "Token inválido",
+      });
+    }
+
+    req.user = decoded;
+    req.userId = Number(userId);
+    req.userRole = decoded.role;
     next();
   } catch (error) {
     return res.status(401).json({
