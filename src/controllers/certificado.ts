@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import { Request, Response } from "express";
 import { User } from "../models/user";
 import { Area } from "../models/area";
@@ -342,7 +343,7 @@ export const generarCertificadoLaboral = async (
   const { Uid } = req.params;
 
   try {
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -628,7 +629,7 @@ export const generarCertificadoImagen = async (
     console.log("=== INICIANDO GENERACIÓN DE CERTIFICADO IMAGEN ===");
     console.log("Usuario ID:", Uid);
 
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -1023,7 +1024,7 @@ export const generarCertificadoHTML = async (
   const { Uid } = req.params;
 
   try {
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -1513,7 +1514,7 @@ export const generarCertificadoCesantias = async (
   const { empresa } = req.query;
   
   try {
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -1727,7 +1728,7 @@ export const generarCertificadoTerminacion = async (
   const { empresa } = req.query;
   
   try {
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -1828,7 +1829,7 @@ export const generarDesprendiblePago = async (
       return res.status(400).json({ error: "Fecha de pago es requerida" });
     }
 
-    const usuario = await User.findByPk(Uid);
+    const usuario = await User.findByPk(parseId(Uid));
     if (!usuario) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
@@ -1845,7 +1846,7 @@ export const generarDesprendiblePago = async (
       });
     }
 
-    const area = await Area.findByPk(usuario.Aid);
+    const area = await Area.findByPk(parseId(usuario.Aid));
     const nombreCompleto = `${usuario.name} ${usuario.lastName}`.toUpperCase();
     const salarioMensual = usuario.salario || 0;
     
@@ -2121,7 +2122,7 @@ export const generarCertificadoVacaciones = async (
       });
     }
 
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -2408,7 +2409,7 @@ export const generarNotificacionVacaciones = async (
       });
     }
 
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -2792,7 +2793,7 @@ export const generarCertificadoDiaFamilia = async (
       });
     }
 
-    const usuario: any = await User.findByPk(Uid, {
+    const usuario: any = await User.findByPk(parseId(Uid), {
       include: [{ model: Area, as: "area" }],
     });
 
@@ -3076,3 +3077,4 @@ export const generarCertificadoDiaFamilia = async (
     });
   }
 };
+

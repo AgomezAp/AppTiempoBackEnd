@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteArea = exports.updateArea = exports.createArea = exports.getAreaById = exports.getAllAreas = void 0;
+const parseId_1 = require("../utils/parseId");
 const area_1 = require("../models/area");
 const getAllAreas = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -68,7 +69,7 @@ const updateArea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     const { Aid } = req.params;
     const { Aname } = req.body;
     try {
-        const area = yield area_1.Area.findByPk(Aid);
+        const area = yield area_1.Area.findByPk((0, parseId_1.parseId)(Aid));
         if (!area) {
             return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
         }

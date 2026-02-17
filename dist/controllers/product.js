@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProductById = exports.deleteProductById = exports.getProductById = exports.getInventario = exports.registerProduct = void 0;
+const parseId_1 = require("../utils/parseId");
 const product_1 = require("../models/product");
 const registerProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -46,7 +47,7 @@ exports.getInventario = getInventario;
 const getProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
-        const product = yield product_1.Product.findByPk(id);
+        const product = yield product_1.Product.findByPk((0, parseId_1.parseId)(id));
         if (!product) {
             return res.status(404).json({
                 message: `Producto con ID ${id} no encontrado`,
@@ -69,7 +70,7 @@ exports.getProductById = getProductById;
 const deleteProductById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     try {
-        const product = yield product_1.Product.findByPk(id);
+        const product = yield product_1.Product.findByPk((0, parseId_1.parseId)(id));
         if (!product) {
             return res.status(404).json({
                 message: `Producto con ID ${id} no encontrado`,
@@ -93,7 +94,7 @@ const updateProductById = (req, res) => __awaiter(void 0, void 0, void 0, functi
     const { id } = req.params;
     const { name, category, brand, price, quantity, status } = req.body;
     try {
-        const product = yield product_1.Product.findByPk(id);
+        const product = yield product_1.Product.findByPk((0, parseId_1.parseId)(id));
         if (!product) {
             return res.status(404).json({
                 message: `Producto con ID ${id} no encontrado`,

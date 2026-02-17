@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
@@ -22,7 +23,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
   }
 
   // Verificar si el rol existe
-  const role = await Role.findByPk(Rid);
+  const role = await Role.findByPk(parseId(Rid));
   if (!role) {
     return res.status(400).json({
       msg: `El rol con ID ${Rid} no existe`,
@@ -201,20 +202,20 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;
   const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
   try {
-    const user = await User.findByPk(Uid);
+    const user = await User.findByPk(parseId(Uid));
 
     if (!user) {
       return res.status(404).json({ msg: "Usuario no encontrado" });
     }
 
     if (Rid) {
-      const role = await Role.findByPk(Rid);
+      const role = await Role.findByPk(parseId(Rid));
       if (!role) {
         return res.status(404).json({ msg: `El role con ID ${Rid} no existe` });
       }
     }
     if (Aid) {
-      const area = await Area.findByPk(Aid);
+      const area = await Area.findByPk(parseId(Aid));
       if (!area) {
         return res.status(404).json({ msg: `El area con ID ${Aid} no existe` });
       }
@@ -260,7 +261,7 @@ export const deleteUserById = async (
 
   try {
     console.log("🔍 Buscando usuario...");
-    const user = await User.findByPk(Uid);
+    const user = await User.findByPk(parseId(Uid));
 
     if (!user) {
       console.log("❌ Usuario no encontrado");

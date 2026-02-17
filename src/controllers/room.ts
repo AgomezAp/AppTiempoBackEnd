@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import { Request, Response } from 'express';
 import { Room } from '../models/room';
 import { User } from '../models/user';
@@ -25,7 +26,7 @@ export const getAllRooms = async (req: Request, res: Response): Promise<any> => 
 export const getRoomById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const room = await Room.findByPk(id);
+    const room = await Room.findByPk(parseId(id));
 
     if (!room) {
       return res.status(404).json({
@@ -113,7 +114,7 @@ export const updateRoom = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const room = await Room.findByPk(id);
+    const room = await Room.findByPk(parseId(id));
 
     if (!room) {
       return res.status(404).json({
@@ -173,7 +174,7 @@ export const deleteRoom = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const room = await Room.findByPk(id);
+    const room = await Room.findByPk(parseId(id));
 
     if (!room) {
       return res.status(404).json({
@@ -196,3 +197,4 @@ export const deleteRoom = async (req: Request, res: Response): Promise<any> => {
     });
   }
 };
+

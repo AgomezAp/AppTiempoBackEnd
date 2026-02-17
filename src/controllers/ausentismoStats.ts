@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { Permiso } from '../models/permisos';
@@ -49,7 +50,7 @@ export const getPermisosTypes = async (req: Request, res: Response): Promise<any
 export const togglePermisoCancelado = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const permiso = await Permiso.findByPk(id);
+    const permiso = await Permiso.findByPk(parseId(id));
     
     if (!permiso) {
       return res.status(404).json({ success: false, message: 'Permiso no encontrado' });
@@ -260,4 +261,5 @@ export const getAusentismoSummary = async (req: Request, res: Response): Promise
   }
 };
   
+
 

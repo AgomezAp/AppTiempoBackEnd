@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.searchUsers = exports.deleteUserById = exports.updateUser = exports.getListUser = exports.getAllUsers = exports.resetPassword = exports.login = exports.register = void 0;
+const parseId_1 = require("../utils/parseId");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const sequelize_1 = require("sequelize");
@@ -32,7 +33,7 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
     // Verificar si el rol existe
-    const role = yield role_1.Role.findByPk(Rid);
+    const role = yield role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
     if (!role) {
         return res.status(400).json({
             msg: `El rol con ID ${Rid} no existe`,
@@ -191,18 +192,18 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     const { Uid } = req.params;
     const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
     try {
-        const user = yield user_1.User.findByPk(Uid);
+        const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
             return res.status(404).json({ msg: "Usuario no encontrado" });
         }
         if (Rid) {
-            const role = yield role_1.Role.findByPk(Rid);
+            const role = yield role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
             if (!role) {
                 return res.status(404).json({ msg: `El role con ID ${Rid} no existe` });
             }
         }
         if (Aid) {
-            const area = yield area_1.Area.findByPk(Aid);
+            const area = yield area_1.Area.findByPk((0, parseId_1.parseId)(Aid));
             if (!area) {
                 return res.status(404).json({ msg: `El area con ID ${Aid} no existe` });
             }
@@ -242,7 +243,7 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     try {
         console.log("🔍 Buscando usuario...");
-        const user = yield user_1.User.findByPk(Uid);
+        const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
             console.log("❌ Usuario no encontrado");
             return res.status(404).json({ msg: "Usuario no encontrado" });

@@ -6,6 +6,7 @@ import ActaRecarga from '../models/actaRecarga';
 import ActaRecargaAcceso from '../models/actaRecargaAcceso';
 import { User } from '../models/user';
 import { sendActaRecargaCompletadaEmail } from '../utils/mailer';
+import { parseId } from '../utils/parseId';
 
 // Helper: crear transporter fresco con las variables de entorno actuales
 function crearTransporter() {
@@ -30,14 +31,14 @@ const EMAILS_AUTORIZADOS = [EMISOR_EMAIL, REVISOR_EMAIL];
 // Helper para verificar acceso
 async function verificarAcceso(userId: number): Promise<boolean> {
   try {
-    const usuario = await User.findByPk(userId);
+    const usuario = await User.findByPk(parseId(userId));
     if (!usuario) {
       console.log(`[verificarAcceso] Usuario con ID ${userId} no encontrado`);
       return false;
     }
 
     // Verificar si es admin por rol
-    const userWithRole = await User.findByPk(userId, {
+    const userWithRole = await User.findByPk(parseId(userId), {
       include: [{ association: 'role' }],
     });
     if (userWithRole && (userWithRole as any)?.role?.Rname === 'Admin') {
@@ -129,7 +130,7 @@ export const getActaById = async (req: Request, res: Response): Promise<any> => 
       return res.status(403).json({ msg: 'No tienes acceso a este módulo' });
     }
 
-    const acta = await ActaRecarga.findByPk(id, {
+    const acta = await ActaRecarga.findByPk(parseId(id), {
       include: [
         { model: User, as: 'emisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
         { model: User, as: 'revisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
@@ -159,7 +160,7 @@ export const crearActa = async (req: Request, res: Response): Promise<any> => {
     }
 
     // Verificar que el revisor existe
-    const revisorUser = await User.findByPk(revisorId);
+    const revisorUser = await User.findByPk(parseId(revisorId));
     if (!revisorUser) {
       return res.status(400).json({ msg: 'El revisor seleccionado no existe' });
     }
@@ -185,7 +186,7 @@ export const crearActa = async (req: Request, res: Response): Promise<any> => {
       tokenExpiracion: null,
     });
 
-    const actaCompleta = await ActaRecarga.findByPk(acta.id, {
+    const actaCompleta = await ActaRecarga.findByPk(parseId(acta.id), {
       include: [
         { model: User, as: 'emisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
         { model: User, as: 'revisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
@@ -206,7 +207,7 @@ export const actualizarActa = async (req: Request, res: Response): Promise<any> 
     const { periodoInicio, periodoFin, anio, totalRequeridoProyectado, totalIngresadoTarjetas, totalRecargadoGoogleAds, totalReportadoFormularios, firmaEmisor, firmaEmisorImagen, revisorId } = req.body;
     const userId = (req as any).userId;
 
-    const acta = await ActaRecarga.findByPk(id);
+    const acta = await ActaRecarga.findByPk(parseId(id));
     if (!acta) {
       return res.status(404).json({ msg: 'Acta no encontrada' });
     }
@@ -234,7 +235,7 @@ export const actualizarActa = async (req: Request, res: Response): Promise<any> 
       revisorId: revisorId || acta.revisorId,
     });
 
-    const actaActualizada = await ActaRecarga.findByPk(id, {
+    const actaActualizada = await ActaRecarga.findByPk(parseId(id), {
       include: [
         { model: User, as: 'emisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
         { model: User, as: 'revisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
@@ -309,7 +310,7 @@ export const enviarActaParaRevision = async (req: Request, res: Response): Promi
     console.log('[enviarActa] Paso 1 - userId:', userId, '| actaId:', id);
 
     // Buscar el acta con emisor y revisor
-    const acta = await ActaRecarga.findByPk(id, {
+    const acta = await ActaRecarga.findByPk(parseId(id), {
       include: [
         { model: User, as: 'emisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
         { model: User, as: 'revisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
@@ -431,7 +432,7 @@ export const enviarActaParaRevision = async (req: Request, res: Response): Promi
     }
 
     // Devolver respuesta
-    const actaActualizada = await ActaRecarga.findByPk(id, {
+    const actaActualizada = await ActaRecarga.findByPk(parseId(id), {
       include: [
         { model: User, as: 'emisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
         { model: User, as: 'revisor', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
@@ -606,7 +607,7 @@ export const agregarAcceso = async (req: Request, res: Response): Promise<any> =
     const { usuarioId, puedeVer = true, puedeEditar = false } = req.body;
 
     // Verificar que el usuario existe
-    const usuario = await User.findByPk(usuarioId);
+    const usuario = await User.findByPk(parseId(usuarioId));
     if (!usuario) {
       return res.status(404).json({ msg: 'Usuario no encontrado' });
     }
@@ -623,7 +624,7 @@ export const agregarAcceso = async (req: Request, res: Response): Promise<any> =
       puedeEditar,
     });
 
-    const accesoCompleto = await ActaRecargaAcceso.findByPk(acceso.id, {
+    const accesoCompleto = await ActaRecargaAcceso.findByPk(parseId(acceso.id), {
       include: [
         { model: User, as: 'usuario', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
       ],
@@ -652,7 +653,7 @@ export const actualizarAcceso = async (req: Request, res: Response): Promise<any
       puedeEditar: puedeEditar !== undefined ? puedeEditar : acceso.puedeEditar,
     });
 
-    const accesoActualizado = await ActaRecargaAcceso.findByPk(id, {
+    const accesoActualizado = await ActaRecargaAcceso.findByPk(parseId(id), {
       include: [
         { model: User, as: 'usuario', attributes: ['Uid', 'name', 'lastName', 'email', 'cargo'] },
       ],

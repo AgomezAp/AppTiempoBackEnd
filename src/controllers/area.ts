@@ -2,6 +2,7 @@ import {
   Request,
   Response,
 } from 'express';
+import { parseId } from '../utils/parseId';
 
 import { Area } from '../models/area';
 
@@ -67,7 +68,7 @@ export const updateArea = async (req: Request, res: Response): Promise<any> => {
   const { Aid } = req.params;
   const { Aname } = req.body;
   try {
-    const area = await Area.findByPk(Aid);
+    const area = await Area.findByPk(parseId(Aid));
     if (!area) {
       return res.status(404).json({ msg: `Área con ID ${Aid} no encontrada` });
     }

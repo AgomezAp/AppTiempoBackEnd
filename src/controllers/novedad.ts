@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import {
     Request,
     Response,
@@ -85,7 +86,7 @@ export const updateNovedadHora = async (req: Request, res: Response): Promise<an
     if(!horas) {
       return res.status(400).json({ error: 'Falta el campo horas' });
     }
-    const novedad = await Novedad.findByPk(id);
+    const novedad = await Novedad.findByPk(parseId(id));
     if (!novedad){
       return res.status(404).json({ error: 'Novedad no encontrada' });
     }
@@ -102,7 +103,7 @@ export const updateNovedadHora = async (req: Request, res: Response): Promise<an
 export const updateNovedadEstado = async (req: Request, res: Response): Promise<any> =>{
   const {id , aceptacion} = req.body;
   try {
-    const novedad = await Novedad.findByPk(id);
+    const novedad = await Novedad.findByPk(parseId(id));
     if (!novedad){
       return res.status(404).json({ error: 'Novedad no encontrada' });
     }
@@ -146,7 +147,7 @@ export const errorNovedad = async (req: Request, res: Response): Promise<any> =>
   }
   const transaction = await sequelize.transaction();
   try {
-    const novedadHistorico = await NovedadHistorico.findByPk(Cid, {transaction});
+    const novedadHistorico = await NovedadHistorico.findByPk(parseId(Cid), {transaction});
     if (!novedadHistorico) {
       await transaction.rollback();
       return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });

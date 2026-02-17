@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import { Request, Response } from 'express';
 import { Reservation } from '../models/reservation';
 import { Room } from '../models/room';
@@ -151,7 +152,7 @@ export const getAvailableSlots = async (req: Request, res: Response): Promise<an
     }
 
     // Validar sala y reglas específicas
-    const room = await Room.findByPk(Number(roomId));
+    const room = await Room.findByPk(parseId(Number(roomId)));
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -275,7 +276,7 @@ export const createReservation = async (req: Request, res: Response): Promise<an
     }
 
     // Verificar que la sala existe
-    const room = await Room.findByPk(roomId);
+    const room = await Room.findByPk(parseId(roomId));
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -343,7 +344,7 @@ export const createReservation = async (req: Request, res: Response): Promise<an
     });
 
     // Obtener datos completos para enviar en respuesta y email
-    const fullReservation = await Reservation.findByPk(reservation.ReservationId, {
+    const fullReservation = await Reservation.findByPk(parseId(reservation.ReservationId), {
       include: [
         { model: User, attributes: ['Uid', 'email', 'name', 'lastName'] },
         { model: Room, attributes: ['Rid', 'name'] },
@@ -352,7 +353,7 @@ export const createReservation = async (req: Request, res: Response): Promise<an
 
     // Enviar emails de confirmación
     try {
-      const creatorUser = await User.findByPk(userId, {
+      const creatorUser = await User.findByPk(parseId(userId), {
         attributes: ['email', 'name', 'lastName'],
       });
 
@@ -486,7 +487,7 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
     const { date, startTime, endTime, reason, participants } = req.body;
     const userId = (req as any).userId;
 
-    const reservation = await Reservation.findByPk(id);
+    const reservation = await Reservation.findByPk(parseId(id));
 
     if (!reservation) {
       return res.status(404).json({
@@ -536,7 +537,7 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
     const newStartTime = startTime || reservation.startTime;
     const newEndTime = endTime || reservation.endTime;
 
-    const room = await Room.findByPk(reservation.Rid);
+    const room = await Room.findByPk(parseId(reservation.Rid));
     if (room && !isRoomAllowedDay(room.name, newDate)) {
       return res.status(400).json({
         success: false,
@@ -597,7 +598,7 @@ export const updateReservation = async (req: Request, res: Response): Promise<an
       participants: participantsList,
     });
 
-    const updatedReservation = await Reservation.findByPk(id, {
+    const updatedReservation = await Reservation.findByPk(parseId(id), {
       include: [
         { model: User, attributes: ['Uid', 'email', 'name', 'lastName'] },
         { model: Room, attributes: ['Rid', 'name'] },
@@ -624,7 +625,7 @@ export const cancelReservation = async (req: Request, res: Response): Promise<an
     const { id } = req.params;
     const userId = (req as any).userId;
 
-    const reservation = await Reservation.findByPk(id, {
+    const reservation = await Reservation.findByPk(parseId(id), {
       include: [
         { model: User, attributes: ['Uid', 'name', 'lastName', 'email'] },
         { model: Room, attributes: ['Rid', 'name'] },
@@ -706,3 +707,4 @@ export const cancelReservation = async (req: Request, res: Response): Promise<an
     });
   }
 };
+

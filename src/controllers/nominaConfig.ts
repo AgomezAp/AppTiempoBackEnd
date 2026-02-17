@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import { Request, Response } from 'express';
 import NominaConfig from '../models/nominaConfig';
 
@@ -108,7 +109,7 @@ export const updateConfig = async (req: Request, res: Response): Promise<any> =>
       vigente
     } = req.body;
 
-    const config = await NominaConfig.findByPk(id);
+    const config = await NominaConfig.findByPk(parseId(id));
 
     if (!config) {
       return res.status(404).json({ error: 'Configuración no encontrada' });
@@ -146,7 +147,7 @@ export const toggleVigencia = async (req: Request, res: Response): Promise<any> 
   try {
     const { id } = req.params;
 
-    const config = await NominaConfig.findByPk(id);
+    const config = await NominaConfig.findByPk(parseId(id));
 
     if (!config) {
       return res.status(404).json({ error: 'Configuración no encontrada' });
@@ -176,7 +177,7 @@ export const deleteConfig = async (req: Request, res: Response): Promise<any> =>
   try {
     const { id } = req.params;
 
-    const config = await NominaConfig.findByPk(id);
+    const config = await NominaConfig.findByPk(parseId(id));
 
     if (!config) {
       return res.status(404).json({ error: 'Configuración no encontrada' });
@@ -200,3 +201,4 @@ export const deleteConfig = async (req: Request, res: Response): Promise<any> =>
     });
   }
 };
+

@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import {
   Request,
   Response,
@@ -29,7 +30,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     }
 
     // Verificar si el usuario existe
-    const user = await User.findByPk(Uid);
+    const user = await User.findByPk(parseId(Uid));
     if (!user) {
       return res.status(400).json({
         msg: `El usuario con ID ${Uid} no existe`,

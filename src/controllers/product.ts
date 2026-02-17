@@ -1,3 +1,4 @@
+import { parseId } from '../utils/parseId'
 import {
   Request,
   Response,
@@ -42,7 +43,7 @@ export const getProductById = async (req: Request, res: Response): Promise<any>=
   const { id } = req.params;
 
   try {
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(parseId(id));
 
     if (!product) {
       return res.status(404).json({
@@ -66,7 +67,7 @@ export const deleteProductById = async (req: Request, res: Response): Promise<an
   const { id } = req.params;
 
   try {
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(parseId(id));
 
     if (!product) {
       return res.status(404).json({
@@ -92,7 +93,7 @@ export const updateProductById = async (req: Request, res: Response): Promise<an
   const { name, category, brand,price, quantity,status } = req.body;
 
   try {
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(parseId(id));
 
     if (!product) {
       return res.status(404).json({
@@ -116,3 +117,4 @@ export const updateProductById = async (req: Request, res: Response): Promise<an
     });
   }
 };
+

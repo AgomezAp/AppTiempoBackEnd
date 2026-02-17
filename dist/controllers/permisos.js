@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAllUsersWithPermisos = exports.getPermisosByUserId = exports.createPermiso = void 0;
+const parseId_1 = require("../utils/parseId");
 const multer_1 = __importDefault(require("multer"));
 const permisos_1 = require("../models/permisos");
 const user_1 = require("../models/user");
@@ -35,7 +36,7 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
         }
         // Verificar si el usuario existe
-        const user = yield user_1.User.findByPk(Uid);
+        const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
             return res.status(400).json({
                 msg: `El usuario con ID ${Uid} no existe`,

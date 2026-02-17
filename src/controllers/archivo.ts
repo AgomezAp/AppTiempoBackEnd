@@ -3,6 +3,7 @@ import { Archivo } from "../models/archivo";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { parseId } from "../utils/parseId";
 
 // Configuración de multer para subida de archivos
 const storage = multer.diskStorage({
@@ -153,7 +154,7 @@ export const getArchivo = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
 
   try {
-    const archivo = await Archivo.findByPk(id);
+    const archivo = await Archivo.findByPk(parseId(id));
 
     if (!archivo) {
       return res.status(404).json({
@@ -216,7 +217,7 @@ export const updateArchivo = async (req: any, res: Response): Promise<any> => {
   const { nombre, descripcion, tipo, categoria } = req.body;
 
   try {
-    const archivo = await Archivo.findByPk(id);
+    const archivo = await Archivo.findByPk(parseId(id));
 
     if (!archivo) {
       return res.status(404).json({
@@ -261,7 +262,7 @@ export const deleteArchivo = async (req: Request, res: Response): Promise<any> =
   const { id } = req.params;
 
   try {
-    const archivo = await Archivo.findByPk(id);
+    const archivo = await Archivo.findByPk(parseId(id));
 
     if (!archivo) {
       return res.status(404).json({
@@ -292,7 +293,7 @@ export const deleteArchivoFisico = async (
   const { id } = req.params;
 
   try {
-    const archivo = await Archivo.findByPk(id);
+    const archivo = await Archivo.findByPk(parseId(id));
 
     if (!archivo) {
       return res.status(404).json({

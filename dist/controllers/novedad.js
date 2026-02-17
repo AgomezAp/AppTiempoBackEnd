@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.aceptarTodo = exports.errorNovedad = exports.deleteNovedad = exports.updateNovedadEstado = exports.updateNovedadHora = exports.getNovedadHistorico = exports.getNovedad = exports.convertNovedad = void 0;
+const parseId_1 = require("../utils/parseId");
 const time_1 = require("../models/time");
 const permisos_1 = require("../models/permisos");
 const dayjs_1 = __importDefault(require("dayjs"));
@@ -94,7 +95,7 @@ const updateNovedadHora = (req, res) => __awaiter(void 0, void 0, void 0, functi
         if (!horas) {
             return res.status(400).json({ error: 'Falta el campo horas' });
         }
-        const novedad = yield time_1.Novedad.findByPk(id);
+        const novedad = yield time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
         if (!novedad) {
             return res.status(404).json({ error: 'Novedad no encontrada' });
         }
@@ -112,7 +113,7 @@ exports.updateNovedadHora = updateNovedadHora;
 const updateNovedadEstado = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id, aceptacion } = req.body;
     try {
-        const novedad = yield time_1.Novedad.findByPk(id);
+        const novedad = yield time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
         if (!novedad) {
             return res.status(404).json({ error: 'Novedad no encontrada' });
         }
@@ -158,7 +159,7 @@ const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
     const transaction = yield connection_1.default.transaction();
     try {
-        const novedadHistorico = yield time_1.NovedadHistorico.findByPk(Cid, { transaction });
+        const novedadHistorico = yield time_1.NovedadHistorico.findByPk((0, parseId_1.parseId)(Cid), { transaction });
         if (!novedadHistorico) {
             yield transaction.rollback();
             return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });

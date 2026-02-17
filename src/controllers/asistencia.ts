@@ -4,6 +4,7 @@ import { RegistroAsistencia, ParticipanteAsistencia } from '../models/asistencia
 import { User } from '../models/user';
 import { sendAsistenciaEmail } from '../utils/mailer';
 import { generarActaPDF } from '../services/asistenciaPdf';
+import { parseId } from '../utils/parseId';
 
 // Crear un nuevo registro de asistencia
 export const crearRegistroAsistencia = async (req: Request, res: Response): Promise<any> => {
@@ -18,7 +19,7 @@ export const crearRegistroAsistencia = async (req: Request, res: Response): Prom
     }
 
     // Obtener datos del facilitador
-    const facilitador = await User.findByPk(facilitadorId);
+    const facilitador = await User.findByPk(parseId(facilitadorId));
     if (!facilitador) {
       return res.status(404).json({ msg: 'Facilitador no encontrado' });
     }
@@ -240,7 +241,7 @@ export const obtenerRegistroPorId = async (req: Request, res: Response): Promise
   try {
     const { id } = req.params;
 
-    const registro = await RegistroAsistencia.findByPk(id, {
+    const registro = await RegistroAsistencia.findByPk(parseId(id), {
       include: [
         {
           model: ParticipanteAsistencia,
@@ -278,7 +279,7 @@ export const generarPDF = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ msg: 'Empresa inválida. Use AP, AT o ME' });
     }
 
-    const registro = await RegistroAsistencia.findByPk(id, {
+    const registro = await RegistroAsistencia.findByPk(parseId(id), {
       include: [
         {
           model: ParticipanteAsistencia,
@@ -323,7 +324,7 @@ export const reenviarCorreoFirma = async (req: Request, res: Response): Promise<
   try {
     const { participanteId } = req.params;
 
-    const participante = await ParticipanteAsistencia.findByPk(participanteId, {
+    const participante = await ParticipanteAsistencia.findByPk(parseId(participanteId), {
       include: [{ model: RegistroAsistencia, as: 'registro' }],
     });
 
@@ -365,7 +366,7 @@ export const eliminarRegistro = async (req: Request, res: Response): Promise<any
   try {
     const { id } = req.params;
 
-    const registro = await RegistroAsistencia.findByPk(id);
+    const registro = await RegistroAsistencia.findByPk(parseId(id));
     if (!registro) {
       return res.status(404).json({ msg: 'Registro no encontrado' });
     }
@@ -385,3 +386,4 @@ export const eliminarRegistro = async (req: Request, res: Response): Promise<any
     });
   }
 };
+
