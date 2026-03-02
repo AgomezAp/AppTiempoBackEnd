@@ -29,6 +29,12 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
     }
 
+    // Validar soporte obligatorio para Vacaciones y Día de la familia
+    const tiposConSoporteObligatorio = ['Vacaciones', 'Día de la familia'];
+    if (tiposConSoporteObligatorio.some(t => t.toLowerCase() === tipo.trim().toLowerCase()) && !soporte) {
+      return res.status(400).json({ msg: 'El soporte es obligatorio para este tipo de permiso (Vacaciones / Día de la familia)' });
+    }
+
     // Verificar si el usuario existe
     const user = await User.findByPk(parseId(Uid));
     if (!user) {
@@ -59,8 +65,8 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         Uid,
       });
 
-      // Agregar permiso a Google Sheets (solo UNA VEZ)
-      await appendPermisoToSheet({
+      // Agregar permiso a Google Sheets (hoja principal - TODOS los permisos)
+      const permisoSheetData = {
         fecha,
         nombre,
         numeroDocumento,
@@ -68,7 +74,20 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         horaEntrada,
         horaSalida,
         observaciones: esPermisoRango ? `${observaciones}\n\nFecha fin: ${fechaFin}` : observaciones,
-      });
+      };
+
+      await appendPermisoToSheet(permisoSheetData);
+
+      // Tipos específicos para correo filtrado
+      const tiposFiltrados = [
+        'Cita médica',
+        'Cita odontológica',
+        'Vacaciones',
+        'Incapacidad médica',
+        'Incapacidad laboral',
+      ];
+
+      const tipoNormalizado = tipo.trim();
 
       // Enviar correo electrónico al líder (solo UNA VEZ)
       const subject = 'Nuevo Permiso Solicitado';
@@ -89,6 +108,12 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       
       const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
       await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
+
+      // Enviar correo a destinatarios filtrados SOLO para tipos específicos
+      const filteredRecipients = process.env.FILTERED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
+      if (filteredRecipients.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
+        await sendMail(filteredRecipients, subject, text, soporte);
+      }
 
       res.status(200).json({
         message: 'Permiso creado con éxito',

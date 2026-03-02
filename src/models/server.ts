@@ -107,7 +107,7 @@ class Server{
             await Area.sync({alter: false});
             await User.sync({alter: false});
             await Product.sync();
-            await Permiso.sync({alter: false});
+            await Permiso.sync({alter: true});
             await Registro.sync();
             await Sumatoria.sync();
             await Novedad.sync({alter: false});

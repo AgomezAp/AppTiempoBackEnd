@@ -56,12 +56,12 @@ const colIndexToLetter = (index: number) => {
  * - Si ya existe una columna con la fecha (fila 1), añade el detalle en la primer fila vacía desde la fila 2.
  * - Si no existe, usa la siguiente columna libre desde L, escribe la fecha en fila1 y el detalle en fila2.
  */
-const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string, permisoData: any) => {
+const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string, permisoData: any, targetSpreadsheetId: string = SPREADSHEET_ID) => {
   const sheets = authenticateGoogleSheets();
   // Leer encabezados desde L1 hasta AZ1 (suficiente rango amplio)
   const startColIndex = 11; // L = 12th column -> index 11
   const headerRange = `${sheetName}!L1:AZ1`;
-  const headerRes = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
+  const headerRes = await sheets.spreadsheets.values.get({ spreadsheetId: targetSpreadsheetId, range: headerRange });
   const headers = (headerRes.data.values && headerRes.data.values[0]) ? headerRes.data.values[0] : [];
   // Convertir fecha dd/mm/yyyy a Date
   const parseFecha = (s: string) => {
@@ -80,9 +80,9 @@ const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string
     colOffset = colOffset === -1 ? headers.length : colOffset;
     const targetColIndex = startColIndex + colOffset;
     const targetColLetter = colIndexToLetter(targetColIndex);
-    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
+    await sheets.spreadsheets.values.update({ spreadsheetId: targetSpreadsheetId, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
     const detail = buildDetailTexto(permisoData);
-    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+    await sheets.spreadsheets.values.update({ spreadsheetId: targetSpreadsheetId, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
   } else {
     // Buscar si ya existe columna con la misma fecha exacta
     const existing = headerDates.find(hd => hd.raw === fechaFormateada);
@@ -92,7 +92,7 @@ const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string
       const targetColLetter = colIndexToLetter(targetColIndex);
       // encontrar primera fila vacía desde la fila 2
       const colRange = `${sheetName}!${targetColLetter}2:${targetColLetter}`;
-      const colRes = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: colRange });
+      const colRes = await sheets.spreadsheets.values.get({ spreadsheetId: targetSpreadsheetId, range: colRange });
       const colValues = colRes.data.values || [];
       let emptyRow = 2;
       for (let i = 0; i < colValues.length; i++) {
@@ -101,7 +101,7 @@ const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string
         emptyRow = 2 + i + 1;
       }
       const detail = buildDetailTexto(permisoData);
-      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}${emptyRow}`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+      await sheets.spreadsheets.values.update({ spreadsheetId: targetSpreadsheetId, range: `${sheetName}!${targetColLetter}${emptyRow}`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
     } else {
       // No existe: calcular posición de inserción para mantener headers ordenados ascendente
       // Encontrar el primer header cuya fecha sea mayor que targetDate
@@ -109,14 +109,14 @@ const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string
       if (insertAt === -1) insertAt = headers.length; // al final
 
       // Insertar columna en la posición (startColIndex + insertAt)
-      const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: targetSpreadsheetId });
       const sheetMeta = meta.data.sheets?.find(s => s.properties?.title === sheetName);
       const sheetId = sheetMeta?.properties?.sheetId;
       if (sheetId === undefined) throw new Error('No sheetId');
 
       const insertIndex = startColIndex + insertAt;
       await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: targetSpreadsheetId,
         requestBody: {
           requests: [
             {
@@ -136,14 +136,14 @@ const updateSummaryInColumnL = async (sheetName: string, fechaFormateada: string
 
       const targetColLetter = colIndexToLetter(insertIndex);
       // Escribir fecha y detalle
-      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
+      await sheets.spreadsheets.values.update({ spreadsheetId: targetSpreadsheetId, range: `${sheetName}!${targetColLetter}1`, valueInputOption: 'RAW', requestBody: { values: [[fechaFormateada]] } });
       const detail = buildDetailTexto(permisoData);
-      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
+      await sheets.spreadsheets.values.update({ spreadsheetId: targetSpreadsheetId, range: `${sheetName}!${targetColLetter}2`, valueInputOption: 'RAW', requestBody: { values: [[detail]] } });
 
       // Aplicar formato (wrap + ancho) a la nueva columna
       try {
         await sheets.spreadsheets.batchUpdate({
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: targetSpreadsheetId,
           requestBody: {
             requests: [
               {
@@ -186,16 +186,16 @@ const buildDetailTexto = (permisoData: any) => {
 /**
  * Aplica wrap (ajustar texto) a las columnas A:G de la hoja indicada.
  */
-const applyWrapToMainTable = async (sheetName: string) => {
+const applyWrapToMainTable = async (sheetName: string, targetSpreadsheetId: string = SPREADSHEET_ID) => {
   const sheets = authenticateGoogleSheets();
   try {
-    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: targetSpreadsheetId });
     const sheetMeta = meta.data.sheets?.find(s => s.properties?.title === sheetName);
     const sheetId = sheetMeta?.properties?.sheetId;
     if (sheetId === undefined) return;
 
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: targetSpreadsheetId,
       requestBody: {
         requests: [
           {
@@ -227,7 +227,7 @@ const applyWrapToMainTable = async (sheetName: string) => {
 /**
  * Encuentra o crea una hoja para la semana específica
  */
-const getOrCreateWeekSheet = async (fecha: Date) => {
+const getOrCreateWeekSheet = async (fecha: Date, targetSpreadsheetId: string = SPREADSHEET_ID) => {
   const sheets = authenticateGoogleSheets();
   const weekNumber = getWeekOfMonth(fecha);
   const monthName = getMonthName(fecha);
@@ -237,7 +237,7 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
   try {
     // Obtener todas las hojas existentes
     const spreadsheet = await sheets.spreadsheets.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: targetSpreadsheetId,
     });
 
     const existingSheet = spreadsheet.data.sheets?.find(
@@ -252,7 +252,7 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
     // Crear nueva hoja si no existe
     console.log(`→ Creando nueva hoja: ${sheetName}`);
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: targetSpreadsheetId,
       requestBody: {
         requests: [
           {
@@ -268,7 +268,7 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
 
     // Agregar encabezados a la nueva hoja
     await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: targetSpreadsheetId,
       range: `${sheetName}!A1:G1`,
       valueInputOption: 'RAW',
       requestBody: {
@@ -280,7 +280,7 @@ const getOrCreateWeekSheet = async (fecha: Date) => {
 
     // Aplicar wrap (ajustar texto) a las columnas principales A:G
     try {
-      await applyWrapToMainTable(sheetName);
+      await applyWrapToMainTable(sheetName, targetSpreadsheetId);
     } catch (err) {
       console.warn('No se pudo aplicar wrap al crear la hoja:', err);
     }

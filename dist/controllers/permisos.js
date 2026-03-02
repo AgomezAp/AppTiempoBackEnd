@@ -23,7 +23,7 @@ const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('soporte');
 const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _a, _b;
         if (err) {
             return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
         }
@@ -34,6 +34,11 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         // Verificar si todos los campos obligatorios están presentes
         if (!emailPersonal || !emailLider || !nombre || !numeroDocumento || !fecha || !tipo || !Uid) {
             return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
+        }
+        // Validar soporte obligatorio para Vacaciones y Día de la familia
+        const tiposConSoporteObligatorio = ['Vacaciones', 'Día de la familia'];
+        if (tiposConSoporteObligatorio.some(t => t.toLowerCase() === tipo.trim().toLowerCase()) && !soporte) {
+            return res.status(400).json({ msg: 'El soporte es obligatorio para este tipo de permiso (Vacaciones / Día de la familia)' });
         }
         // Verificar si el usuario existe
         const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
@@ -62,8 +67,8 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 novedad,
                 Uid,
             });
-            // Agregar permiso a Google Sheets (solo UNA VEZ)
-            yield (0, googleSheets_1.appendPermisoToSheet)({
+            // Agregar permiso a Google Sheets (hoja principal - TODOS los permisos)
+            const permisoSheetData = {
                 fecha,
                 nombre,
                 numeroDocumento,
@@ -71,7 +76,17 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 horaEntrada,
                 horaSalida,
                 observaciones: esPermisoRango ? `${observaciones}\n\nFecha fin: ${fechaFin}` : observaciones,
-            });
+            };
+            yield (0, googleSheets_1.appendPermisoToSheet)(permisoSheetData);
+            // Tipos específicos para correo filtrado
+            const tiposFiltrados = [
+                'Cita médica',
+                'Cita odontológica',
+                'Vacaciones',
+                'Incapacidad médica',
+                'Incapacidad laboral',
+            ];
+            const tipoNormalizado = tipo.trim();
             // Enviar correo electrónico al líder (solo UNA VEZ)
             const subject = 'Nuevo Permiso Solicitado';
             let text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.`;
@@ -91,6 +106,11 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             text += `\n\n Observaciones: ${observaciones}`;
             const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
             yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
+            // Enviar correo a destinatarios filtrados SOLO para tipos específicos
+            const filteredRecipients = ((_b = process.env.FILTERED_RECIPIENTS) === null || _b === void 0 ? void 0 : _b.split(',').map(e => e.trim()).filter(e => e)) || [];
+            if (filteredRecipients.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
+                yield (0, mailer_1.sendMail)(filteredRecipients, subject, text, soporte);
+            }
             res.status(200).json({
                 message: 'Permiso creado con éxito',
                 permiso: newPermiso,
