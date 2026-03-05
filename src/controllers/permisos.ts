@@ -110,9 +110,12 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
 
       // Enviar correo a destinatarios filtrados SOLO para tipos específicos
+      // Se excluyen los que ya están en FIXED_RECIPIENTS para evitar correos duplicados
       const filteredRecipients = process.env.FILTERED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
-      if (filteredRecipients.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
-        await sendMail(filteredRecipients, subject, text, soporte);
+      const fixedSet = new Set(fixedRecipients.map(e => e.trim().toLowerCase()));
+      const filteredSinDuplicados = filteredRecipients.filter(e => !fixedSet.has(e.toLowerCase()));
+      if (filteredSinDuplicados.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
+        await sendMail(filteredSinDuplicados, subject, text, soporte);
       }
 
       res.status(200).json({

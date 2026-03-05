@@ -107,9 +107,12 @@ const createPermiso = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             const fixedRecipients = ((_a = process.env.FIXED_RECIPIENTS) === null || _a === void 0 ? void 0 : _a.split(',')) || [];
             yield (0, mailer_1.sendMail)([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
             // Enviar correo a destinatarios filtrados SOLO para tipos específicos
+            // Se excluyen los que ya están en FIXED_RECIPIENTS para evitar correos duplicados
             const filteredRecipients = ((_b = process.env.FILTERED_RECIPIENTS) === null || _b === void 0 ? void 0 : _b.split(',').map(e => e.trim()).filter(e => e)) || [];
-            if (filteredRecipients.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
-                yield (0, mailer_1.sendMail)(filteredRecipients, subject, text, soporte);
+            const fixedSet = new Set(fixedRecipients.map(e => e.trim().toLowerCase()));
+            const filteredSinDuplicados = filteredRecipients.filter(e => !fixedSet.has(e.toLowerCase()));
+            if (filteredSinDuplicados.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
+                yield (0, mailer_1.sendMail)(filteredSinDuplicados, subject, text, soporte);
             }
             res.status(200).json({
                 message: 'Permiso creado con éxito',
