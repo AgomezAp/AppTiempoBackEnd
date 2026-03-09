@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restarTiempoSabado = exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.addExtra = exports.updateExtra = exports.informePeligro = exports.nuevaNovedad = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
+exports.getDetalleExtras = exports.getHistoricoExtrasAll = exports.getHistoricoExtras = exports.guardarSnapshotExtras = exports.restarTiempoSabado = exports.deleteRegistroByHidAndFecha = exports.concatenar = exports.addExtra = exports.updateExtra = exports.informePeligro = exports.nuevaNovedad = exports.informeNovedad = exports.informePersonalById = exports.agregarRegistro = exports.updateEntradaById = exports.updateSalidaById = exports.getHorarioByFecha = exports.getHorarioByIdFecha = exports.getHorarioById = exports.getExtraById = exports.getExtra = exports.getHorario = exports.handleUploadAndConvert = void 0;
 const xpath_1 = __importDefault(require("xpath"));
 const xmldom_1 = require("@xmldom/xmldom");
 const Manejo_1 = require("../services/Manejo");
@@ -49,6 +49,8 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                 record.Fecha = dayjs_1.default.tz(record.Fecha, 'YYYY-MM-DD', 'America/Bogota').format('YYYY-MM-DD');
             });
             const horario = yield time_1.Registro.bulkCreate(jsonData);
+            // Guardar snapshot ANTES de actualizar valores
+            yield (0, exports.guardarSnapshotExtras)();
             const listaExtras = yield time_1.Sumatoria.findAll();
             let Extra;
             if (Object.keys(listaExtras).length === 0) {
@@ -717,6 +719,8 @@ const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         }
         const extraFormateado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extra));
         yield time_1.Sumatoria.update({ Acumulado: extraFormateado }, { where: { Sid: id } });
+        // Guardar snapshot después de actualizar
+        yield (0, exports.guardarSnapshotExtras)();
         res.status(200).json({
             message: `Valor de extra actualizado correctamente para el ID ${id}`,
         });
@@ -884,3 +888,102 @@ function formatearAcumuladoDias(acumulado) {
     const signo = totalMin < 0 ? '-' : '';
     return `${signo}${Math.abs(dias)} dias ${horasRestantes} horas ${minutosRestantes} minutos`;
 }
+// Guardar snapshot de todas las horas extras actuales (1 por usuario por día)
+const guardarSnapshotExtras = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const hoy = (0, dayjs_1.default)().format('YYYY-MM-DD');
+        const registros = yield time_1.Sumatoria.findAll();
+        for (const reg of registros) {
+            const sid = reg.getDataValue('Sid');
+            const name = reg.getDataValue('Name');
+            const acumulado = reg.getDataValue('Acumulado');
+            const existente = yield time_1.HistoricoHorasExtras.findOne({
+                where: { Sid: sid, fecha: hoy }
+            });
+            if (existente) {
+                yield time_1.HistoricoHorasExtras.update({ Acumulado: acumulado, Name: name }, { where: { Sid: sid, fecha: hoy } });
+            }
+            else {
+                yield time_1.HistoricoHorasExtras.create({
+                    Sid: sid,
+                    Name: name,
+                    Acumulado: acumulado,
+                    fecha: hoy,
+                });
+            }
+        }
+        console.log(`Snapshot de horas extras guardado: ${hoy}`);
+    }
+    catch (error) {
+        console.error('Error al guardar snapshot de horas extras:', error);
+    }
+});
+exports.guardarSnapshotExtras = guardarSnapshotExtras;
+// Obtener historial de horas extras de un usuario
+const getHistoricoExtras = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    try {
+        const historico = yield time_1.HistoricoHorasExtras.findAll({
+            where: { Sid: id },
+            order: [['fecha', 'DESC']],
+            limit: 60,
+        });
+        res.status(200).json(historico);
+    }
+    catch (error) {
+        console.error('Error al obtener historial de extras:', error);
+        res.status(500).json({ error: 'Error al obtener historial de horas extras' });
+    }
+});
+exports.getHistoricoExtras = getHistoricoExtras;
+// Obtener historial de horas extras de TODOS los usuarios
+const getHistoricoExtrasAll = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { fecha } = req.params;
+    try {
+        const historico = yield time_1.HistoricoHorasExtras.findAll({
+            where: { fecha },
+            order: [['Sid', 'ASC']],
+        });
+        res.status(200).json(historico);
+    }
+    catch (error) {
+        console.error('Error al obtener historial de extras por fecha:', error);
+        res.status(500).json({ error: 'Error al obtener historial de horas extras' });
+    }
+});
+exports.getHistoricoExtrasAll = getHistoricoExtrasAll;
+// Obtener detalle diario de horas extras de un usuario (filtrado por rango de fechas)
+const getDetalleExtras = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { desde, hasta } = req.query;
+    try {
+        if (!desde || !hasta) {
+            return res.status(400).json({ error: 'Se requieren los parámetros desde y hasta' });
+        }
+        const registros = yield time_1.Registro.findAll({
+            where: {
+                Hid: id,
+                Fecha: {
+                    [sequelize_1.Op.gte]: new Date(desde + 'T00:00:00'),
+                    [sequelize_1.Op.lte]: new Date(hasta + 'T23:59:59'),
+                },
+            },
+            order: [['Fecha', 'DESC']],
+        });
+        // Filtrar solo días con horas extras positivas (> 0:00)
+        const conExtras = registros.filter((reg) => {
+            const extra = reg.getDataValue('Extra');
+            if (!extra || extra === '0:00' || extra === '0:0' || extra === '00:00')
+                return false;
+            if (extra.startsWith('-'))
+                return false;
+            return true;
+        });
+        res.status(200).json(conExtras);
+    }
+    catch (error) {
+        console.error('Error al obtener detalle de extras:', error);
+        res.status(500).json({ error: 'Error al obtener detalle de horas extras' });
+    }
+});
+exports.getDetalleExtras = getDetalleExtras;

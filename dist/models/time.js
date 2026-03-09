@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NovedadHistorico = exports.Novedad = exports.Sumatoria = exports.Registro = void 0;
+exports.HistoricoHorasExtras = exports.NovedadHistorico = exports.Novedad = exports.Sumatoria = exports.Registro = void 0;
 const sequelize_1 = require("sequelize");
 const connection_1 = __importDefault(require("../database/connection"));
 const user_1 = require("./user");
@@ -64,3 +64,16 @@ exports.NovedadHistorico = connection_1.default.define("NovedadHistorico", {
     timestamps: false,
     paranoid: false,
 });
+exports.HistoricoHorasExtras = connection_1.default.define("HistoricoHorasExtras", {
+    id: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    Sid: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, references: { model: user_1.User, key: "Uid" } },
+    Name: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+    Acumulado: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+    fecha: { type: sequelize_1.DataTypes.DATEONLY, allowNull: false },
+}, {
+    timestamps: true,
+    paranoid: false,
+    tableName: "historico_horas_extras",
+});
+user_1.User.hasMany(exports.HistoricoHorasExtras, { foreignKey: "Sid", as: "historicoExtras" });
+exports.HistoricoHorasExtras.belongsTo(user_1.User, { foreignKey: "Sid", as: "usuario" });

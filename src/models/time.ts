@@ -75,13 +75,33 @@ export const NovedadHistorico = sequelize.define(
         HoraSalida: {type: DataTypes.STRING, allowNull: true},            
         description: {type: DataTypes.TEXT, allowNull: true},         
         horas: {type: DataTypes.STRING, allowNull: true},          
-        aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}          
+        aceptacion: {type: DataTypes.BOOLEAN, allowNull: true}
     },
     {
         timestamps: false,
         paranoid: false,
     }
 )
+
+
+export const HistoricoHorasExtras = sequelize.define(
+    "HistoricoHorasExtras",
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        Sid: { type: DataTypes.INTEGER, allowNull: false, references: { model: User, key: "Uid" } },
+        Name: { type: DataTypes.STRING, allowNull: false },
+        Acumulado: { type: DataTypes.STRING, allowNull: false },
+        fecha: { type: DataTypes.DATEONLY, allowNull: false },
+    },
+    {
+        timestamps: true,
+        paranoid: false,
+        tableName: "historico_horas_extras",
+    }
+);
+
+User.hasMany(HistoricoHorasExtras, { foreignKey: "Sid", as: "historicoExtras" });
+HistoricoHorasExtras.belongsTo(User, { foreignKey: "Sid", as: "usuario" });
 
 
 

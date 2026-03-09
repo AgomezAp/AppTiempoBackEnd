@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { 
+import {
     //registrarHorarios,
     getHorario,
     getHorarioById,
@@ -21,7 +21,10 @@ import {
     deleteRegistroByHidAndFecha,
     restarTiempoSabado,
     updateExtra,
-    nuevaNovedad
+    nuevaNovedad,
+    getHistoricoExtras,
+    getHistoricoExtrasAll,
+    getDetalleExtras
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -68,4 +71,10 @@ router.post("/api/horario/concatenar",upload.array('files'), concatenar)
 router.delete("/api/horario/delete/:Hid/:Fecha", deleteRegistroByHidAndFecha)
 //Restar tiempo de sabado
 router.post("/api/horario/restaTiempo", restarTiempoSabado)
+//Historial de horas extras por usuario
+router.get("/api/horario/historicoExtras/:id", getHistoricoExtras)
+//Historial de horas extras por fecha (todos)
+router.get("/api/horario/historicoExtras/fecha/:fecha", getHistoricoExtrasAll)
+//Detalle diario de horas extras por usuario
+router.get("/api/horario/detalleExtras/:id", getDetalleExtras)
 export default router

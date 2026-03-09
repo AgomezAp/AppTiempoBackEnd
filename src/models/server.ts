@@ -24,7 +24,7 @@ import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
-import { Registro, Sumatoria, Novedad, NovedadHistorico} from './time'
+import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from './time'
 import { Archivo } from './archivo';
 import NominaConfig from './nominaConfig';
 import { Room } from './room';
@@ -110,6 +110,7 @@ class Server{
             await Permiso.sync({alter: true});
             await Registro.sync();
             await Sumatoria.sync();
+            await HistoricoHorasExtras.sync();
             await Novedad.sync({alter: false});
             await NovedadHistorico.sync({alter: false});
             await Archivo.sync({alter: false});

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -264,28 +297,78 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
         const transaction = yield user_1.User.sequelize.transaction();
         try {
             console.log("🧹 Eliminando registros relacionados...");
-            // 1. Eliminar registros de la tabla Novedads (usando Nid, no Uid)
-            console.log("📰 Eliminando novedades...");
+            // 1. Eliminar participantes de asistencia
+            const { ParticipanteAsistencia } = yield Promise.resolve().then(() => __importStar(require('../models/asistencia')));
+            const participantesDeleted = yield ParticipanteAsistencia.destroy({
+                where: { usuarioId: Uid },
+                transaction,
+            });
+            console.log(`✅ Participantes asistencia eliminados: ${participantesDeleted}`);
+            // 2. Eliminar registros de asistencia donde es facilitador
+            const { RegistroAsistencia } = yield Promise.resolve().then(() => __importStar(require('../models/asistencia')));
+            const asistenciasDeleted = yield RegistroAsistencia.destroy({
+                where: { facilitadorId: Uid },
+                transaction,
+            });
+            console.log(`✅ Registros asistencia eliminados: ${asistenciasDeleted}`);
+            // 3. Eliminar alertas
+            const { Alert } = yield Promise.resolve().then(() => __importStar(require('../models/alert')));
+            const alertsDeleted = yield Alert.destroy({
+                where: { Uid: Uid },
+                transaction,
+            });
+            console.log(`✅ Alertas eliminadas: ${alertsDeleted}`);
+            // 4. Eliminar reservaciones
+            const { Reservation } = yield Promise.resolve().then(() => __importStar(require('../models/reservation')));
+            const reservationsDeleted = yield Reservation.destroy({
+                where: { Uid: Uid },
+                transaction,
+            });
+            console.log(`✅ Reservaciones eliminadas: ${reservationsDeleted}`);
+            // 5. Eliminar registros de tiempo (Hid = Uid)
+            const registrosDeleted = yield time_1.Registro.destroy({
+                where: { Hid: Uid },
+                transaction,
+            });
+            console.log(`✅ Registros de tiempo eliminados: ${registrosDeleted}`);
+            // 6. Eliminar historico de horas extras (Sid = Uid)
+            const historicoDeleted = yield time_1.HistoricoHorasExtras.destroy({
+                where: { Sid: Uid },
+                transaction,
+            });
+            console.log(`✅ Historico horas extras eliminado: ${historicoDeleted}`);
+            // 7. Eliminar sumatoria (Sid = Uid)
+            const sumatoriaDeleted = yield time_1.Sumatoria.destroy({
+                where: { Sid: Uid },
+                transaction,
+            });
+            console.log(`✅ Sumatoria eliminada: ${sumatoriaDeleted}`);
+            // 7. Eliminar novedades (usando Nid)
             const novedadesDeleted = yield time_1.Novedad.destroy({
-                where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+                where: { Nid: Uid },
                 transaction,
             });
             console.log(`✅ Novedades eliminadas: ${novedadesDeleted}`);
-            // 2. Eliminar registros de la tabla NovedadHistorico (usando Nid, no Uid)
-            console.log("📚 Eliminando historial de novedades...");
+            // 8. Eliminar historial de novedades (usando Nid)
             const novedadHistoricoDeleted = yield time_1.NovedadHistorico.destroy({
-                where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+                where: { Nid: Uid },
                 transaction,
             });
             console.log(`✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`);
-            // 3. Eliminar registros de la tabla permisos (este sí usa Uid)
-            console.log("🔐 Eliminando permisos...");
+            // 9. Eliminar permisos
             const permissionsDeleted = yield permisos_1.Permiso.destroy({
-                where: { Uid: Uid }, // Este permanece igual
+                where: { Uid: Uid },
                 transaction,
             });
             console.log(`✅ Permisos eliminados: ${permissionsDeleted}`);
-            // 4. Finalmente eliminar el usuario
+            // 10. Eliminar accesos a actas de recarga
+            const { ActaRecargaAcceso } = yield Promise.resolve().then(() => __importStar(require('../models/actaRecargaAcceso')));
+            const accesosDeleted = yield ActaRecargaAcceso.destroy({
+                where: { usuarioId: Uid },
+                transaction,
+            });
+            console.log(`✅ Accesos actas recarga eliminados: ${accesosDeleted}`);
+            // 11. Finalmente eliminar el usuario
             console.log("🗑️ Eliminando usuario...");
             yield user.destroy({ transaction });
             // Confirmar transacción

@@ -8,7 +8,7 @@ import { Area } from "../models/area";
 import { Role } from "../models/role";
 import { User } from "../models/user";
 import { Permiso } from "../models/permisos";
-import { Novedad, NovedadHistorico } from "../models/time";
+import { Novedad, NovedadHistorico, Registro, Sumatoria, HistoricoHorasExtras } from "../models/time";
 
 // Registro de usuario con asignación de rol
 export const register = async (req: Request, res: Response): Promise<any> => {
@@ -288,33 +288,89 @@ export const deleteUserById = async (
     try {
       console.log("🧹 Eliminando registros relacionados...");
 
-      // 1. Eliminar registros de la tabla Novedads (usando Nid, no Uid)
-      console.log("📰 Eliminando novedades...");
+      // 1. Eliminar participantes de asistencia
+      const { ParticipanteAsistencia } = await import('../models/asistencia');
+      const participantesDeleted = await ParticipanteAsistencia.destroy({
+        where: { usuarioId: Uid },
+        transaction,
+      });
+      console.log(`✅ Participantes asistencia eliminados: ${participantesDeleted}`);
+
+      // 2. Eliminar registros de asistencia donde es facilitador
+      const { RegistroAsistencia } = await import('../models/asistencia');
+      const asistenciasDeleted = await RegistroAsistencia.destroy({
+        where: { facilitadorId: Uid },
+        transaction,
+      });
+      console.log(`✅ Registros asistencia eliminados: ${asistenciasDeleted}`);
+
+      // 3. Eliminar alertas
+      const { Alert } = await import('../models/alert');
+      const alertsDeleted = await Alert.destroy({
+        where: { Uid: Uid },
+        transaction,
+      });
+      console.log(`✅ Alertas eliminadas: ${alertsDeleted}`);
+
+      // 4. Eliminar reservaciones
+      const { Reservation } = await import('../models/reservation');
+      const reservationsDeleted = await Reservation.destroy({
+        where: { Uid: Uid },
+        transaction,
+      });
+      console.log(`✅ Reservaciones eliminadas: ${reservationsDeleted}`);
+
+      // 5. Eliminar registros de tiempo (Hid = Uid)
+      const registrosDeleted = await Registro.destroy({
+        where: { Hid: Uid },
+        transaction,
+      });
+      console.log(`✅ Registros de tiempo eliminados: ${registrosDeleted}`);
+
+      // 6. Eliminar historico de horas extras (Sid = Uid)
+      const historicoDeleted = await HistoricoHorasExtras.destroy({
+        where: { Sid: Uid },
+        transaction,
+      });
+      console.log(`✅ Historico horas extras eliminado: ${historicoDeleted}`);
+
+      // 7. Eliminar sumatoria (Sid = Uid)
+      const sumatoriaDeleted = await Sumatoria.destroy({
+        where: { Sid: Uid },
+        transaction,
+      });
+      console.log(`✅ Sumatoria eliminada: ${sumatoriaDeleted}`);
+
+      // 7. Eliminar novedades (usando Nid)
       const novedadesDeleted = await Novedad.destroy({
-        where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+        where: { Nid: Uid },
         transaction,
       });
       console.log(`✅ Novedades eliminadas: ${novedadesDeleted}`);
 
-      // 2. Eliminar registros de la tabla NovedadHistorico (usando Nid, no Uid)
-      console.log("📚 Eliminando historial de novedades...");
+      // 8. Eliminar historial de novedades (usando Nid)
       const novedadHistoricoDeleted = await NovedadHistorico.destroy({
-        where: { Nid: Uid }, // Cambio aquí: Nid en lugar de Uid
+        where: { Nid: Uid },
         transaction,
       });
-      console.log(
-        `✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`
-      );
+      console.log(`✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`);
 
-      // 3. Eliminar registros de la tabla permisos (este sí usa Uid)
-      console.log("🔐 Eliminando permisos...");
+      // 9. Eliminar permisos
       const permissionsDeleted = await Permiso.destroy({
-        where: { Uid: Uid }, // Este permanece igual
+        where: { Uid: Uid },
         transaction,
       });
       console.log(`✅ Permisos eliminados: ${permissionsDeleted}`);
 
-      // 4. Finalmente eliminar el usuario
+      // 10. Eliminar accesos a actas de recarga
+      const { ActaRecargaAcceso } = await import('../models/actaRecargaAcceso');
+      const accesosDeleted = await ActaRecargaAcceso.destroy({
+        where: { usuarioId: Uid },
+        transaction,
+      });
+      console.log(`✅ Accesos actas recarga eliminados: ${accesosDeleted}`);
+
+      // 11. Finalmente eliminar el usuario
       console.log("🗑️ Eliminando usuario...");
       await user.destroy({ transaction });
 

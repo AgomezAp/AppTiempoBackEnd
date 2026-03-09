@@ -44,4 +44,10 @@ router.post("/api/horario/concatenar", upload.array('files'), time_1.concatenar)
 router.delete("/api/horario/delete/:Hid/:Fecha", time_1.deleteRegistroByHidAndFecha);
 //Restar tiempo de sabado
 router.post("/api/horario/restaTiempo", time_1.restarTiempoSabado);
+//Historial de horas extras por usuario
+router.get("/api/horario/historicoExtras/:id", time_1.getHistoricoExtras);
+//Historial de horas extras por fecha (todos)
+router.get("/api/horario/historicoExtras/fecha/:fecha", time_1.getHistoricoExtrasAll);
+//Detalle diario de horas extras por usuario
+router.get("/api/horario/detalleExtras/:id", time_1.getDetalleExtras);
 exports.default = router;

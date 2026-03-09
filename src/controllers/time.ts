@@ -7,7 +7,7 @@ import xpath, { XPathSelect } from 'xpath';
 import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes, informeNovedadNuevo} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
-import { Registro, Sumatoria, Novedad, NovedadHistorico} from '../models/time';
+import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from '../models/time';
 import { parseId } from '../utils/parseId';
 import multer from 'multer';
 import dayjs from 'dayjs';
@@ -51,6 +51,10 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                 record.Fecha = dayjs.tz(record.Fecha,'YYYY-MM-DD', 'America/Bogota').format('YYYY-MM-DD');
             });
             const horario = await Registro.bulkCreate(jsonData);
+
+            // Guardar snapshot ANTES de actualizar valores
+            await guardarSnapshotExtras();
+
             const listaExtras = await Sumatoria.findAll();
             let Extra;
             if(Object.keys(listaExtras).length === 0){
@@ -783,6 +787,9 @@ export const updateExtra = async (req: Request, res: Response): Promise<any> => 
             { where: { Sid: id } }
         );
 
+        // Guardar snapshot después de actualizar
+        await guardarSnapshotExtras();
+
         res.status(200).json({
             message: `Valor de extra actualizado correctamente para el ID ${id}`,
         });
@@ -985,3 +992,105 @@ function formatearAcumuladoDias(acumulado: string): string {
 
     return `${signo}${Math.abs(dias)} dias ${horasRestantes} horas ${minutosRestantes} minutos`;
 }
+
+// Guardar snapshot de todas las horas extras actuales (1 por usuario por día)
+export const guardarSnapshotExtras = async (): Promise<void> => {
+    try {
+        const hoy = dayjs().format('YYYY-MM-DD');
+        const registros = await Sumatoria.findAll();
+
+        for (const reg of registros) {
+            const sid = reg.getDataValue('Sid');
+            const name = reg.getDataValue('Name');
+            const acumulado = reg.getDataValue('Acumulado');
+
+            const existente = await HistoricoHorasExtras.findOne({
+                where: { Sid: sid, fecha: hoy }
+            });
+
+            if (existente) {
+                await HistoricoHorasExtras.update(
+                    { Acumulado: acumulado, Name: name },
+                    { where: { Sid: sid, fecha: hoy } }
+                );
+            } else {
+                await HistoricoHorasExtras.create({
+                    Sid: sid,
+                    Name: name,
+                    Acumulado: acumulado,
+                    fecha: hoy,
+                });
+            }
+        }
+        console.log(`Snapshot de horas extras guardado: ${hoy}`);
+    } catch (error) {
+        console.error('Error al guardar snapshot de horas extras:', error);
+    }
+};
+
+// Obtener historial de horas extras de un usuario
+export const getHistoricoExtras = async (req: Request, res: Response): Promise<any> => {
+    const { id } = req.params;
+    try {
+        const historico = await HistoricoHorasExtras.findAll({
+            where: { Sid: id },
+            order: [['fecha', 'DESC']],
+            limit: 60,
+        });
+        res.status(200).json(historico);
+    } catch (error) {
+        console.error('Error al obtener historial de extras:', error);
+        res.status(500).json({ error: 'Error al obtener historial de horas extras' });
+    }
+};
+
+// Obtener historial de horas extras de TODOS los usuarios
+export const getHistoricoExtrasAll = async (req: Request, res: Response): Promise<any> => {
+    const { fecha } = req.params;
+    try {
+        const historico = await HistoricoHorasExtras.findAll({
+            where: { fecha },
+            order: [['Sid', 'ASC']],
+        });
+        res.status(200).json(historico);
+    } catch (error) {
+        console.error('Error al obtener historial de extras por fecha:', error);
+        res.status(500).json({ error: 'Error al obtener historial de horas extras' });
+    }
+};
+
+// Obtener detalle diario de horas extras de un usuario (filtrado por rango de fechas)
+export const getDetalleExtras = async (req: Request, res: Response): Promise<any> => {
+    const { id } = req.params;
+    const { desde, hasta } = req.query;
+
+    try {
+        if (!desde || !hasta) {
+            return res.status(400).json({ error: 'Se requieren los parámetros desde y hasta' });
+        }
+
+        const registros = await Registro.findAll({
+            where: {
+                Hid: id,
+                Fecha: {
+                    [Op.gte]: new Date(desde as string + 'T00:00:00'),
+                    [Op.lte]: new Date(hasta as string + 'T23:59:59'),
+                },
+            },
+            order: [['Fecha', 'DESC']],
+        });
+
+        // Filtrar solo días con horas extras positivas (> 0:00)
+        const conExtras = registros.filter((reg: any) => {
+            const extra = reg.getDataValue('Extra');
+            if (!extra || extra === '0:00' || extra === '0:0' || extra === '00:00') return false;
+            if (extra.startsWith('-')) return false;
+            return true;
+        });
+
+        res.status(200).json(conExtras);
+    } catch (error) {
+        console.error('Error al obtener detalle de extras:', error);
+        res.status(500).json({ error: 'Error al obtener detalle de horas extras' });
+    }
+};

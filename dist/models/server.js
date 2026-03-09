@@ -148,6 +148,7 @@ class Server {
                 yield permisos_2.Permiso.sync({ alter: true });
                 yield time_2.Registro.sync();
                 yield time_2.Sumatoria.sync();
+                yield time_2.HistoricoHorasExtras.sync();
                 yield time_2.Novedad.sync({ alter: false });
                 yield time_2.NovedadHistorico.sync({ alter: false });
                 yield archivo_2.Archivo.sync({ alter: false });
