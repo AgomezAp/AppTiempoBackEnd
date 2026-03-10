@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import { JWT } from 'google-auth-library';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
@@ -9,12 +8,12 @@ const PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
  * Autentica con Google Sheets usando credenciales de cuenta de servicio
  */
 const authenticateGoogleSheets = () => {
-  const auth = new JWT({
+  const auth = new google.auth.JWT({
     email: SERVICE_ACCOUNT_EMAIL,
     key: PRIVATE_KEY,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
-  
+
   return google.sheets({ version: 'v4', auth });
 };
 

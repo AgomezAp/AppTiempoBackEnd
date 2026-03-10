@@ -119,7 +119,12 @@ const getHorario = async (req, res) => {
         };
         const datosConvertidos = listahorario.map(registro => {
             const registroConvertido = registro.toJSON();
-            return Object.assign(Object.assign({}, registroConvertido), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroConvertido.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroConvertido.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...registroConvertido,
+                Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroConvertido.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroConvertido.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+            };
         });
         res.json(datosConvertidos);
     }
@@ -180,7 +185,12 @@ const getHorarioById = async (req, res) => {
         }
         const registrosConvertidos = registro.map(registro => {
             const registroJSON = registro.toJSON();
-            return Object.assign(Object.assign({}, registroJSON), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...registroJSON,
+                Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+            };
         });
         res.status(200).json(registrosConvertidos);
     }
@@ -211,7 +221,12 @@ const getHorarioByIdFecha = async (req, res) => {
             });
         }
         const registroJSON = registro.toJSON();
-        const registrosConvertidos = Object.assign(Object.assign({}, registroJSON), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD') });
+        const registrosConvertidos = {
+            ...registroJSON,
+            Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+            Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+            Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+        };
         res.status(200).json(registrosConvertidos);
     }
     catch (error) {
@@ -242,7 +257,12 @@ const getHorarioByFecha = async (req, res) => {
         }
         const registrosConvertidos = registro.map(registro => {
             const registroJSON = registro.toJSON();
-            return Object.assign(Object.assign({}, registroJSON), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...registroJSON,
+                Entrada: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs_1.default.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs_1.default.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+            };
         });
         res.status(200).json(registrosConvertidos);
     }
@@ -490,7 +510,12 @@ const informePersonalById = async (req, res) => {
         // const horarioPlain = horario.map(record => record.toJSON() as { ID: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string });
         const horarioPlain2 = horario.map(record => {
             const obj = record.toJSON();
-            return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...obj,
+                Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD'),
+            };
         });
         const pdfBuffer = await (0, Manejo_1.informePersonal)(horarioPlain2);
         res.setHeader("Content-Type", "application/pdf");
@@ -528,7 +553,7 @@ const informeNovedad = async (req, res) => {
         }
         const novedadesPlain = todasNovedades.map(novedad => {
             const obj = novedad.toJSON();
-            return Object.assign({}, obj);
+            return { ...obj };
         });
         const pdfBuffer = await (0, Manejo_1.informeNovedades)(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
@@ -629,7 +654,10 @@ const nuevaNovedad = async (req, res) => {
             const acumuladoRaw = extra.getDataValue('Acumulado');
             const acumuladoFormateado = formatearAcumuladoDias(acumuladoRaw);
             if (resultadoAgrupado[sid]) {
-                return Object.assign(Object.assign({}, resultadoAgrupado[sid]), { Acumulado: acumuladoFormateado });
+                return {
+                    ...resultadoAgrupado[sid],
+                    Acumulado: acumuladoFormateado
+                };
             }
             else {
                 return {
@@ -680,7 +708,12 @@ const informePeligro = async (req, res) => {
         // const horarioPlain = horario.map(record => record.toJSON() as { ID: number; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string });
         const horarioPlain = horario.map(record => {
             const obj = record.toJSON();
-            return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...obj,
+                Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'),
+                Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'),
+                Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD'),
+            };
         });
         const pdfBuffer = await (0, Manejo_1.informeRiesgo)(horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
@@ -808,9 +841,13 @@ const concatenar = async (req, res) => {
     }
     catch (error) {
         console.error('Error en concatenar:', error instanceof Error ? error.stack : error);
-        const errorResponse = Object.assign({ error: 'Error al procesar los archivos', details: error instanceof Error ? error.message : 'Error desconocido' }, (process.env.NODE_ENV === 'development' && {
-            stack: error instanceof Error ? error.stack : undefined
-        }));
+        const errorResponse = {
+            error: 'Error al procesar los archivos',
+            details: error instanceof Error ? error.message : 'Error desconocido',
+            ...(process.env.NODE_ENV === 'development' && {
+                stack: error instanceof Error ? error.stack : undefined
+            })
+        };
         res.status(500).json(errorResponse);
     }
 };

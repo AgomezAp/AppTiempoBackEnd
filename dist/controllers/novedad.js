@@ -53,7 +53,10 @@ const getNovedad = async (req, res) => {
         });
         const datosConvertidos = listaNovedades.map(registro => {
             const registroConvertido = registro.toJSON();
-            return Object.assign(Object.assign({}, registroConvertido), { Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...registroConvertido,
+                Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+            };
         });
         res.json(datosConvertidos);
     }
@@ -70,7 +73,10 @@ const getNovedadHistorico = async (req, res) => {
         });
         const datosConvertidos = listaNovedades.map(registro => {
             const registroConvertido = registro.toJSON();
-            return Object.assign(Object.assign({}, registroConvertido), { Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD') });
+            return {
+                ...registroConvertido,
+                Fecha: dayjs_1.default.utc(registroConvertido.Fecha).format('YYYY-MM-DD'),
+            };
         });
         res.json(datosConvertidos);
     }

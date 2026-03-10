@@ -173,7 +173,7 @@ function formatoHora(tiempo) {
     return `${minutos < 0 ? `-${horas}` : horas}:${formatedminutos}`;
 }
 function sinHuella(primero) {
-    const ultimo = Object.assign({}, primero);
+    const ultimo = { ...primero };
     const openTime = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
     let adjustedTime = dayjs_1.default.tz(primero.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').hour(17).minute(0).second(0).millisecond(0);
     if (openTime.hour() < 12) {
@@ -673,7 +673,10 @@ async function informeRiesgo(horario) {
                 valor = "tableCellCerca";
             }
         }
-        return Object.assign(Object.assign({}, ries), { Valor: valor });
+        return {
+            ...ries,
+            Valor: valor
+        };
     });
     const fonts = {
         Helvetica: {
