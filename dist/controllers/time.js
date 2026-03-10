@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -23,8 +14,8 @@ const dayjs_1 = __importDefault(require("dayjs"));
 const sequelize_1 = require("sequelize");
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage }).single('xml');
-const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    upload(req, res, (err) => __awaiter(void 0, void 0, void 0, function* () {
+const handleUploadAndConvert = async (req, res) => {
+    upload(req, res, async (err) => {
         if (err) {
             return res.status(500).json({ error: 'Error al subir el archivo', details: err });
         }
@@ -33,7 +24,7 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
         }
         try {
             const xmlContent = req.file.buffer.toString();
-            const [jsonData, jsonDataExtra] = yield (0, Manejo_1.processXML)(xmlContent);
+            const [jsonData, jsonDataExtra] = await (0, Manejo_1.processXML)(xmlContent);
             console.log(`Cacasdac ${JSON.stringify(jsonDataExtra, null, 2)}`);
             if (!Array.isArray(jsonData) || jsonData.length === 0) {
                 throw new Error('Los datos procesados no son válidos o están vacíos');
@@ -48,19 +39,19 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                 record.Salida = dayjs_1.default.tz(record.Salida, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
                 record.Fecha = dayjs_1.default.tz(record.Fecha, 'YYYY-MM-DD', 'America/Bogota').format('YYYY-MM-DD');
             });
-            const horario = yield time_1.Registro.bulkCreate(jsonData);
+            const horario = await time_1.Registro.bulkCreate(jsonData);
             // Guardar snapshot ANTES de actualizar valores
-            yield (0, exports.guardarSnapshotExtras)();
-            const listaExtras = yield time_1.Sumatoria.findAll();
+            await (0, exports.guardarSnapshotExtras)();
+            const listaExtras = await time_1.Sumatoria.findAll();
             let Extra;
             if (Object.keys(listaExtras).length === 0) {
-                Extra = yield time_1.Sumatoria.bulkCreate(jsonDataExtra);
+                Extra = await time_1.Sumatoria.bulkCreate(jsonDataExtra);
             }
             else {
                 const idsExistentes = listaExtras.map(rec => rec.getDataValue('Sid'));
                 const registrosFaltantes = jsonDataExtra.filter((extra) => !idsExistentes.includes(extra.Sid));
                 if (registrosFaltantes.length > 0) {
-                    yield time_1.Sumatoria.bulkCreate(registrosFaltantes, {
+                    await time_1.Sumatoria.bulkCreate(registrosFaltantes, {
                         ignoreDuplicates: true
                     });
                 }
@@ -103,7 +94,7 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
                     }
                 });
                 for (const data of resultadoActualizado) {
-                    Extra = yield time_1.Sumatoria.update({ Acumulado: data.Acumulado }, { where: { Sid: data.Sid } });
+                    Extra = await time_1.Sumatoria.update({ Acumulado: data.Acumulado }, { where: { Sid: data.Sid } });
                 }
             }
             return res.status(200).json({ message: 'Archivo procesado exitosamente', Extra, horario });
@@ -112,12 +103,12 @@ const handleUploadAndConvert = (req, res) => __awaiter(void 0, void 0, void 0, f
             console.error('Error al procesar el archivo:', error);
             return res.status(500).json({ 'Error al procesar el archivo': error });
         }
-    }));
-});
+    });
+};
 exports.handleUploadAndConvert = handleUploadAndConvert;
-const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHorario = async (req, res) => {
     try {
-        const listahorario = yield time_1.Registro.findAll({
+        const listahorario = await time_1.Registro.findAll({
             order: [['unique_key', 'ASC']]
         });
         const convertirAHorarioLocal = (fechaUTC) => {
@@ -136,11 +127,11 @@ const getHorario = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
     }
-});
+};
 exports.getHorario = getHorario;
-const getExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getExtra = async (req, res) => {
     try {
-        const listaextra = yield time_1.Sumatoria.findAll({
+        const listaextra = await time_1.Sumatoria.findAll({
             order: [['Sid', 'ASC']]
         });
         // const listaExtras = await Sumatoria.findAll();
@@ -150,12 +141,12 @@ const getExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         console.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
     }
-});
+};
 exports.getExtra = getExtra;
-const getExtraById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getExtraById = async (req, res) => {
     const { id } = req.params;
     try {
-        const listaextra = yield time_1.Sumatoria.findAll({
+        const listaextra = await time_1.Sumatoria.findAll({
             where: { Sid: id },
         });
         if (!listaextra) {
@@ -169,9 +160,9 @@ const getExtraById = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         console.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
     }
-});
+};
 exports.getExtraById = getExtraById;
-const getHorarioById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHorarioById = async (req, res) => {
     const { id } = req.params;
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
@@ -179,7 +170,7 @@ const getHorarioById = (req, res) => __awaiter(void 0, void 0, void 0, function*
         return dayjs_1.default.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
     };
     try {
-        const registro = yield time_1.Registro.findAll({
+        const registro = await time_1.Registro.findAll({
             where: { Hid: id },
         });
         if (!registro) {
@@ -200,9 +191,9 @@ const getHorarioById = (req, res) => __awaiter(void 0, void 0, void 0, function*
             error: error.message || error,
         });
     }
-});
+};
 exports.getHorarioById = getHorarioById;
-const getHorarioByIdFecha = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHorarioByIdFecha = async (req, res) => {
     const { id, fecha } = req.params;
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
@@ -211,7 +202,7 @@ const getHorarioByIdFecha = (req, res) => __awaiter(void 0, void 0, void 0, func
     };
     const fechaactual = dayjs_1.default.utc(typeof fecha === 'string' ? fecha : fecha[0]).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
-        const registro = yield time_1.Registro.findOne({
+        const registro = await time_1.Registro.findOne({
             where: { Hid: id, Fecha: fechaactual },
         });
         if (!registro) {
@@ -230,9 +221,9 @@ const getHorarioByIdFecha = (req, res) => __awaiter(void 0, void 0, void 0, func
             error: error.message || error,
         });
     }
-});
+};
 exports.getHorarioByIdFecha = getHorarioByIdFecha;
-const getHorarioByFecha = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHorarioByFecha = async (req, res) => {
     const { fecha } = req.params;
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
@@ -241,7 +232,7 @@ const getHorarioByFecha = (req, res) => __awaiter(void 0, void 0, void 0, functi
     };
     const fechaactual = dayjs_1.default.utc(typeof fecha === 'string' ? fecha : fecha[0]).format('YYYY-MM-DDTHH:mm:ss[Z]');
     try {
-        const registro = yield time_1.Registro.findAll({
+        const registro = await time_1.Registro.findAll({
             where: { Fecha: fechaactual },
         });
         if (!registro) {
@@ -262,9 +253,9 @@ const getHorarioByFecha = (req, res) => __awaiter(void 0, void 0, void 0, functi
             error: error.message || error,
         });
     }
-});
+};
 exports.getHorarioByFecha = getHorarioByFecha;
-const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateSalidaById = async (req, res) => {
     const { id, fecha, salida } = req.body;
     try {
         if (!fecha || !salida) {
@@ -276,7 +267,7 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
         const fechaformateada = dayjs_1.default.tz(fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const salidaformateada = dayjs_1.default.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         // Buscar el registro por ID y Fecha
-        const registro = yield time_1.Registro.findOne({
+        const registro = await time_1.Registro.findOne({
             where: {
                 Hid: id,
                 Fecha: fechaformateada,
@@ -288,7 +279,7 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
             });
         }
         // Actualizar el campo Salida
-        yield time_1.Registro.update({ Salida: salidaformateada }, {
+        await time_1.Registro.update({ Salida: salidaformateada }, {
             where: {
                 Hid: id,
                 Fecha: fechaformateada,
@@ -315,7 +306,7 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
         console.log('Salida actual:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
         console.log('Extra actual:', extraactualformato);
         console.log('Total actual:', totalActual);
-        yield time_1.Registro.update({
+        await time_1.Registro.update({
             Extra: extraactualformato,
             Total: totalActual
         }, {
@@ -325,12 +316,12 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
             },
         });
         var sum = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extraactualformato) - (0, novedad_1.convertirHora)(extra));
-        const sumatoria = yield time_1.Sumatoria.findOne({
+        const sumatoria = await time_1.Sumatoria.findOne({
             where: {
                 Sid: id
             }
         });
-        yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
+        await time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
             where: {
                 Sid: id,
             }
@@ -345,9 +336,9 @@ const updateSalidaById = (req, res) => __awaiter(void 0, void 0, void 0, functio
             details: error.message,
         });
     }
-});
+};
 exports.updateSalidaById = updateSalidaById;
-const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateEntradaById = async (req, res) => {
     const { id, fecha, entrada } = req.body;
     try {
         if (!fecha || !entrada) {
@@ -359,7 +350,7 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const fechaformateada = (0, dayjs_1.default)(fecha).format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const entradaformateada = dayjs_1.default.tz(entradacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
         // Buscar el registro por ID y Fecha
-        const registro = yield time_1.Registro.findOne({
+        const registro = await time_1.Registro.findOne({
             where: {
                 Hid: id,
                 Fecha: fechaformateada
@@ -371,7 +362,7 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
             });
         }
         // Actualizar el campo Salida
-        yield time_1.Registro.update({ Entrada: entradaformateada }, {
+        await time_1.Registro.update({ Entrada: entradaformateada }, {
             where: {
                 Hid: id,
                 Fecha: fechaformateada,
@@ -392,7 +383,7 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const extraactual = (0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 9, 30);
         const totalActual = (0, Manejo_1.formatoHora)((0, Manejo_1.diferenciaUpdate)(entradaactual, salidaactual, 0, 0));
         const extraactualformato = (0, Manejo_1.formatoHora)(extraactual);
-        yield time_1.Registro.update({
+        await time_1.Registro.update({
             Extra: extraactualformato,
             Total: totalActual
         }, {
@@ -402,12 +393,12 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
             },
         });
         var sum = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extraactualformato) - (0, novedad_1.convertirHora)(extra));
-        const sumatoria = yield time_1.Sumatoria.findOne({
+        const sumatoria = await time_1.Sumatoria.findOne({
             where: {
                 Sid: id
             }
         });
-        yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
+        await time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(sumatoria === null || sumatoria === void 0 ? void 0 : sumatoria.getDataValue('Acumulado')) + (0, novedad_1.convertirHora)(sum)) }, {
             where: {
                 Sid: id
             }
@@ -422,15 +413,15 @@ const updateEntradaById = (req, res) => __awaiter(void 0, void 0, void 0, functi
             details: error.message,
         });
     }
-});
+};
 exports.updateEntradaById = updateEntradaById;
-const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const agregarRegistro = async (req, res) => {
     let primero = { Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Entrada, Name: req.body.Name };
     let segundo = { Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name };
     const total = (0, Manejo_1.difereciaConMoment2)(primero, segundo);
     const extH = (0, Manejo_1.convertMinutesToTime)((0, Manejo_1.convertTimeToMinutes)((0, Manejo_1.formatoHora)(total)) - 570);
     try {
-        yield time_1.Registro.create({
+        await time_1.Registro.create({
             Hid: req.body.Hid,
             Name: req.body.Name,
             Entrada: req.body.Entrada,
@@ -439,9 +430,9 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
             Extra: extH,
             Total: (0, Manejo_1.formatoHora)(total)
         });
-        const listaExtras = yield time_1.Sumatoria.findAll({ where: { Sid: req.body.Hid } });
+        const listaExtras = await time_1.Sumatoria.findAll({ where: { Sid: req.body.Hid } });
         if (listaExtras.length === 0) {
-            yield time_1.Sumatoria.create({
+            await time_1.Sumatoria.create({
                 Sid: req.body.Hid,
                 Name: req.body.Name,
                 Acumulado: extH
@@ -450,7 +441,7 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
         else {
             const acum = listaExtras.map(ls => ls.toJSON());
             const suma = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(acum[0].Acumulado) + (0, novedad_1.convertirHora)(extH));
-            yield time_1.Sumatoria.update({ Extra: suma }, {
+            await time_1.Sumatoria.update({ Extra: suma }, {
                 where: {
                     Sid: req.body.Hid
                 },
@@ -468,9 +459,9 @@ const agregarRegistro = (req, res) => __awaiter(void 0, void 0, void 0, function
             mesagge: err.mesagge | err,
         });
     }
-});
+};
 exports.agregarRegistro = agregarRegistro;
-const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const informePersonalById = async (req, res) => {
     const { id, fechaInicial, fechaFinal } = req.body;
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
@@ -479,7 +470,7 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
     };
     const startofDay = (fecha) => new Date(new Date(fecha).setHours(0, 0, 0, 0));
     try {
-        const horario = yield time_1.Registro.findAll({
+        const horario = await time_1.Registro.findAll({
             where: {
                 Hid: {
                     [sequelize_1.Op.in]: id
@@ -501,7 +492,7 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
             const obj = record.toJSON();
             return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
         });
-        const pdfBuffer = yield (0, Manejo_1.informePersonal)(horarioPlain2);
+        const pdfBuffer = await (0, Manejo_1.informePersonal)(horarioPlain2);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", "attachment; filename=informe_personal.pdf");
         res.send(pdfBuffer);
@@ -510,20 +501,20 @@ const informePersonalById = (req, res) => __awaiter(void 0, void 0, void 0, func
         console.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe." });
     }
-});
+};
 exports.informePersonalById = informePersonalById;
-const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const informeNovedad = async (req, res) => {
     const { fechaInicial, fechaFinal } = req.body;
     const startofDay = (fecha) => new Date(new Date(fecha).setHours(0, 0, 0, 0));
     try {
-        const novedades = yield time_1.Novedad.findAll({
+        const novedades = await time_1.Novedad.findAll({
             where: {
                 Fecha: {
                     [sequelize_1.Op.between]: [startofDay(fechaInicial), fechaFinal]
                 }
             }
         });
-        const novedadesHistorico = yield time_1.NovedadHistorico.findAll({
+        const novedadesHistorico = await time_1.NovedadHistorico.findAll({
             where: {
                 Fecha: {
                     [sequelize_1.Op.between]: [startofDay(fechaInicial), fechaFinal]
@@ -539,7 +530,7 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
             const obj = novedad.toJSON();
             return Object.assign({}, obj);
         });
-        const pdfBuffer = yield (0, Manejo_1.informeNovedades)(novedadesPlain);
+        const pdfBuffer = await (0, Manejo_1.informeNovedades)(novedadesPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     }
@@ -547,25 +538,25 @@ const informeNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
         console.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe." });
     }
-});
+};
 exports.informeNovedad = informeNovedad;
-const nuevaNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const nuevaNovedad = async (req, res) => {
     const { fechaInicial, fechaFinal } = req.body;
     const startofDay = (fecha) => new Date(new Date(fecha).setHours(0, 0, 0, 0));
     const endofDay = (fecha) => (0, dayjs_1.default)(fecha).endOf('day').toDate();
     try {
-        const extras = yield time_1.Sumatoria.findAll();
+        const extras = await time_1.Sumatoria.findAll();
         const sids = extras
             .map(extra => extra.getDataValue('Sid'))
             .sort((a, b) => Number(a) - Number(b));
-        const novedades = yield time_1.Novedad.findAll({
+        const novedades = await time_1.Novedad.findAll({
             where: {
                 Fecha: {
                     [sequelize_1.Op.between]: [startofDay(fechaInicial), endofDay(fechaFinal)]
                 }
             }
         });
-        const novedadesHistorico = yield time_1.NovedadHistorico.findAll({
+        const novedadesHistorico = await time_1.NovedadHistorico.findAll({
             where: {
                 Fecha: {
                     [sequelize_1.Op.between]: [startofDay(fechaInicial), endofDay(fechaFinal)]
@@ -653,7 +644,7 @@ const nuevaNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             }
         });
         resultadoFinal.sort((a, b) => a.Name.localeCompare(b.Name));
-        const pdfBuffer = yield (0, Manejo_1.informeNovedadNuevo)(resultadoFinal);
+        const pdfBuffer = await (0, Manejo_1.informeNovedadNuevo)(resultadoFinal);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     }
@@ -661,9 +652,9 @@ const nuevaNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         console.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe" });
     }
-});
+};
 exports.nuevaNovedad = nuevaNovedad;
-const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const informePeligro = async (req, res) => {
     const { fechaInicial, fechaFinal } = req.body;
     const convertirAHorarioLocal = (fechaUTC) => {
         if (!fechaUTC)
@@ -672,7 +663,7 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
     };
     const startofDay = (fecha) => new Date(new Date(fecha).setHours(0, 0, 0, 0));
     try {
-        const horario = yield time_1.Registro.findAll({
+        const horario = await time_1.Registro.findAll({
             where: {
                 Fecha: {
                     [sequelize_1.Op.between]: [startofDay(fechaInicial), fechaFinal],
@@ -691,7 +682,7 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
             const obj = record.toJSON();
             return Object.assign(Object.assign({}, obj), { Entrada: dayjs_1.default.utc(convertirAHorarioLocal(obj.Entrada)).format('HH:mm:ss'), Salida: dayjs_1.default.utc(convertirAHorarioLocal(obj.Salida)).format('HH:mm:ss'), Fecha: dayjs_1.default.utc(obj.Fecha).format('YYYY-MM-DD') });
         });
-        const pdfBuffer = yield (0, Manejo_1.informeRiesgo)(horarioPlain);
+        const pdfBuffer = await (0, Manejo_1.informeRiesgo)(horarioPlain);
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     }
@@ -699,9 +690,9 @@ const informePeligro = (req, res) => __awaiter(void 0, void 0, void 0, function*
         console.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe." });
     }
-});
+};
 exports.informePeligro = informePeligro;
-const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateExtra = async (req, res) => {
     const { id, extra } = req.body;
     try {
         if (!id || !extra) {
@@ -709,7 +700,7 @@ const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 message: 'ID y valor de extra son requeridos',
             });
         }
-        const sumatoria = yield time_1.Sumatoria.findOne({
+        const sumatoria = await time_1.Sumatoria.findOne({
             where: { Sid: id },
         });
         if (!sumatoria) {
@@ -718,9 +709,9 @@ const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             });
         }
         const extraFormateado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extra));
-        yield time_1.Sumatoria.update({ Acumulado: extraFormateado }, { where: { Sid: id } });
+        await time_1.Sumatoria.update({ Acumulado: extraFormateado }, { where: { Sid: id } });
         // Guardar snapshot después de actualizar
-        yield (0, exports.guardarSnapshotExtras)();
+        await (0, exports.guardarSnapshotExtras)();
         res.status(200).json({
             message: `Valor de extra actualizado correctamente para el ID ${id}`,
         });
@@ -732,9 +723,9 @@ const updateExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             details: error.message,
         });
     }
-});
+};
 exports.updateExtra = updateExtra;
-const addExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const addExtra = async (req, res) => {
     const { id, extra } = req.body;
     try {
         if (!id || !extra) {
@@ -742,7 +733,7 @@ const addExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 message: 'ID y valor de extra son requeridos',
             });
         }
-        const sumatoria = yield time_1.Sumatoria.findOne({
+        const sumatoria = await time_1.Sumatoria.findOne({
             where: { Sid: id },
         });
         if (!sumatoria) {
@@ -753,7 +744,7 @@ const addExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const extraFormateado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(extra));
         const acumuladoActual = sumatoria.getDataValue('Acumulado');
         const nuevoAcumulado = (0, novedad_1.convertirMinuto)((0, novedad_1.convertirHora)(acumuladoActual) + (0, novedad_1.convertirHora)(extraFormateado));
-        yield time_1.Sumatoria.update({ Acumulado: nuevoAcumulado }, { where: { Sid: id } });
+        await time_1.Sumatoria.update({ Acumulado: nuevoAcumulado }, { where: { Sid: id } });
         res.status(200).json({
             message: `Tiempo añadido correctamente al acumulado para el ID ${id}`,
             nuevoAcumulado,
@@ -766,9 +757,9 @@ const addExtra = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             details: error.message,
         });
     }
-});
+};
 exports.addExtra = addExtra;
-const concatenar = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const concatenar = async (req, res) => {
     try {
         if (!req.files || !Array.isArray(req.files) || req.files.length < 1) {
             res.status(400).json({ error: 'Debe subir al menos un archivo XML' });
@@ -822,13 +813,13 @@ const concatenar = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }));
         res.status(500).json(errorResponse);
     }
-});
+};
 exports.concatenar = concatenar;
-const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteRegistroByHidAndFecha = async (req, res) => {
     const { Hid, Fecha } = req.params;
     try {
         // Buscar el registro por Hid y Fecha
-        const registro = yield time_1.Registro.findOne({
+        const registro = await time_1.Registro.findOne({
             where: {
                 Hid,
                 Fecha: dayjs_1.default.tz(typeof Fecha === 'string' ? Fecha : Fecha[0], 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc'),
@@ -838,7 +829,7 @@ const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void
             return res.status(404).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} no encontrado` });
         }
         // Eliminar el registro
-        yield registro.destroy();
+        await registro.destroy();
         res.status(200).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} eliminado con éxito` });
     }
     catch (error) {
@@ -848,19 +839,19 @@ const deleteRegistroByHidAndFecha = (req, res) => __awaiter(void 0, void 0, void
             details: error.message,
         });
     }
-});
+};
 exports.deleteRegistroByHidAndFecha = deleteRegistroByHidAndFecha;
-const restarTiempoSabado = () => __awaiter(void 0, void 0, void 0, function* () {
+const restarTiempoSabado = async () => {
     try {
         const tiempoARestar = '4:00';
         const minutosARestar = (0, Manejo_1.convertTimeToMinutes)(tiempoARestar);
-        const registros = yield time_1.Sumatoria.findAll();
+        const registros = await time_1.Sumatoria.findAll();
         for (const reg of registros) {
             const acumuladoActual = reg.getDataValue('Acumulado');
             const minutosAcumulados = (0, Manejo_1.convertTimeToMinutes)(acumuladoActual);
             const sabadoMinutos = minutosAcumulados - minutosARestar;
             const sabado = sabadoMinutos < 0 ? `${Math.ceil(sabadoMinutos / 60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}` : `${Math.floor(sabadoMinutos / 60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}`;
-            yield time_1.Sumatoria.update({ Acumulado: sabado }, { where: { Sid: reg.getDataValue('Sid') } });
+            await time_1.Sumatoria.update({ Acumulado: sabado }, { where: { Sid: reg.getDataValue('Sid') } });
         }
         console.log('Tiempo restado exitosamente');
     }
@@ -868,7 +859,7 @@ const restarTiempoSabado = () => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Error al restar el tiempo:', error);
         throw error;
     }
-});
+};
 exports.restarTiempoSabado = restarTiempoSabado;
 function formatearAcumuladoDias(acumulado) {
     // Soporta valores negativos también
@@ -889,22 +880,22 @@ function formatearAcumuladoDias(acumulado) {
     return `${signo}${Math.abs(dias)} dias ${horasRestantes} horas ${minutosRestantes} minutos`;
 }
 // Guardar snapshot de todas las horas extras actuales (1 por usuario por día)
-const guardarSnapshotExtras = () => __awaiter(void 0, void 0, void 0, function* () {
+const guardarSnapshotExtras = async () => {
     try {
         const hoy = (0, dayjs_1.default)().format('YYYY-MM-DD');
-        const registros = yield time_1.Sumatoria.findAll();
+        const registros = await time_1.Sumatoria.findAll();
         for (const reg of registros) {
             const sid = reg.getDataValue('Sid');
             const name = reg.getDataValue('Name');
             const acumulado = reg.getDataValue('Acumulado');
-            const existente = yield time_1.HistoricoHorasExtras.findOne({
+            const existente = await time_1.HistoricoHorasExtras.findOne({
                 where: { Sid: sid, fecha: hoy }
             });
             if (existente) {
-                yield time_1.HistoricoHorasExtras.update({ Acumulado: acumulado, Name: name }, { where: { Sid: sid, fecha: hoy } });
+                await time_1.HistoricoHorasExtras.update({ Acumulado: acumulado, Name: name }, { where: { Sid: sid, fecha: hoy } });
             }
             else {
-                yield time_1.HistoricoHorasExtras.create({
+                await time_1.HistoricoHorasExtras.create({
                     Sid: sid,
                     Name: name,
                     Acumulado: acumulado,
@@ -917,13 +908,13 @@ const guardarSnapshotExtras = () => __awaiter(void 0, void 0, void 0, function* 
     catch (error) {
         console.error('Error al guardar snapshot de horas extras:', error);
     }
-});
+};
 exports.guardarSnapshotExtras = guardarSnapshotExtras;
 // Obtener historial de horas extras de un usuario
-const getHistoricoExtras = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHistoricoExtras = async (req, res) => {
     const { id } = req.params;
     try {
-        const historico = yield time_1.HistoricoHorasExtras.findAll({
+        const historico = await time_1.HistoricoHorasExtras.findAll({
             where: { Sid: id },
             order: [['fecha', 'DESC']],
             limit: 60,
@@ -934,13 +925,13 @@ const getHistoricoExtras = (req, res) => __awaiter(void 0, void 0, void 0, funct
         console.error('Error al obtener historial de extras:', error);
         res.status(500).json({ error: 'Error al obtener historial de horas extras' });
     }
-});
+};
 exports.getHistoricoExtras = getHistoricoExtras;
 // Obtener historial de horas extras de TODOS los usuarios
-const getHistoricoExtrasAll = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getHistoricoExtrasAll = async (req, res) => {
     const { fecha } = req.params;
     try {
-        const historico = yield time_1.HistoricoHorasExtras.findAll({
+        const historico = await time_1.HistoricoHorasExtras.findAll({
             where: { fecha },
             order: [['Sid', 'ASC']],
         });
@@ -950,17 +941,17 @@ const getHistoricoExtrasAll = (req, res) => __awaiter(void 0, void 0, void 0, fu
         console.error('Error al obtener historial de extras por fecha:', error);
         res.status(500).json({ error: 'Error al obtener historial de horas extras' });
     }
-});
+};
 exports.getHistoricoExtrasAll = getHistoricoExtrasAll;
 // Obtener detalle diario de horas extras de un usuario (filtrado por rango de fechas)
-const getDetalleExtras = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getDetalleExtras = async (req, res) => {
     const { id } = req.params;
     const { desde, hasta } = req.query;
     try {
         if (!desde || !hasta) {
             return res.status(400).json({ error: 'Se requieren los parámetros desde y hasta' });
         }
-        const registros = yield time_1.Registro.findAll({
+        const registros = await time_1.Registro.findAll({
             where: {
                 Hid: id,
                 Fecha: {
@@ -985,5 +976,5 @@ const getDetalleExtras = (req, res) => __awaiter(void 0, void 0, void 0, functio
         console.error('Error al obtener detalle de extras:', error);
         res.status(500).json({ error: 'Error al obtener detalle de horas extras' });
     }
-});
+};
 exports.getDetalleExtras = getDetalleExtras;

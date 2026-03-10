@@ -19,6 +19,7 @@ import RRoom from '../routes/room';
 import RReservation from '../routes/reservation';
 import RAsistencia from '../routes/asistencia';
 import RActaRecarga from '../routes/actaRecarga';
+import RSsgt from '../routes/ssgt';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -66,6 +67,7 @@ class Server{
         this.app.use(RReservation);
         this.app.use('/api/asistencia', RAsistencia);
         this.app.use('/api/actas-recargas', RActaRecarga);
+        this.app.use('/api/ssgt', RSsgt);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -123,13 +125,20 @@ class Server{
             // Sincronizar modelos de asistencia
             const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
             await RegistroAsistencia.sync();
-            await ParticipanteAsistencia.sync();
+            await ParticipanteAsistencia.sync({ alter: true });
 
             // Sincronizar modelos de actas de recargas
             const { ActaRecarga } = await import('./actaRecarga');
             const { ActaRecargaAcceso } = await import('./actaRecargaAcceso');
             await ActaRecarga.sync({ force: true });
             await ActaRecargaAcceso.sync({ alter: false });
+
+            // Sincronizar modelos SSGT
+            const { AccidenteIncidente, InvestigacionAccidente, EvidenciaAccidente, SeguimientoAccion } = await import('./ssgt');
+            await AccidenteIncidente.sync({ alter: true });
+            await InvestigacionAccidente.sync({ alter: true });
+            await EvidenciaAccidente.sync({ alter: true });
+            await SeguimientoAccion.sync({ alter: true });
 
 
             console.log('Conexión establecida correctamente');

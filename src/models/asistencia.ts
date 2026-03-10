@@ -70,16 +70,17 @@ RegistroAsistencia.init(
 export class ParticipanteAsistencia extends Model {
   public id!: number;
   public registroId!: number;
-  public usuarioId!: number;
+  public usuarioId!: number | null;
   public nombreCompleto!: string;
   public documentoIdentificacion!: string;
   public cargo!: string;
-  public empresa!: 'AP' | 'AT' | 'ME';
+  public empresa!: string;
   public email!: string;
   public firma!: string | null; // Base64 de la imagen de firma
   public fechaFirma!: Date | null;
   public tokenFirma!: string;
   public firmado!: boolean;
+  public esExterno!: boolean;
 }
 
 ParticipanteAsistencia.init(
@@ -99,7 +100,7 @@ ParticipanteAsistencia.init(
     },
     usuarioId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'Uid',
@@ -118,7 +119,7 @@ ParticipanteAsistencia.init(
       allowNull: true,
     },
     empresa: {
-      type: DataTypes.ENUM('AP', 'AT', 'ME'),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'AP',
     },
@@ -140,6 +141,11 @@ ParticipanteAsistencia.init(
       unique: true,
     },
     firmado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    esExterno: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -20,19 +11,19 @@ const dayjs_1 = __importDefault(require("dayjs"));
 const novedad_1 = require("../services/novedad");
 const connection_1 = __importDefault(require("../database/connection"));
 const sequelize_1 = require("sequelize");
-const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const convertNovedad = async (req, res) => {
     try {
-        const permisos = yield permisos_1.Permiso.findAll({ where: { novedad: false } });
+        const permisos = await permisos_1.Permiso.findAll({ where: { novedad: false } });
         // console.log(permisos.map(pr => pr.toJSON()))
-        const novedadBD = yield time_1.Novedad.findAll();
+        const novedadBD = await time_1.Novedad.findAll();
         // console.log(novedadBD)
         const novedadJS = novedadBD.map(nv => nv.toJSON());
         // console.log(novedadJS)
         const novedades = (0, novedad_1.permisoToNovedad)(permisos, novedadJS);
         // console.log(novedades)
-        const newNovedades = yield time_1.Novedad.bulkCreate(novedades, { validate: true });
+        const newNovedades = await time_1.Novedad.bulkCreate(novedades, { validate: true });
         console.log(newNovedades);
-        yield permisos_1.Permiso.update({ novedad: true }, { where: { novedad: false } });
+        await permisos_1.Permiso.update({ novedad: true }, { where: { novedad: false } });
         res.status(200).json(newNovedades);
     }
     catch (error) {
@@ -53,11 +44,11 @@ const convertNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function*
         }
         res.status(500).json({ error: 'Error al obtener las novedades' });
     }
-});
+};
 exports.convertNovedad = convertNovedad;
-const getNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getNovedad = async (req, res) => {
     try {
-        const listaNovedades = yield time_1.Novedad.findAll({
+        const listaNovedades = await time_1.Novedad.findAll({
             order: [['id', 'ASC']]
         });
         const datosConvertidos = listaNovedades.map(registro => {
@@ -70,11 +61,11 @@ const getNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Error al obtener las novedades:', error);
         res.status(500).json({ error: 'Error al obtener las novedades' });
     }
-});
+};
 exports.getNovedad = getNovedad;
-const getNovedadHistorico = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getNovedadHistorico = async (req, res) => {
     try {
-        const listaNovedades = yield time_1.NovedadHistorico.findAll({
+        const listaNovedades = await time_1.NovedadHistorico.findAll({
             order: [['Cid', 'ASC']]
         });
         const datosConvertidos = listaNovedades.map(registro => {
@@ -87,19 +78,19 @@ const getNovedadHistorico = (req, res) => __awaiter(void 0, void 0, void 0, func
         console.error('Error al obtener las novedades:', error);
         res.status(500).json({ error: 'Error al obtener las novedades' });
     }
-});
+};
 exports.getNovedadHistorico = getNovedadHistorico;
-const updateNovedadHora = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateNovedadHora = async (req, res) => {
     const { id, horas } = req.body;
     try {
         if (!horas) {
             return res.status(400).json({ error: 'Falta el campo horas' });
         }
-        const novedad = yield time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
+        const novedad = await time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
         if (!novedad) {
             return res.status(404).json({ error: 'Novedad no encontrada' });
         }
-        yield time_1.Novedad.update({ horas }, { where: { id } });
+        await time_1.Novedad.update({ horas }, { where: { id } });
         res.status(200).json({ message: 'Novedad actualizada' });
     }
     catch (error) {
@@ -108,16 +99,16 @@ const updateNovedadHora = (req, res) => __awaiter(void 0, void 0, void 0, functi
             message: error.message,
         });
     }
-});
+};
 exports.updateNovedadHora = updateNovedadHora;
-const updateNovedadEstado = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateNovedadEstado = async (req, res) => {
     const { id, aceptacion } = req.body;
     try {
-        const novedad = yield time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
+        const novedad = await time_1.Novedad.findByPk((0, parseId_1.parseId)(id));
         if (!novedad) {
             return res.status(404).json({ error: 'Novedad no encontrada' });
         }
-        yield time_1.Novedad.update({ aceptacion }, { where: { id } });
+        await time_1.Novedad.update({ aceptacion }, { where: { id } });
         res.status(200).json({ message: 'Novedad actualizada' });
     }
     catch (error) {
@@ -126,13 +117,13 @@ const updateNovedadEstado = (req, res) => __awaiter(void 0, void 0, void 0, func
             message: error.message,
         });
     }
-});
+};
 exports.updateNovedadEstado = updateNovedadEstado;
-const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteNovedad = async (req, res) => {
     const { ids } = req.body;
     try {
         if (ids && ids.length > 0) {
-            yield time_1.Novedad.destroy({
+            await time_1.Novedad.destroy({
                 where: {
                     id: {
                         [sequelize_1.Op.in]: ids
@@ -142,7 +133,7 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
         }
         else {
-            yield time_1.Novedad.destroy({ where: {} });
+            await time_1.Novedad.destroy({ where: {} });
             res.status(200).json({ message: 'Todas las novedades han sido eliminadas' });
         }
     }
@@ -150,18 +141,18 @@ const deleteNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.error('Error al eliminar las novedades:', error);
         res.status(500).json({ error: 'Error al eliminar las novedades' });
     }
-});
+};
 exports.deleteNovedad = deleteNovedad;
-const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const errorNovedad = async (req, res) => {
     const { Cid } = req.body;
     if (!Cid) {
         return res.status(400).json({ error: 'falta id' });
     }
-    const transaction = yield connection_1.default.transaction();
+    const transaction = await connection_1.default.transaction();
     try {
-        const novedadHistorico = yield time_1.NovedadHistorico.findByPk((0, parseId_1.parseId)(Cid), { transaction });
+        const novedadHistorico = await time_1.NovedadHistorico.findByPk((0, parseId_1.parseId)(Cid), { transaction });
         if (!novedadHistorico) {
-            yield transaction.rollback();
+            await transaction.rollback();
             return res.status(404).json({ error: 'Novedad no encontrada en la tabla NovedadHistorico' });
         }
         else {
@@ -181,49 +172,49 @@ const errorNovedad = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             };
             if (novedadData.aceptacion === false) {
                 // Insertar el registro en la tabla Novedad
-                yield time_1.Novedad.create(novedad, { transaction });
+                await time_1.Novedad.create(novedad, { transaction });
                 // Eliminar el registro de la tabla NovedadHistorico
-                yield time_1.NovedadHistorico.destroy({ where: { Cid }, transaction });
-                yield transaction.commit();
+                await time_1.NovedadHistorico.destroy({ where: { Cid }, transaction });
+                await transaction.commit();
                 res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
             }
             else {
                 const hMinutos = (0, novedad_1.convertirHora)(novedadData.horas);
                 const sum = typeof hMinutos === "number" ? -hMinutos : 0;
-                const sumatoria = yield time_1.Sumatoria.findOne({ where: { Sid: novedadData.Nid }, transaction });
+                const sumatoria = await time_1.Sumatoria.findOne({ where: { Sid: novedadData.Nid }, transaction });
                 if (sumatoria) {
                     const actual = (0, novedad_1.convertirHora)(sumatoria.dataValues.Acumulado);
                     const minutosTotales = actual + sum;
-                    yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: novedadData.Nid },
+                    await time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: novedadData.Nid },
                         transaction });
                 }
                 else {
                     //Si el registro no existe. lo crea agregandole los datos de sum
-                    yield time_1.Sumatoria.create({
+                    await time_1.Sumatoria.create({
                         Sid: novedadData.Nid,
                         Name: novedadData.Name,
                         Acumulado: (0, novedad_1.convertirMinuto)(-sum)
                     }, { transaction });
                 }
-                yield time_1.Novedad.create(novedad, { transaction });
-                yield time_1.NovedadHistorico.destroy({ where: { Cid }, transaction });
-                yield transaction.commit();
+                await time_1.Novedad.create(novedad, { transaction });
+                await time_1.NovedadHistorico.destroy({ where: { Cid }, transaction });
+                await transaction.commit();
                 res.status(200).json({ message: 'Novedad movida de NovedadHistorico a Novedad' });
             }
         }
     }
     catch (error) {
-        yield transaction.rollback();
+        await transaction.rollback();
         console.error('Error al mover la novedad:', error);
         const errorMessage = error.message;
         res.status(500).json({ error: 'Error al mover la novedad', message: errorMessage });
     }
-});
+};
 exports.errorNovedad = errorNovedad;
-const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const transaction = yield connection_1.default.transaction();
+const aceptarTodo = async (req, res) => {
+    const transaction = await connection_1.default.transaction();
     try {
-        let novedades = yield time_1.Novedad.findAll({
+        let novedades = await time_1.Novedad.findAll({
             where: {
                 aceptacion: [true, false],
             },
@@ -254,7 +245,7 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             //minutos acumulados en novedades
             const minutosAcumulados = agrupado[uid];
             //busca en sumatoria por id
-            const sumatoria = yield time_1.Sumatoria.findOne({ where: { Sid: uid }, transaction });
+            const sumatoria = await time_1.Sumatoria.findOne({ where: { Sid: uid }, transaction });
             //Si existe el registro
             if (sumatoria) {
                 // asigna a actual la cantidad de horas (minutos) extras que tiene el usuario
@@ -262,21 +253,21 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 // Hace la suma de tiempo extra y minutos acumulados en novedades 
                 const minutosTotales = actual + minutosAcumulados;
                 //busca por id y actualiza el acumulado (convirtiendo al formato)
-                yield time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: uid },
+                await time_1.Sumatoria.update({ Acumulado: (0, novedad_1.convertirMinuto)(minutosTotales) }, { where: { Sid: uid },
                     transaction });
             }
             else {
                 const registro = sum.find((item) => item.Uid === parseInt(uid));
                 const nombre = registro ? registro.nombre : `Usuario con id ${uid} no encontrado`;
                 //Si el registro no existe. lo crea agregandole los datos de sum
-                yield time_1.Sumatoria.create({
+                await time_1.Sumatoria.create({
                     Sid: uid,
                     Name: nombre,
                     Acumulado: (0, novedad_1.convertirMinuto)(minutosAcumulados)
                 }, { transaction });
             }
         }
-        const todasNovedades = yield time_1.Novedad.findAll({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
+        const todasNovedades = await time_1.Novedad.findAll({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
         const todasNovedadesJS = todasNovedades.map(nv => nv.toJSON());
         const novedadHistorico = todasNovedadesJS.map(nv => ({
             Cid: nv.id,
@@ -290,16 +281,16 @@ const aceptarTodo = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             horas: nv.horas,
             aceptacion: nv.aceptacion
         }));
-        yield time_1.NovedadHistorico.bulkCreate(novedadHistorico, { transaction });
-        yield time_1.Novedad.destroy({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
-        yield transaction.commit();
+        await time_1.NovedadHistorico.bulkCreate(novedadHistorico, { transaction });
+        await time_1.Novedad.destroy({ where: { aceptacion: { [sequelize_1.Op.or]: [true, false] } }, transaction });
+        await transaction.commit();
         return res.status(200).json({ message: 'Aceptado o rechazado todo este' });
     }
     catch (error) {
-        yield transaction.rollback();
+        await transaction.rollback();
         //En caso de error retorna mensaje de error
         console.error('Error al aceptar las novedades:', error);
         return res.status(500).json({ error: 'Error al aceptar las novedades' });
     }
-});
+};
 exports.aceptarTodo = aceptarTodo;

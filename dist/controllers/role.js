@@ -1,19 +1,10 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.borrarRol = exports.actualizarRol = exports.crearRol = exports.leerRoleId = exports.leerRole = void 0;
 const role_1 = require("../models/role");
-const leerRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const leerRole = async (req, res) => {
     try {
-        const listRole = yield role_1.Role.findAll();
+        const listRole = await role_1.Role.findAll();
         res.status(200).json(listRole);
     }
     catch (error) {
@@ -21,12 +12,12 @@ const leerRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             msg: `Error al obtener las categorías`
         });
     }
-});
+};
 exports.leerRole = leerRole;
-const leerRoleId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const leerRoleId = async (req, res) => {
     const { Rid } = req.params;
     try {
-        const role = yield role_1.Role.findOne({ where: { Rid: Rid } });
+        const role = await role_1.Role.findOne({ where: { Rid: Rid } });
         if (!role) {
             return res.status(404).json({
                 msg: `El rol con el id ${Rid} no fue encontrado`
@@ -42,11 +33,11 @@ const leerRoleId = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             msg: `Error al buscar el rol con el Id ${Rid}`
         });
     }
-});
+};
 exports.leerRoleId = leerRoleId;
-const crearRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const crearRol = async (req, res) => {
     const { Rname } = req.body;
-    const rol = yield role_1.Role.findOne({ where: { Rname: Rname } });
+    const rol = await role_1.Role.findOne({ where: { Rname: Rname } });
     if (rol) {
         return res.status(400).json({
             msg: `Rol ${Rname},ya existe`
@@ -66,19 +57,19 @@ const crearRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             msg: `Erorr al crear el rol ${Rname}`
         });
     }
-});
+};
 exports.crearRol = crearRol;
-const actualizarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const actualizarRol = async (req, res) => {
     const { Rname } = req.body;
     const { Rid } = req.params;
     try {
-        const role = yield role_1.Role.findOne({ where: { Rid: Rid } });
+        const role = await role_1.Role.findOne({ where: { Rid: Rid } });
         if (!role) {
             return res.status(404).json({
                 msg: `El rol ${Rname} no ha sido encontrado`
             });
         }
-        yield role_1.Role.update({
+        await role_1.Role.update({
             Rname: Rname
         }, { where: { Rid: Rid } });
         return res.json({
@@ -90,16 +81,16 @@ const actualizarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             msg: `Error al actualizar el rol`
         });
     }
-});
+};
 exports.actualizarRol = actualizarRol;
-const borrarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const borrarRol = async (req, res) => {
     const { Rid } = req.params;
     try {
-        const role = yield role_1.Role.findOne({ where: { Rid: Rid } });
+        const role = await role_1.Role.findOne({ where: { Rid: Rid } });
         if (!role) {
             return res.status(404).json({ msg: `Rol con Id ${Rid} no existe` });
         }
-        yield role_1.Role.destroy({ where: { Rid: Rid } });
+        await role_1.Role.destroy({ where: { Rid: Rid } });
         return res.json({
             msg: `El rol con Id ${Rid} ha sido eliminado exitosamente`
         });
@@ -109,5 +100,5 @@ const borrarRol = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             msg: `Error al eliminar el rol con Id ${Rid}`
         });
     }
-});
+};
 exports.borrarRol = borrarRol;

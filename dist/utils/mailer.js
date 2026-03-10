@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -90,7 +81,7 @@ const sendMail = (to, subject, text, attachments) => {
     return getTransporter().sendMail(mailOptions);
 };
 exports.sendMail = sendMail;
-const sendReservationEmail = (to, userName, reservation, type) => __awaiter(void 0, void 0, void 0, function* () {
+const sendReservationEmail = async (to, userName, reservation, type) => {
     var _a, _b, _c;
     const roomName = ((_a = reservation.Room) === null || _a === void 0 ? void 0 : _a.name) || "Sala desconocida";
     // IMPORTANTE: No usar new Date('YYYY-MM-DD') porque interpreta como UTC
@@ -466,17 +457,17 @@ const sendReservationEmail = (to, userName, reservation, type) => __awaiter(void
         },
     };
     try {
-        yield getTransporter().sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log(`Email de ${type} enviado a ${to}`);
     }
     catch (error) {
         console.error(`Error al enviar email de ${type}:`, error);
         throw error;
     }
-});
+};
 exports.sendReservationEmail = sendReservationEmail;
 // Función para enviar correo de registro de asistencia
-const sendAsistenciaEmail = (to, userName, data) => __awaiter(void 0, void 0, void 0, function* () {
+const sendAsistenciaEmail = async (to, userName, data) => {
     // Parsear la fecha manualmente para evitar el bug de UTC offset
     // new Date('YYYY-MM-DD') interpreta como UTC, lo que en Colombia (UTC-5) desplaza un día atrás
     const [yearF, monthF, dayF] = String(data.fecha).split('-');
@@ -681,16 +672,16 @@ const sendAsistenciaEmail = (to, userName, data) => __awaiter(void 0, void 0, vo
         },
     };
     try {
-        yield getTransporter().sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log(`Email de asistencia enviado a ${to}`);
     }
     catch (error) {
         console.error(`Error al enviar email de asistencia:`, error);
         throw error;
     }
-});
+};
 exports.sendAsistenciaEmail = sendAsistenciaEmail;
-const sendActaRecargaEmail = (to, data) => __awaiter(void 0, void 0, void 0, function* () {
+const sendActaRecargaEmail = async (to, data) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
     const enlaceFirma = `${frontendUrl}/firmar-acta/${data.token}`;
     const formatDate = (date) => {
@@ -922,16 +913,16 @@ const sendActaRecargaEmail = (to, data) => __awaiter(void 0, void 0, void 0, fun
         },
     };
     try {
-        yield getTransporter().sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log(`Email de acta de recarga enviado a ${to}`);
     }
     catch (error) {
         console.error(`Error al enviar email de acta de recarga:`, error);
         throw error;
     }
-});
+};
 exports.sendActaRecargaEmail = sendActaRecargaEmail;
-const sendActaRecargaCompletadaEmail = (to, data) => __awaiter(void 0, void 0, void 0, function* () {
+const sendActaRecargaCompletadaEmail = async (to, data) => {
     const formatDate = (date) => {
         return new Date(date).toLocaleDateString('es-CO', {
             day: 'numeric',
@@ -1149,12 +1140,12 @@ const sendActaRecargaCompletadaEmail = (to, data) => __awaiter(void 0, void 0, v
         },
     };
     try {
-        yield getTransporter().sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log(`Email de acta completada enviado a ${to}`);
     }
     catch (error) {
         console.error(`Error al enviar email de acta completada:`, error);
         throw error;
     }
-});
+};
 exports.sendActaRecargaCompletadaEmail = sendActaRecargaCompletadaEmail;

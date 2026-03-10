@@ -9,10 +9,13 @@ import { parseId } from '../utils/parseId';
 // Crear un nuevo registro de asistencia
 export const crearRegistroAsistencia = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { fecha, tema, facilitadorId, participantesIds } = req.body;
+    const { fecha, tema, facilitadorId, participantesIds, participantesExternos } = req.body;
 
     // Validaciones
-    if (!fecha || !tema || !facilitadorId || !participantesIds || participantesIds.length === 0) {
+    const tieneInternos = participantesIds && participantesIds.length > 0;
+    const tieneExternos = participantesExternos && participantesExternos.length > 0;
+
+    if (!fecha || !tema || !facilitadorId || (!tieneInternos && !tieneExternos)) {
       return res.status(400).json({
         msg: 'Fecha, tema, facilitador y al menos un participante son requeridos',
       });
@@ -35,47 +38,72 @@ export const crearRegistroAsistencia = async (req: Request, res: Response): Prom
       estado: 'pendiente',
     });
 
-    // Obtener datos de los participantes y crear registros
-    const participantes = await User.findAll({
-      where: { Uid: participantesIds },
-    });
-
+    // Obtener datos de los participantes internos y crear registros
     const participantesCreados = [];
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
 
-    for (const usuario of participantes) {
-      const tokenFirma = crypto.randomBytes(32).toString('hex');
-      
-      const participante = await ParticipanteAsistencia.create({
-        registroId: registro.id,
-        usuarioId: usuario.Uid,
-        nombreCompleto: `${usuario.name} ${usuario.lastName}`,
-        documentoIdentificacion: usuario.documentoIdentificacion || '',
-        cargo: usuario.cargo || '',
-        empresa: usuario.empresa || 'AP',
-        email: usuario.email,
-        tokenFirma,
-        firmado: false,
+    if (tieneInternos) {
+      const participantes = await User.findAll({
+        where: { Uid: participantesIds },
       });
 
-      participantesCreados.push(participante);
+      for (const usuario of participantes) {
+        const tokenFirma = crypto.randomBytes(32).toString('hex');
 
-      // Enviar correo con enlace de firma
-      const enlaceFirma = `${frontendUrl}/firmar-asistencia/${tokenFirma}`;
-      
-      try {
-        await sendAsistenciaEmail(
-          usuario.email,
-          `${usuario.name} ${usuario.lastName}`,
-          {
-            fecha,
-            tema,
-            facilitador: `${facilitador.name} ${facilitador.lastName}`,
-            enlaceFirma,
-          }
-        );
-      } catch (emailError) {
-        console.error(`Error enviando correo a ${usuario.email}:`, emailError);
+        const participante = await ParticipanteAsistencia.create({
+          registroId: registro.id,
+          usuarioId: usuario.Uid,
+          nombreCompleto: `${usuario.name} ${usuario.lastName}`,
+          documentoIdentificacion: usuario.documentoIdentificacion || '',
+          cargo: usuario.cargo || '',
+          empresa: usuario.empresa || 'AP',
+          email: usuario.email,
+          tokenFirma,
+          firmado: false,
+          esExterno: false,
+        });
+
+        participantesCreados.push(participante);
+
+        // Enviar correo con enlace de firma
+        const enlaceFirma = `${frontendUrl}/firmar-asistencia/${tokenFirma}`;
+
+        try {
+          await sendAsistenciaEmail(
+            usuario.email,
+            `${usuario.name} ${usuario.lastName}`,
+            {
+              fecha,
+              tema,
+              facilitador: `${facilitador.name} ${facilitador.lastName}`,
+              enlaceFirma,
+            }
+          );
+        } catch (emailError) {
+          console.error(`Error enviando correo a ${usuario.email}:`, emailError);
+        }
+      }
+    }
+
+    // Crear participantes externos (sin enviar correo)
+    if (tieneExternos) {
+      for (const externo of participantesExternos) {
+        const tokenFirma = crypto.randomBytes(32).toString('hex');
+
+        const participante = await ParticipanteAsistencia.create({
+          registroId: registro.id,
+          usuarioId: null,
+          nombreCompleto: externo.nombreCompleto,
+          documentoIdentificacion: externo.documentoIdentificacion || '',
+          cargo: externo.cargo || '',
+          empresa: externo.empresa || 'EXTERNO',
+          email: externo.email || '',
+          tokenFirma,
+          firmado: true,
+          esExterno: true,
+        });
+
+        participantesCreados.push(participante);
       }
     }
 
@@ -275,8 +303,8 @@ export const generarPDF = async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
     const { empresa } = req.query; // AP, AT o ME
 
-    if (!empresa || !['AP', 'AT', 'ME'].includes(empresa as string)) {
-      return res.status(400).json({ msg: 'Empresa inválida. Use AP, AT o ME' });
+    if (!empresa) {
+      return res.status(400).json({ msg: 'El parámetro empresa es requerido' });
     }
 
     const registro = await RegistroAsistencia.findByPk(parseId(id), {
@@ -330,6 +358,10 @@ export const reenviarCorreoFirma = async (req: Request, res: Response): Promise<
 
     if (!participante) {
       return res.status(404).json({ msg: 'Participante no encontrado' });
+    }
+
+    if ((participante as any).esExterno) {
+      return res.status(400).json({ msg: 'No se puede reenviar correo a un participante externo' });
     }
 
     if (participante.firmado) {

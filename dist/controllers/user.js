@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -56,27 +47,27 @@ const user_1 = require("../models/user");
 const permisos_1 = require("../models/permisos");
 const time_1 = require("../models/time");
 // Registro de usuario con asignación de rol
-const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const register = async (req, res) => {
     const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
     // Verificar si el usuario ya existe
-    const userOne = yield user_1.User.findOne({ where: { email: email } });
+    const userOne = await user_1.User.findOne({ where: { email: email } });
     if (userOne) {
         return res.status(400).json({
             msg: `El usuario ya existe con el email: ${email}`,
         });
     }
     // Verificar si el rol existe
-    const role = yield role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
+    const role = await role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
     if (!role) {
         return res.status(400).json({
             msg: `El rol con ID ${Rid} no existe`,
         });
     }
     // Hashear la contraseña
-    const passwordHash = yield bcrypt_1.default.hash(password, 10);
+    const passwordHash = await bcrypt_1.default.hash(password, 10);
     try {
         // Crear usuario con el rol asignado
-        const newUser = yield user_1.User.create({
+        const newUser = await user_1.User.create({
             Uid,
             name,
             lastName,
@@ -105,10 +96,10 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: err.message || err,
         });
     }
-});
+};
 exports.register = register;
 // Login con validación de rol
-const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const login = async (req, res) => {
     try {
         const { password, email } = req.body;
         // Validar que se envíen email y password
@@ -118,7 +109,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             });
         }
         // Buscar usuario por email
-        const user = yield user_1.User.findOne({
+        const user = await user_1.User.findOne({
             where: { email },
             include: [
                 { model: role_1.Role, as: "role" },
@@ -131,7 +122,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             });
         }
         // Verificar contraseña
-        const isPasswordValid = yield bcrypt_1.default.compare(password, user.password);
+        const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(400).json({
                 msg: "Contraseña incorrecta",
@@ -170,29 +161,29 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             error: error.message || error,
         });
     }
-});
+};
 exports.login = login;
-const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const resetPassword = async (req, res) => {
     const { email, newPassword } = req.body;
     try {
-        const user = yield user_1.User.findOne({ where: { email } });
+        const user = await user_1.User.findOne({ where: { email } });
         if (!user) {
             return res.status(404).json({ msg: "Usuario no encontrado" });
         }
-        const passwordHash = yield bcrypt_1.default.hash(newPassword, 10);
+        const passwordHash = await bcrypt_1.default.hash(newPassword, 10);
         user.password = passwordHash;
-        yield user.save();
+        await user.save();
         res.status(200).json({ msg: "Contraseña actualizada con éxito" });
     }
     catch (error) {
         res.status(500).json({ msg: "Error al actualizar la contraseña", error });
     }
-});
+};
 exports.resetPassword = resetPassword;
 // Obtener todos los usuarios
-const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllUsers = async (req, res) => {
     try {
-        const users = yield user_1.User.findAll({
+        const users = await user_1.User.findAll({
             include: [
                 { model: role_1.Role, as: "role" },
                 { model: area_1.Area, as: "area" },
@@ -203,11 +194,11 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     catch (error) {
         res.status(500).json({ msg: "Error al obtener los usuarios", error });
     }
-});
+};
 exports.getAllUsers = getAllUsers;
-const getListUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getListUser = async (req, res) => {
     try {
-        const user = yield user_1.User.findAll({
+        const user = await user_1.User.findAll({
             attributes: ["Uid", "name", "lastName"],
         });
         const userJS = user.map((us) => ({
@@ -219,24 +210,24 @@ const getListUser = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     catch (error) {
         res.status(500).json({ msg: "Error al obtener los usuarios0", error });
     }
-});
+};
 exports.getListUser = getListUser;
-const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateUser = async (req, res) => {
     const { Uid } = req.params;
     const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
     try {
-        const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
+        const user = await user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
             return res.status(404).json({ msg: "Usuario no encontrado" });
         }
         if (Rid) {
-            const role = yield role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
+            const role = await role_1.Role.findByPk((0, parseId_1.parseId)(Rid));
             if (!role) {
                 return res.status(404).json({ msg: `El role con ID ${Rid} no existe` });
             }
         }
         if (Aid) {
-            const area = yield area_1.Area.findByPk((0, parseId_1.parseId)(Aid));
+            const area = await area_1.Area.findByPk((0, parseId_1.parseId)(Aid));
             if (!area) {
                 return res.status(404).json({ msg: `El area con ID ${Aid} no existe` });
             }
@@ -254,19 +245,19 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         user.fondoCesantias = fondoCesantias || user.fondoCesantias;
         user.fechaIngreso = fechaIngreso !== undefined ? fechaIngreso : user.fechaIngreso;
         if (password) {
-            const passwordHash = yield bcrypt_1.default.hash(password, 10);
+            const passwordHash = await bcrypt_1.default.hash(password, 10);
             user.password = passwordHash;
         }
-        yield user.save();
+        await user.save();
         res.status(200).json({ msg: "Usuario Actualizado", user });
     }
     catch (error) {
         console.error("Error al actualizar el usuario", error);
         res.status(500).json({ msg: "Error al actualizar el usuario", error });
     }
-});
+};
 exports.updateUser = updateUser;
-const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteUserById = async (req, res) => {
     const { Uid } = req.params;
     console.log("=== INICIANDO deleteUserById ===");
     console.log("Uid recibido:", Uid);
@@ -276,7 +267,7 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     try {
         console.log("🔍 Buscando usuario...");
-        const user = yield user_1.User.findByPk((0, parseId_1.parseId)(Uid));
+        const user = await user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
             console.log("❌ Usuario no encontrado");
             return res.status(404).json({ msg: "Usuario no encontrado" });
@@ -294,85 +285,85 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
             });
         }
         // Iniciar transacción para asegurar consistencia
-        const transaction = yield user_1.User.sequelize.transaction();
+        const transaction = await user_1.User.sequelize.transaction();
         try {
             console.log("🧹 Eliminando registros relacionados...");
             // 1. Eliminar participantes de asistencia
-            const { ParticipanteAsistencia } = yield Promise.resolve().then(() => __importStar(require('../models/asistencia')));
-            const participantesDeleted = yield ParticipanteAsistencia.destroy({
+            const { ParticipanteAsistencia } = await Promise.resolve().then(() => __importStar(require('../models/asistencia')));
+            const participantesDeleted = await ParticipanteAsistencia.destroy({
                 where: { usuarioId: Uid },
                 transaction,
             });
             console.log(`✅ Participantes asistencia eliminados: ${participantesDeleted}`);
             // 2. Eliminar registros de asistencia donde es facilitador
-            const { RegistroAsistencia } = yield Promise.resolve().then(() => __importStar(require('../models/asistencia')));
-            const asistenciasDeleted = yield RegistroAsistencia.destroy({
+            const { RegistroAsistencia } = await Promise.resolve().then(() => __importStar(require('../models/asistencia')));
+            const asistenciasDeleted = await RegistroAsistencia.destroy({
                 where: { facilitadorId: Uid },
                 transaction,
             });
             console.log(`✅ Registros asistencia eliminados: ${asistenciasDeleted}`);
             // 3. Eliminar alertas
-            const { Alert } = yield Promise.resolve().then(() => __importStar(require('../models/alert')));
-            const alertsDeleted = yield Alert.destroy({
+            const { Alert } = await Promise.resolve().then(() => __importStar(require('../models/alert')));
+            const alertsDeleted = await Alert.destroy({
                 where: { Uid: Uid },
                 transaction,
             });
             console.log(`✅ Alertas eliminadas: ${alertsDeleted}`);
             // 4. Eliminar reservaciones
-            const { Reservation } = yield Promise.resolve().then(() => __importStar(require('../models/reservation')));
-            const reservationsDeleted = yield Reservation.destroy({
+            const { Reservation } = await Promise.resolve().then(() => __importStar(require('../models/reservation')));
+            const reservationsDeleted = await Reservation.destroy({
                 where: { Uid: Uid },
                 transaction,
             });
             console.log(`✅ Reservaciones eliminadas: ${reservationsDeleted}`);
             // 5. Eliminar registros de tiempo (Hid = Uid)
-            const registrosDeleted = yield time_1.Registro.destroy({
+            const registrosDeleted = await time_1.Registro.destroy({
                 where: { Hid: Uid },
                 transaction,
             });
             console.log(`✅ Registros de tiempo eliminados: ${registrosDeleted}`);
             // 6. Eliminar historico de horas extras (Sid = Uid)
-            const historicoDeleted = yield time_1.HistoricoHorasExtras.destroy({
+            const historicoDeleted = await time_1.HistoricoHorasExtras.destroy({
                 where: { Sid: Uid },
                 transaction,
             });
             console.log(`✅ Historico horas extras eliminado: ${historicoDeleted}`);
             // 7. Eliminar sumatoria (Sid = Uid)
-            const sumatoriaDeleted = yield time_1.Sumatoria.destroy({
+            const sumatoriaDeleted = await time_1.Sumatoria.destroy({
                 where: { Sid: Uid },
                 transaction,
             });
             console.log(`✅ Sumatoria eliminada: ${sumatoriaDeleted}`);
             // 7. Eliminar novedades (usando Nid)
-            const novedadesDeleted = yield time_1.Novedad.destroy({
+            const novedadesDeleted = await time_1.Novedad.destroy({
                 where: { Nid: Uid },
                 transaction,
             });
             console.log(`✅ Novedades eliminadas: ${novedadesDeleted}`);
             // 8. Eliminar historial de novedades (usando Nid)
-            const novedadHistoricoDeleted = yield time_1.NovedadHistorico.destroy({
+            const novedadHistoricoDeleted = await time_1.NovedadHistorico.destroy({
                 where: { Nid: Uid },
                 transaction,
             });
             console.log(`✅ Historial de novedades eliminado: ${novedadHistoricoDeleted}`);
             // 9. Eliminar permisos
-            const permissionsDeleted = yield permisos_1.Permiso.destroy({
+            const permissionsDeleted = await permisos_1.Permiso.destroy({
                 where: { Uid: Uid },
                 transaction,
             });
             console.log(`✅ Permisos eliminados: ${permissionsDeleted}`);
             // 10. Eliminar accesos a actas de recarga
-            const { ActaRecargaAcceso } = yield Promise.resolve().then(() => __importStar(require('../models/actaRecargaAcceso')));
-            const accesosDeleted = yield ActaRecargaAcceso.destroy({
+            const { ActaRecargaAcceso } = await Promise.resolve().then(() => __importStar(require('../models/actaRecargaAcceso')));
+            const accesosDeleted = await ActaRecargaAcceso.destroy({
                 where: { usuarioId: Uid },
                 transaction,
             });
             console.log(`✅ Accesos actas recarga eliminados: ${accesosDeleted}`);
             // 11. Finalmente eliminar el usuario
             console.log("🗑️ Eliminando usuario...");
-            yield user.destroy({ transaction });
+            await user.destroy({ transaction });
             // Confirmar transacción
-            yield transaction.commit();
+            await transaction.commit();
             console.log("✅ Usuario y todos los registros relacionados eliminados exitosamente");
             res.status(200).json({
                 msg: "Usuario eliminado con éxito",
@@ -387,7 +378,7 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
         catch (transactionError) {
             // Revertir transacción en caso de error
             console.error("❌ Error en transacción, revirtiendo cambios...");
-            yield transaction.rollback();
+            await transaction.rollback();
             throw transactionError;
         }
     }
@@ -424,10 +415,10 @@ const deleteUserById = (req, res) => __awaiter(void 0, void 0, void 0, function*
             error: error.message,
         });
     }
-});
+};
 exports.deleteUserById = deleteUserById;
 // Buscar usuarios por nombre o cédula
-const searchUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const searchUsers = async (req, res) => {
     const { query } = req.query;
     try {
         if (!query || query.toString().trim() === '') {
@@ -436,7 +427,7 @@ const searchUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             });
         }
         const searchTerm = `%${query}%`;
-        const users = yield user_1.User.findAll({
+        const users = await user_1.User.findAll({
             where: {
                 [sequelize_1.Op.or]: [
                     { name: { [sequelize_1.Op.iLike]: searchTerm } },
@@ -462,5 +453,5 @@ const searchUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             error: error.message
         });
     }
-});
+};
 exports.searchUsers = searchUsers;

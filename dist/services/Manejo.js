@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -34,41 +25,39 @@ dayjs_1.default.extend(duration_1.default);
 dayjs_1.default.extend(utc_1.default);
 dayjs_1.default.extend(timezone_1.default);
 dayjs_1.default.tz.setDefault('America/Bogota');
-function processXML(xmlContent) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
-        try {
-            const result = yield (0, xml2js_1.parseStringPromise)(xmlContent);
-            const rows = result.Workbook.Worksheet[0].Table[0].Row;
-            const data = [];
-            for (let i = 3; i < rows.length; i++) { // Empezar desde 3 para saltar los primeros elementos
-                const cells = rows[i].Cell;
-                if (cells.length === 5 || cells.length === 6) {
-                    const id = (_d = (_c = (_b = (_a = cells[1]) === null || _a === void 0 ? void 0 : _a.Data) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c._) === null || _d === void 0 ? void 0 : _d.trim();
-                    if (id && id !== '' && !id.includes('User')) { // Omitir elementos vacíos en el campo ID
-                        const entry = {
-                            "SN": ((_g = (_f = (_e = cells[0]) === null || _e === void 0 ? void 0 : _e.Data) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g._) || '',
-                            "Hid": id,
-                            "Name": ((_k = (_j = (_h = cells[2]) === null || _h === void 0 ? void 0 : _h.Data) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k._) || '',
-                            "Open_Time": ((_o = (_m = (_l = cells[3]) === null || _l === void 0 ? void 0 : _l.Data) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o._) || '',
-                            "Verify": ((_r = (_q = (_p = cells[4]) === null || _p === void 0 ? void 0 : _p.Data) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r._) || ''
-                        };
-                        data.push(entry);
-                    }
-                }
-                else {
-                    console.warn(`Fila ${i} no tiene 5 celdas:`, cells[0].Data[0]._);
+async function processXML(xmlContent) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+    try {
+        const result = await (0, xml2js_1.parseStringPromise)(xmlContent);
+        const rows = result.Workbook.Worksheet[0].Table[0].Row;
+        const data = [];
+        for (let i = 3; i < rows.length; i++) { // Empezar desde 3 para saltar los primeros elementos
+            const cells = rows[i].Cell;
+            if (cells.length === 5 || cells.length === 6) {
+                const id = (_d = (_c = (_b = (_a = cells[1]) === null || _a === void 0 ? void 0 : _a.Data) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c._) === null || _d === void 0 ? void 0 : _d.trim();
+                if (id && id !== '' && !id.includes('User')) { // Omitir elementos vacíos en el campo ID
+                    const entry = {
+                        "SN": ((_g = (_f = (_e = cells[0]) === null || _e === void 0 ? void 0 : _e.Data) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g._) || '',
+                        "Hid": id,
+                        "Name": ((_k = (_j = (_h = cells[2]) === null || _h === void 0 ? void 0 : _h.Data) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k._) || '',
+                        "Open_Time": ((_o = (_m = (_l = cells[3]) === null || _l === void 0 ? void 0 : _l.Data) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o._) || '',
+                        "Verify": ((_r = (_q = (_p = cells[4]) === null || _p === void 0 ? void 0 : _p.Data) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r._) || ''
+                    };
+                    data.push(entry);
                 }
             }
-            const result_Data = ordenarDatos(data);
-            // console.log(result_Data);
-            const result_Extra = sumarExtra(result_Data);
-            return [result_Data, result_Extra];
+            else {
+                console.warn(`Fila ${i} no tiene 5 celdas:`, cells[0].Data[0]._);
+            }
         }
-        catch (error) {
-            throw new Error('Error al procesar el archivo XML: ' + error);
-        }
-    });
+        const result_Data = ordenarDatos(data);
+        // console.log(result_Data);
+        const result_Extra = sumarExtra(result_Data);
+        return [result_Data, result_Extra];
+    }
+    catch (error) {
+        throw new Error('Error al procesar el archivo XML: ' + error);
+    }
 }
 function ordenarDatos(data) {
     const dataf = filtrarProcesar(data);
@@ -358,436 +347,428 @@ function extraConvertMinutesToTime(minutes) {
     const sign = minutes < 0 ? '-' : '';
     return `${sign}${horas}:${formatedminutos}`;
 }
-function informePersonal(horario) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const fonts = {
-            Helvetica: {
-                normal: 'Helvetica',
-                bold: 'Helvetica-Bold',
-                italics: 'Helvetica-Oblique',
-                bolditalics: 'Helvetica-BoldOblique'
-            }
-        };
-        const informePersonal = new pdfmake_1.default(fonts);
-        const contenido = [
-            {
-                columns: [
-                    { image: 'public/LogoAP.png', width: 50 },
-                    { text: "Informe de entradas y salidas\n", style: "header", alignment: 'center' }
-                ]
-            },
-            {
-                table: {
-                    headerRows: 1,
-                    widths: [150, '*', '*', 100,],
-                    heigths: [200],
-                    body: [
-                        [
-                            { text: "Nombre", style: "tableHeader", alignment: 'center' },
-                            { text: "Entrada", style: "tableHeader", alignment: 'center' },
-                            { text: "Salida", style: "tableHeader", alignment: 'center' },
-                            { text: "Fecha", style: "tableHeader", alignment: 'center' },
-                        ],
-                        ...horario.map((registro) => [
-                            { text: registro.Name, style: "tableCell", alignment: 'center' },
-                            { text: registro.Entrada, style: "tableCell", alignment: 'center' },
-                            { text: registro.Salida, style: "tableCell", alignment: 'center' },
-                            { text: registro.Fecha, style: "tableCell", alignment: 'center' },
-                        ]),
+async function informePersonal(horario) {
+    const fonts = {
+        Helvetica: {
+            normal: 'Helvetica',
+            bold: 'Helvetica-Bold',
+            italics: 'Helvetica-Oblique',
+            bolditalics: 'Helvetica-BoldOblique'
+        }
+    };
+    const informePersonal = new pdfmake_1.default(fonts);
+    const contenido = [
+        {
+            columns: [
+                { image: 'public/LogoAP.png', width: 50 },
+                { text: "Informe de entradas y salidas\n", style: "header", alignment: 'center' }
+            ]
+        },
+        {
+            table: {
+                headerRows: 1,
+                widths: [150, '*', '*', 100,],
+                heigths: [200],
+                body: [
+                    [
+                        { text: "Nombre", style: "tableHeader", alignment: 'center' },
+                        { text: "Entrada", style: "tableHeader", alignment: 'center' },
+                        { text: "Salida", style: "tableHeader", alignment: 'center' },
+                        { text: "Fecha", style: "tableHeader", alignment: 'center' },
                     ],
-                },
-                layout: {
-                    fillcolor: (rowIndex) => (rowIndex === 0 ? '#CCCCCC' : null),
-                    vLineWidth: (i, node) => 0.5,
-                    hLineWidth: (i, node) => 0.5,
-                    hLineColor: () => '#000000',
-                    vLineColor: () => '#000000',
-                    paddingLeft: () => 5,
-                    paddingRight: () => 5,
-                    paddingTop: () => 5,
-                    paddingBottom: () => 5,
-                },
-            },
-        ];
-        const estilos = {
-            header: {
-                fontSize: 20,
-                bold: true,
-                margin: [0, 10, 0, 15],
-            },
-            tableHeader: {
-                bold: true,
-                fontSize: 12,
-                color: "white",
-                fillColor: '#4CAF50',
-                alignment: "center"
-            },
-            tableCell: {
-                color: 'black',
-                fontSize: 15,
-            }
-        };
-        const docDefinition = {
-            content: contenido,
-            styles: estilos,
-            defaultStyle: {
-                font: "Helvetica"
-            },
-            background: {
-                image: 'public/LogoAP.png',
-                width: 400,
-                opacity: 0.2,
-                alignment: 'center',
-                absolutePosition: { x: 10, y: 300 },
-            }
-        };
-        const pdfDoc = informePersonal.createPdfKitDocument(docDefinition);
-        return new Promise((resolve, reject) => {
-            const chunks = [];
-            pdfDoc.on("data", (chunk) => chunks.push(chunk));
-            pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
-            pdfDoc.on("error", (err) => reject(err));
-            pdfDoc.end();
-        });
-    });
-}
-function informeNovedades(novedad) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const fonts = {
-            Helvetica: {
-                normal: "Helvetica",
-                bold: "Helvetica-Bold",
-                italics: "Helvetica-Oblique",
-                bolditalics: "Helvetica-BoldOblique"
-            }
-        };
-        const printer = new pdfmake_1.default(fonts);
-        const processLongText = (text) => {
-            return {
-                text: text,
-                fontSize: 10, // Reducir tamaño para contenido largo
-                margin: [2, 2, 2, 2]
-            };
-        };
-        const content = [
-            {
-                columns: [
-                    { image: 'public/LogoAP.png', width: 50 },
-                    { text: "Informe de Novedades\n", style: "header", alignment: 'center' }
+                    ...horario.map((registro) => [
+                        { text: registro.Name, style: "tableCell", alignment: 'center' },
+                        { text: registro.Entrada, style: "tableCell", alignment: 'center' },
+                        { text: registro.Salida, style: "tableCell", alignment: 'center' },
+                        { text: registro.Fecha, style: "tableCell", alignment: 'center' },
+                    ]),
                 ],
             },
-            {
-                table: {
-                    headerRows: 1,
-                    widths: ["auto", "auto", "*"],
-                    body: [
-                        [
-                            { text: "Nombre", style: "tableHeader", alignment: "center" },
-                            { text: "Tipo", style: "tableHeader", alignment: "center" },
-                            { text: "Descripcion", style: "tableHeader", alignment: "center" },
-                        ],
-                        // ...novedad.map((item ) => [
-                        //     {text: item.Name, style: "tableCell", alignment:"center"},
-                        //     {text: item.type, style: "tableCell", alignment:"center"},
-                        //     {text: item.description, style: "tableCell", alignment:"center"},
-                        // ]),
-                        ...novedad.map((item) => [
-                            processLongText(item.Name),
-                            processLongText(item.type),
-                            processLongText(item.description),
-                        ])
-                    ],
-                },
-                layout: {
-                    fillColor: (rowIndex) => (rowIndex === 0 ? "#CCCCCC" : null),
-                    vLineWidth: () => 0.5,
-                    hLineWidth: () => 0.5,
-                    vLineColor: () => "#000000",
-                    hLineColor: () => "#000000",
-                    paddingLeft: () => 5,
-                    paddingRight: () => 5,
-                    paddingTop: () => 3,
-                    paddingBottom: () => 3,
-                    defaultBorder: true,
-                    wordBreak: 'break-word'
-                },
-                width: '100%'
+            layout: {
+                fillcolor: (rowIndex) => (rowIndex === 0 ? '#CCCCCC' : null),
+                vLineWidth: (i, node) => 0.5,
+                hLineWidth: (i, node) => 0.5,
+                hLineColor: () => '#000000',
+                vLineColor: () => '#000000',
+                paddingLeft: () => 5,
+                paddingRight: () => 5,
+                paddingTop: () => 5,
+                paddingBottom: () => 5,
             },
-        ];
-        const styles = {
-            header: {
-                fontSize: 20,
-                bold: true,
-                margin: [0, 10, 0, 15],
-            },
-            tableHeader: {
-                bold: true,
-                fontSize: 12,
-                color: "white",
-                fillColor: "#4CAF50",
-                alignment: "center",
-            },
-            tableCell: {
-                color: "black",
-                fontSize: 10,
-                lineHeight: 1.2
-            },
-        };
-        const docDefinition = {
-            content,
-            styles,
-            defaultStyle: {
-                font: "Helvetica",
-                fontSize: 10,
-                lineHeight: 1.2
-            },
-            pageMargins: [20, 40, 20, 40],
-            pageSize: 'A4',
-            pageOrientation: 'portrait',
-            background: {
-                image: "public/LogoAP.png",
-                width: 400,
-                opacity: 0.2,
-                alignment: "center",
-                absolutePosition: { x: 10, y: 300 },
-            },
-        };
-        const pdfDoc = printer.createPdfKitDocument(docDefinition);
-        return new Promise((resolve, reject) => {
-            const chunks = [];
-            pdfDoc.on("data", (chunk) => chunks.push(chunk));
-            pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
-            pdfDoc.on("error", (err) => reject(err));
-            pdfDoc.end();
-        });
+        },
+    ];
+    const estilos = {
+        header: {
+            fontSize: 20,
+            bold: true,
+            margin: [0, 10, 0, 15],
+        },
+        tableHeader: {
+            bold: true,
+            fontSize: 12,
+            color: "white",
+            fillColor: '#4CAF50',
+            alignment: "center"
+        },
+        tableCell: {
+            color: 'black',
+            fontSize: 15,
+        }
+    };
+    const docDefinition = {
+        content: contenido,
+        styles: estilos,
+        defaultStyle: {
+            font: "Helvetica"
+        },
+        background: {
+            image: 'public/LogoAP.png',
+            width: 400,
+            opacity: 0.2,
+            alignment: 'center',
+            absolutePosition: { x: 10, y: 300 },
+        }
+    };
+    const pdfDoc = informePersonal.createPdfKitDocument(docDefinition);
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        pdfDoc.on("data", (chunk) => chunks.push(chunk));
+        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+        pdfDoc.on("error", (err) => reject(err));
+        pdfDoc.end();
     });
 }
-function informeNovedadNuevo(novedades) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const fonts = {
-            Helvetica: {
-                normal: "Helvetica",
-                bold: "Helvetica-Bold",
-                italics: "Helvetica-Oblique",
-                bolditalics: "Helvetica-BoldOblique"
-            }
+async function informeNovedades(novedad) {
+    const fonts = {
+        Helvetica: {
+            normal: "Helvetica",
+            bold: "Helvetica-Bold",
+            italics: "Helvetica-Oblique",
+            bolditalics: "Helvetica-BoldOblique"
+        }
+    };
+    const printer = new pdfmake_1.default(fonts);
+    const processLongText = (text) => {
+        return {
+            text: text,
+            fontSize: 10, // Reducir tamaño para contenido largo
+            margin: [2, 2, 2, 2]
         };
-        const printer = new pdfmake_1.default(fonts);
-        const processLongText = (text) => {
-            return {
-                text: text,
-                fontSize: 10, // Reducir tamaño para contenido largo
-                margin: [2, 2, 2, 2]
-            };
-        };
-        const content = [
-            {
-                columns: [
-                    { image: 'public/LogoAP.png', width: 50 },
-                    { text: "Informe de Novedades\n", style: "header", alignment: 'center' }
+    };
+    const content = [
+        {
+            columns: [
+                { image: 'public/LogoAP.png', width: 50 },
+                { text: "Informe de Novedades\n", style: "header", alignment: 'center' }
+            ],
+        },
+        {
+            table: {
+                headerRows: 1,
+                widths: ["auto", "auto", "*"],
+                body: [
+                    [
+                        { text: "Nombre", style: "tableHeader", alignment: "center" },
+                        { text: "Tipo", style: "tableHeader", alignment: "center" },
+                        { text: "Descripcion", style: "tableHeader", alignment: "center" },
+                    ],
+                    // ...novedad.map((item ) => [
+                    //     {text: item.Name, style: "tableCell", alignment:"center"},
+                    //     {text: item.type, style: "tableCell", alignment:"center"},
+                    //     {text: item.description, style: "tableCell", alignment:"center"},
+                    // ]),
+                    ...novedad.map((item) => [
+                        processLongText(item.Name),
+                        processLongText(item.type),
+                        processLongText(item.description),
+                    ])
                 ],
             },
-            {
-                table: {
-                    headerRows: 1,
-                    widths: ["auto", "auto", "*"],
-                    body: [
-                        [
-                            { text: "Nombre", style: "tableHeader", alignment: "center" },
-                            { text: "Acumulado", style: "tableHeader", alignment: "center" },
-                            { text: "Descripcion", style: "tableHeader", alignment: "center" },
-                        ],
-                        ...novedades.map((novedad) => [
-                            processLongText(novedad.Name),
-                            processLongText(novedad.Acumulado),
-                            processLongText(Array.isArray(novedad.Descripciones)
-                                ? novedad.Descripciones
-                                    .map(desc => `${desc.Fecha} ${String(desc.Descripcion).replace(/[\r\n]+/g, ' ')}`)
-                                    .join('\n')
-                                : String(novedad.Descripciones).replace(/[\r\n]+/g, ' ')),
-                        ])
-                    ],
-                },
-                layout: {
-                    fillColor: (rowIndex) => (rowIndex === 0 ? "#CCCCCC" : null),
-                    vLineWidth: () => 0.5,
-                    hLineWidth: () => 0.5,
-                    vLineColor: () => "#000000",
-                    hLineColor: () => "#000000",
-                    paddingLeft: () => 5,
-                    paddingRight: () => 5,
-                    paddingTop: () => 3,
-                    paddingBottom: () => 3,
-                    defaultBorder: true,
-                    wordBreak: 'break-word'
-                },
-                width: '100%'
+            layout: {
+                fillColor: (rowIndex) => (rowIndex === 0 ? "#CCCCCC" : null),
+                vLineWidth: () => 0.5,
+                hLineWidth: () => 0.5,
+                vLineColor: () => "#000000",
+                hLineColor: () => "#000000",
+                paddingLeft: () => 5,
+                paddingRight: () => 5,
+                paddingTop: () => 3,
+                paddingBottom: () => 3,
+                defaultBorder: true,
+                wordBreak: 'break-word'
             },
-        ];
-        const styles = {
-            header: {
-                fontSize: 20,
-                bold: true,
-                margin: [0, 10, 0, 15],
-            },
-            tableHeader: {
-                bold: true,
-                fontSize: 12,
-                color: "white",
-                fillColor: "#4CAF50",
-                alignment: "center",
-            },
-            tableCell: {
-                color: "black",
-                fontSize: 10,
-                lineHeight: 1.2
-            },
-        };
-        const docDefinition = {
-            content,
-            styles,
-            defaultStyle: {
-                font: "Helvetica",
-                fontSize: 10,
-                lineHeight: 1.2
-            },
-            pageMargins: [20, 40, 20, 40],
-            pageSize: 'A4',
-            pageOrientation: 'portrait',
-            background: {
-                image: "public/LogoAP.png",
-                width: 400,
-                opacity: 0.2,
-                alignment: "center",
-                absolutePosition: { x: 10, y: 300 },
-            },
-        };
-        const pdfDoc = printer.createPdfKitDocument(docDefinition);
-        return new Promise((resolve, reject) => {
-            const chunks = [];
-            pdfDoc.on("data", (chunk) => chunks.push(chunk));
-            pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
-            pdfDoc.on("error", (err) => reject(err));
-            pdfDoc.end();
-        });
+            width: '100%'
+        },
+    ];
+    const styles = {
+        header: {
+            fontSize: 20,
+            bold: true,
+            margin: [0, 10, 0, 15],
+        },
+        tableHeader: {
+            bold: true,
+            fontSize: 12,
+            color: "white",
+            fillColor: "#4CAF50",
+            alignment: "center",
+        },
+        tableCell: {
+            color: "black",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+    };
+    const docDefinition = {
+        content,
+        styles,
+        defaultStyle: {
+            font: "Helvetica",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+        pageMargins: [20, 40, 20, 40],
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        background: {
+            image: "public/LogoAP.png",
+            width: 400,
+            opacity: 0.2,
+            alignment: "center",
+            absolutePosition: { x: 10, y: 300 },
+        },
+    };
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        pdfDoc.on("data", (chunk) => chunks.push(chunk));
+        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+        pdfDoc.on("error", (err) => reject(err));
+        pdfDoc.end();
     });
 }
-function informeRiesgo(horario) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const time = `7:27:59`;
-        const riesgo = removeBeforeTime(horario, time);
-        const riesgoStyle = riesgo.map(ries => {
-            let valor = "tableCellCerca";
-            const entrada = stringTonumber(ries.Entrada);
-            const tarde = stringTonumber('07:31:00');
-            if (entrada.hora > 7) {
+async function informeNovedadNuevo(novedades) {
+    const fonts = {
+        Helvetica: {
+            normal: "Helvetica",
+            bold: "Helvetica-Bold",
+            italics: "Helvetica-Oblique",
+            bolditalics: "Helvetica-BoldOblique"
+        }
+    };
+    const printer = new pdfmake_1.default(fonts);
+    const processLongText = (text) => {
+        return {
+            text: text,
+            fontSize: 10, // Reducir tamaño para contenido largo
+            margin: [2, 2, 2, 2]
+        };
+    };
+    const content = [
+        {
+            columns: [
+                { image: 'public/LogoAP.png', width: 50 },
+                { text: "Informe de Novedades\n", style: "header", alignment: 'center' }
+            ],
+        },
+        {
+            table: {
+                headerRows: 1,
+                widths: ["auto", "auto", "*"],
+                body: [
+                    [
+                        { text: "Nombre", style: "tableHeader", alignment: "center" },
+                        { text: "Acumulado", style: "tableHeader", alignment: "center" },
+                        { text: "Descripcion", style: "tableHeader", alignment: "center" },
+                    ],
+                    ...novedades.map((novedad) => [
+                        processLongText(novedad.Name),
+                        processLongText(novedad.Acumulado),
+                        processLongText(Array.isArray(novedad.Descripciones)
+                            ? novedad.Descripciones
+                                .map(desc => `${desc.Fecha} ${String(desc.Descripcion).replace(/[\r\n]+/g, ' ')}`)
+                                .join('\n')
+                            : String(novedad.Descripciones).replace(/[\r\n]+/g, ' ')),
+                    ])
+                ],
+            },
+            layout: {
+                fillColor: (rowIndex) => (rowIndex === 0 ? "#CCCCCC" : null),
+                vLineWidth: () => 0.5,
+                hLineWidth: () => 0.5,
+                vLineColor: () => "#000000",
+                hLineColor: () => "#000000",
+                paddingLeft: () => 5,
+                paddingRight: () => 5,
+                paddingTop: () => 3,
+                paddingBottom: () => 3,
+                defaultBorder: true,
+                wordBreak: 'break-word'
+            },
+            width: '100%'
+        },
+    ];
+    const styles = {
+        header: {
+            fontSize: 20,
+            bold: true,
+            margin: [0, 10, 0, 15],
+        },
+        tableHeader: {
+            bold: true,
+            fontSize: 12,
+            color: "white",
+            fillColor: "#4CAF50",
+            alignment: "center",
+        },
+        tableCell: {
+            color: "black",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+    };
+    const docDefinition = {
+        content,
+        styles,
+        defaultStyle: {
+            font: "Helvetica",
+            fontSize: 10,
+            lineHeight: 1.2
+        },
+        pageMargins: [20, 40, 20, 40],
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        background: {
+            image: "public/LogoAP.png",
+            width: 400,
+            opacity: 0.2,
+            alignment: "center",
+            absolutePosition: { x: 10, y: 300 },
+        },
+    };
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        pdfDoc.on("data", (chunk) => chunks.push(chunk));
+        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+        pdfDoc.on("error", (err) => reject(err));
+        pdfDoc.end();
+    });
+}
+async function informeRiesgo(horario) {
+    const time = `7:27:59`;
+    const riesgo = removeBeforeTime(horario, time);
+    const riesgoStyle = riesgo.map(ries => {
+        let valor = "tableCellCerca";
+        const entrada = stringTonumber(ries.Entrada);
+        const tarde = stringTonumber('07:31:00');
+        if (entrada.hora > 7) {
+            valor = "tableCellTarde";
+        }
+        else if (entrada.hora == 7) {
+            if (entrada.minutos >= 31) {
                 valor = "tableCellTarde";
             }
-            else if (entrada.hora == 7) {
-                if (entrada.minutos >= 31) {
-                    valor = "tableCellTarde";
-                }
-                else {
-                    valor = "tableCellCerca";
-                }
+            else {
+                valor = "tableCellCerca";
             }
-            return Object.assign(Object.assign({}, ries), { Valor: valor });
-        });
-        const fonts = {
-            Helvetica: {
-                normal: 'Helvetica',
-                bold: 'Helvetica-Bold',
-                italics: 'Helvetica-Oblique',
-                bolditalics: 'Helvetica-BoldOblique'
-            }
-        };
-        const informeRiesgo = new pdfmake_1.default(fonts);
-        const contenido = [
-            {
-                columns: [
-                    { image: 'public/LogoAP.png', width: 50 },
-                    { text: "Informe de llegadas\n", style: "header", alignment: 'center' }
-                ]
-            },
-            {
-                table: {
-                    headerRows: 1,
-                    widths: [150, '*', 100,],
-                    heigths: [200],
-                    body: [
-                        [
-                            { text: "Nombre", style: "tableHeader", alignment: 'center' },
-                            { text: "Entrada", style: "tableHeader", alignment: 'center' },
-                            { text: "Fecha", style: "tableHeader", alignment: 'center' },
-                        ],
-                        ...riesgoStyle.map((registro) => [
-                            { text: registro.Name, style: "tableCell", alignment: 'center' },
-                            { text: registro.Entrada, style: registro.Valor, alignment: 'center' },
-                            { text: registro.Fecha, style: "tableCell", alignment: 'center' },
-                        ]),
+        }
+        return Object.assign(Object.assign({}, ries), { Valor: valor });
+    });
+    const fonts = {
+        Helvetica: {
+            normal: 'Helvetica',
+            bold: 'Helvetica-Bold',
+            italics: 'Helvetica-Oblique',
+            bolditalics: 'Helvetica-BoldOblique'
+        }
+    };
+    const informeRiesgo = new pdfmake_1.default(fonts);
+    const contenido = [
+        {
+            columns: [
+                { image: 'public/LogoAP.png', width: 50 },
+                { text: "Informe de llegadas\n", style: "header", alignment: 'center' }
+            ]
+        },
+        {
+            table: {
+                headerRows: 1,
+                widths: [150, '*', 100,],
+                heigths: [200],
+                body: [
+                    [
+                        { text: "Nombre", style: "tableHeader", alignment: 'center' },
+                        { text: "Entrada", style: "tableHeader", alignment: 'center' },
+                        { text: "Fecha", style: "tableHeader", alignment: 'center' },
                     ],
-                },
-                layout: {
-                    fillcolor: (rowIndex) => (rowIndex === 0 ? '#CCCCCC' : null),
-                    vLineWidth: (i, node) => 0.5,
-                    hLineWidth: (i, node) => 0.5,
-                    hLineColor: () => '#000000',
-                    vLineColor: () => '#000000',
-                    paddingLeft: () => 5,
-                    paddingRight: () => 5,
-                    paddingTop: () => 5,
-                    paddingBottom: () => 5,
-                },
+                    ...riesgoStyle.map((registro) => [
+                        { text: registro.Name, style: "tableCell", alignment: 'center' },
+                        { text: registro.Entrada, style: registro.Valor, alignment: 'center' },
+                        { text: registro.Fecha, style: "tableCell", alignment: 'center' },
+                    ]),
+                ],
             },
-        ];
-        const estilos = {
-            header: {
-                fontSize: 20,
-                bold: true,
-                margin: [0, 10, 15],
+            layout: {
+                fillcolor: (rowIndex) => (rowIndex === 0 ? '#CCCCCC' : null),
+                vLineWidth: (i, node) => 0.5,
+                hLineWidth: (i, node) => 0.5,
+                hLineColor: () => '#000000',
+                vLineColor: () => '#000000',
+                paddingLeft: () => 5,
+                paddingRight: () => 5,
+                paddingTop: () => 5,
+                paddingBottom: () => 5,
             },
-            tableHeader: {
-                bold: true,
-                fontSize: 12,
-                color: "white",
-                fillColor: '#4CAF50',
-                alignment: "center"
-            },
-            tableCell: {
-                color: 'black',
-                fontSize: 15,
-            },
-            tableCellTarde: {
-                fontSize: 15,
-                fillColor: '#f5b7b1',
-            },
-            tableCellCerca: {
-                fontSize: 15,
-                fillColor: '#f9e79f',
-            },
-        };
-        const docDefinition = {
-            content: contenido,
-            styles: estilos,
-            defaultStyle: {
-                font: "Helvetica"
-            },
-            background: {
-                image: 'public/LogoAP.png',
-                width: 400,
-                opacity: 0.2,
-                alignment: 'center',
-                absolutePosition: { x: 10, y: 300 },
-            }
-        };
-        const pdfDoc = informeRiesgo.createPdfKitDocument(docDefinition);
-        return new Promise((resolve, reject) => {
-            const chunks = [];
-            pdfDoc.on("data", (chunk) => chunks.push(chunk));
-            pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
-            pdfDoc.on("error", (err) => reject(err));
-            pdfDoc.end();
-        });
+        },
+    ];
+    const estilos = {
+        header: {
+            fontSize: 20,
+            bold: true,
+            margin: [0, 10, 15],
+        },
+        tableHeader: {
+            bold: true,
+            fontSize: 12,
+            color: "white",
+            fillColor: '#4CAF50',
+            alignment: "center"
+        },
+        tableCell: {
+            color: 'black',
+            fontSize: 15,
+        },
+        tableCellTarde: {
+            fontSize: 15,
+            fillColor: '#f5b7b1',
+        },
+        tableCellCerca: {
+            fontSize: 15,
+            fillColor: '#f9e79f',
+        },
+    };
+    const docDefinition = {
+        content: contenido,
+        styles: estilos,
+        defaultStyle: {
+            font: "Helvetica"
+        },
+        background: {
+            image: 'public/LogoAP.png',
+            width: 400,
+            opacity: 0.2,
+            alignment: 'center',
+            absolutePosition: { x: 10, y: 300 },
+        }
+    };
+    const pdfDoc = informeRiesgo.createPdfKitDocument(docDefinition);
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        pdfDoc.on("data", (chunk) => chunks.push(chunk));
+        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
+        pdfDoc.on("error", (err) => reject(err));
+        pdfDoc.end();
     });
 }
 function removeBeforeTime(records, time) {

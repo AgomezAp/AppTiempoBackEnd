@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -65,6 +56,7 @@ const room_1 = __importDefault(require("../routes/room"));
 const reservation_1 = __importDefault(require("../routes/reservation"));
 const asistencia_1 = __importDefault(require("../routes/asistencia"));
 const actaRecarga_1 = __importDefault(require("../routes/actaRecarga"));
+const ssgt_1 = __importDefault(require("../routes/ssgt"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -107,6 +99,7 @@ class Server {
         this.app.use(reservation_1.default);
         this.app.use('/api/asistencia', asistencia_1.default);
         this.app.use('/api/actas-recargas', actaRecarga_1.default);
+        this.app.use('/api/ssgt', ssgt_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -136,42 +129,46 @@ class Server {
         this.app.use('/uploads', express_1.default.static('public/uploads'));
         this.app.use('/public', express_1.default.static('public'));
     }
-    DBconnect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                /* {force: true}{alter: true} */
-                yield connection_1.default.authenticate();
-                yield role_1.Role.sync();
-                yield area_2.Area.sync({ alter: false });
-                yield user_2.User.sync({ alter: false });
-                yield product_3.Product.sync();
-                yield permisos_2.Permiso.sync({ alter: true });
-                yield time_2.Registro.sync();
-                yield time_2.Sumatoria.sync();
-                yield time_2.HistoricoHorasExtras.sync();
-                yield time_2.Novedad.sync({ alter: false });
-                yield time_2.NovedadHistorico.sync({ alter: false });
-                yield archivo_2.Archivo.sync({ alter: false });
-                yield nominaConfig_2.default.sync({ alter: false });
-                const { Alert } = yield Promise.resolve().then(() => __importStar(require('./alert')));
-                yield Alert.sync({ alter: false });
-                yield room_2.Room.sync({ alter: false });
-                yield reservation_2.Reservation.sync({ alter: false });
-                // Sincronizar modelos de asistencia
-                const { RegistroAsistencia, ParticipanteAsistencia } = yield Promise.resolve().then(() => __importStar(require('./asistencia')));
-                yield RegistroAsistencia.sync();
-                yield ParticipanteAsistencia.sync();
-                // Sincronizar modelos de actas de recargas
-                const { ActaRecarga } = yield Promise.resolve().then(() => __importStar(require('./actaRecarga')));
-                const { ActaRecargaAcceso } = yield Promise.resolve().then(() => __importStar(require('./actaRecargaAcceso')));
-                yield ActaRecarga.sync({ force: true });
-                yield ActaRecargaAcceso.sync({ alter: false });
-                console.log('Conexión establecida correctamente');
-            }
-            catch (error) {
-                console.log("Error de conexion");
-            }
-        });
+    async DBconnect() {
+        try {
+            /* {force: true}{alter: true} */
+            await connection_1.default.authenticate();
+            await role_1.Role.sync();
+            await area_2.Area.sync({ alter: false });
+            await user_2.User.sync({ alter: false });
+            await product_3.Product.sync();
+            await permisos_2.Permiso.sync({ alter: true });
+            await time_2.Registro.sync();
+            await time_2.Sumatoria.sync();
+            await time_2.HistoricoHorasExtras.sync();
+            await time_2.Novedad.sync({ alter: false });
+            await time_2.NovedadHistorico.sync({ alter: false });
+            await archivo_2.Archivo.sync({ alter: false });
+            await nominaConfig_2.default.sync({ alter: false });
+            const { Alert } = await Promise.resolve().then(() => __importStar(require('./alert')));
+            await Alert.sync({ alter: false });
+            await room_2.Room.sync({ alter: false });
+            await reservation_2.Reservation.sync({ alter: false });
+            // Sincronizar modelos de asistencia
+            const { RegistroAsistencia, ParticipanteAsistencia } = await Promise.resolve().then(() => __importStar(require('./asistencia')));
+            await RegistroAsistencia.sync();
+            await ParticipanteAsistencia.sync({ alter: true });
+            // Sincronizar modelos de actas de recargas
+            const { ActaRecarga } = await Promise.resolve().then(() => __importStar(require('./actaRecarga')));
+            const { ActaRecargaAcceso } = await Promise.resolve().then(() => __importStar(require('./actaRecargaAcceso')));
+            await ActaRecarga.sync({ force: true });
+            await ActaRecargaAcceso.sync({ alter: false });
+            // Sincronizar modelos SSGT
+            const { AccidenteIncidente, InvestigacionAccidente, EvidenciaAccidente, SeguimientoAccion } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await AccidenteIncidente.sync({ alter: true });
+            await InvestigacionAccidente.sync({ alter: true });
+            await EvidenciaAccidente.sync({ alter: true });
+            await SeguimientoAccion.sync({ alter: true });
+            console.log('Conexión establecida correctamente');
+        }
+        catch (error) {
+            console.log("Error de conexion");
+        }
     }
 }
 exports.default = Server;

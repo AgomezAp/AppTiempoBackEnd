@@ -9,6 +9,7 @@ interface Participante {
   cargo: string;
   firma: string | null;
   firmado: boolean;
+  esExterno?: boolean;
 }
 
 interface Registro {
@@ -78,8 +79,10 @@ export const generarActaPDF = async (
       // Generar filas de participantes
       const participantRows: TableCell[][] = participantes.map((p): TableCell[] => {
         let firmaContent: TableCell;
-        
-        if (p.firma && p.firmado) {
+
+        if (p.esExterno) {
+          firmaContent = { text: 'N/A', alignment: 'center', fontSize: 8, color: '#9e9e9e', margin: [2, 4, 2, 4] } as TableCell;
+        } else if (p.firma && p.firmado) {
           try {
             // Asegurar que la firma tenga el formato correcto
             const firmaBase64 = p.firma.includes('base64,') 
