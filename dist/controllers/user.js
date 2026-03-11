@@ -199,11 +199,12 @@ exports.getAllUsers = getAllUsers;
 const getListUser = async (req, res) => {
     try {
         const user = await user_1.User.findAll({
-            attributes: ["Uid", "name", "lastName"],
+            attributes: ["Uid", "name", "lastName", "email"],
         });
         const userJS = user.map((us) => ({
             Uid: us.Uid,
             nombre: `${us.name} ${us.lastName}`,
+            email: us.email,
         }));
         res.status(200).json(userJS);
     }

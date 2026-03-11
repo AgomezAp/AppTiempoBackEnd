@@ -186,11 +186,12 @@ export const getListUser = async (
 ): Promise<any> => {
   try {
     const user = await User.findAll({
-      attributes: ["Uid", "name", "lastName"],
+      attributes: ["Uid", "name", "lastName", "email"],
     });
     const userJS = user.map((us) => ({
       Uid: us.Uid,
       nombre: `${us.name} ${us.lastName}`,
+      email: us.email,
     }));
     res.status(200).json(userJS);
   } catch (error) {

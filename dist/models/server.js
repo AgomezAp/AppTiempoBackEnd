@@ -164,6 +164,30 @@ class Server {
             await InvestigacionAccidente.sync({ alter: true });
             await EvidenciaAccidente.sync({ alter: true });
             await SeguimientoAccion.sync({ alter: true });
+            // Sincronizar modelos EPP
+            const { CatalogoEPP, EntregaEPP, DetalleEntregaEPP, FirmaEntregaEPP, AlertaEPP } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await CatalogoEPP.sync({ alter: true });
+            await EntregaEPP.sync({ alter: true });
+            await DetalleEntregaEPP.sync({ alter: true });
+            await FirmaEntregaEPP.sync({ alter: true });
+            await AlertaEPP.sync({ alter: true });
+            // Sincronizar modelos Documentos Firma
+            const { DocumentoFirma, CampoFirmaDocumento } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await DocumentoFirma.sync({ alter: true });
+            await CampoFirmaDocumento.sync({ alter: true });
+            // Sincronizar modelos Inspecciones y Riesgos
+            const { InspeccionSSGT, ChecklistItemSSGT, CondicionInsegura, MatrizRiesgo, PlanAccion } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await InspeccionSSGT.sync({ alter: true });
+            await ChecklistItemSSGT.sync({ alter: true });
+            await CondicionInsegura.sync({ alter: true });
+            await MatrizRiesgo.sync({ alter: true });
+            await PlanAccion.sync({ alter: true });
+            // Sincronizar modelos Capacitaciones SST
+            const { CapacitacionSST, EvaluacionCapacitacion, PreguntaEvaluacion, RespuestaEvaluacion } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await CapacitacionSST.sync({ alter: true });
+            await EvaluacionCapacitacion.sync({ alter: true });
+            await PreguntaEvaluacion.sync({ alter: true });
+            await RespuestaEvaluacion.sync({ alter: true });
             console.log('Conexión establecida correctamente');
         }
         catch (error) {

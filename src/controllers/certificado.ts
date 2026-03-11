@@ -2108,7 +2108,7 @@ export const generarCertificadoVacaciones = async (
       fechaInicio,
       fechaFin,
       diasSolicitados,
-      tipoVacaciones, // 'solo-vacaciones' o 'vacaciones-pagos'
+      tipoVacaciones, // 'solo-vacaciones' o 'vacaciones-pagos' o 'solo-pagos'
       solicitaCabana, // Nuevo campo
     } = req.body;
 
@@ -2166,6 +2166,13 @@ export const generarCertificadoVacaciones = async (
           error: `Mínimo 3 días laborales de vacaciones para Gestión Administrativa. Días laborales calculados: ${diasReales}` 
         });
       }
+    }
+
+    // Validar máximo de días para solo-pagos
+    if (tipoVacaciones === 'solo-pagos' && diasReales > 9) {
+      return res.status(400).json({
+        error: `Máximo 9 días laborales para días pagos. Días laborales calculados: ${diasReales}`
+      });
     }
 
     // Configuración de canvas
@@ -2229,7 +2236,10 @@ export const generarCertificadoVacaciones = async (
     ctx.font = "bold 70px Helvetica";
     ctx.textAlign = "center";
     const tituloY = 250; // Posición del título
-    ctx.fillText("Solicitud de Vacaciones", width / 2, tituloY);
+    const tituloPDF = tipoVacaciones === 'solo-pagos'
+      ? "Solicitud de días pagos de vacaciones"
+      : "Solicitud de Vacaciones";
+    ctx.fillText(tituloPDF, width / 2, tituloY);
 
     // ========================================
     // ENCABEZADO - JUSTIFICADO A LA IZQUIERDA (Formato Carta)
@@ -2245,7 +2255,7 @@ export const generarCertificadoVacaciones = async (
     ctx.fillText(`Dirigido a: ${empresaData.nombre}`, encabezadoX, encabezadoY);
     encabezadoY += 80; // Más espacio entre líneas
     
-    ctx.fillText("Asunto: Solicitud de Vacaciones", encabezadoX, encabezadoY);
+    ctx.fillText(`Asunto: ${tituloPDF}`, encabezadoX, encabezadoY);
     encabezadoY += 80;
     
     const hoy = new Date();
@@ -2329,6 +2339,11 @@ export const generarCertificadoVacaciones = async (
         currentY += lineHeight;
       }
       currentY += 80; // Más espacio después
+    } else if (tipoVacaciones === 'solo-pagos') {
+      ctx.font = "44px Helvetica";
+      ctx.fillText(`    • Días pagos: ${diasReales}`, margin + 20, currentY);
+      currentY += lineHeight;
+      currentY += 80;
     }
 
     // ========================================
