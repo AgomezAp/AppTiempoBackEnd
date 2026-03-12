@@ -50,7 +50,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       cargo: cargo || '',
       fondoPension: fondoPension || 'PORVENIR',
       fondoCesantias: fondoCesantias || 'PORVENIR',
-      fechaIngreso: fechaIngreso || null,
+      fechaIngreso: fechaIngreso && !isNaN(new Date(fechaIngreso).getTime()) ? new Date(fechaIngreso) : null,
     });
 
     res.status(200).json({
@@ -232,7 +232,10 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.cargo = cargo || user.cargo;
     user.fondoPension = fondoPension || user.fondoPension;
     user.fondoCesantias = fondoCesantias || user.fondoCesantias;
-    user.fechaIngreso = fechaIngreso !== undefined ? fechaIngreso : user.fechaIngreso;
+    if (fechaIngreso !== undefined) {
+      const parsedFecha = fechaIngreso ? new Date(fechaIngreso) : null;
+      user.fechaIngreso = (parsedFecha && !isNaN(parsedFecha.getTime())) ? parsedFecha : null;
+    }
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);

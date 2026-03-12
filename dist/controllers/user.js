@@ -82,7 +82,7 @@ const register = async (req, res) => {
             cargo: cargo || '',
             fondoPension: fondoPension || 'PORVENIR',
             fondoCesantias: fondoCesantias || 'PORVENIR',
-            fechaIngreso: fechaIngreso || null,
+            fechaIngreso: fechaIngreso && !isNaN(new Date(fechaIngreso).getTime()) ? new Date(fechaIngreso) : null,
         });
         res.status(200).json({
             message: "Usuario registrado con éxito",
@@ -244,7 +244,10 @@ const updateUser = async (req, res) => {
         user.cargo = cargo || user.cargo;
         user.fondoPension = fondoPension || user.fondoPension;
         user.fondoCesantias = fondoCesantias || user.fondoCesantias;
-        user.fechaIngreso = fechaIngreso !== undefined ? fechaIngreso : user.fechaIngreso;
+        if (fechaIngreso !== undefined) {
+            const parsedFecha = fechaIngreso ? new Date(fechaIngreso) : null;
+            user.fechaIngreso = (parsedFecha && !isNaN(parsedFecha.getTime())) ? parsedFecha : null;
+        }
         if (password) {
             const passwordHash = await bcrypt_1.default.hash(password, 10);
             user.password = passwordHash;
