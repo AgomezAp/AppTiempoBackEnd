@@ -148,7 +148,7 @@ router.post('/documentos-firma', validateToken, uploadDoc.single('archivo'), sub
 router.get('/documentos-firma', validateToken, obtenerDocumentos);
 router.get('/documentos-firma/:id', validateToken, obtenerDocumentoPorId);
 router.delete('/documentos-firma/:id', validateToken, eliminarDocumento);
-router.get('/documentos-firma/:id/paginas/:num', validateToken, obtenerPaginaImagen);
+router.get('/documentos-firma/:id/paginas/:num', obtenerPaginaImagen);
 router.post('/documentos-firma/:id/campos', validateToken, guardarCamposFirma);
 router.put('/documentos-firma/:id/enviar', validateToken, enviarParaFirmar);
 router.post('/documentos-firma/:id/campos/:campoId/reenviar', validateToken, reenviarCorreoCampo);

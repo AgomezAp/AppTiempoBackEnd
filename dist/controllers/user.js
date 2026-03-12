@@ -139,7 +139,7 @@ const login = async (req, res) => {
             lastname: user.lastName,
             correolider: user.area.correolider,
         }, process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS", {
-            expiresIn: "30m",
+            expiresIn: "120m",
         });
         res.json({
             msg: "Inicio de sesión exitoso",

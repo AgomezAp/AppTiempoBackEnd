@@ -16,19 +16,27 @@ const libreConvertAsync = require('util').promisify(libre.convert);
 export const subirDocumento = async (req: Request, res: Response): Promise<any> => {
     try {
         const { titulo, descripcion, empresa } = req.body;
-        const userId = req.body.userId;
+        const userId = (req as any).userId || req.body.userId;
         const file = req.file;
 
         if (!file) {
             return res.status(400).json({ msg: 'No se ha subido ningún archivo' });
         }
 
+        const ext = path.extname(file.originalname).toLowerCase();
+        const tipoArchivo = ext === '.pdf' ? 'pdf' : ext.replace('.', '');
+        const archivoPdfInicial = ext === '.pdf'
+            ? file.originalname
+            : path.basename(file.originalname, ext) + '.pdf';
+
         const documento = await DocumentoFirma.create({
             titulo,
             descripcion,
             empresa,
-            creadorId: userId,
+            creadoPor: userId,
             archivoOriginal: file.originalname,
+            archivoPdf: archivoPdfInicial,
+            tipoArchivo,
             estado: 'borrador',
             totalPaginas: 0
         });
@@ -38,7 +46,6 @@ export const subirDocumento = async (req: Request, res: Response): Promise<any> 
             fs.mkdirSync(docDir, { recursive: true });
         }
 
-        const ext = path.extname(file.originalname).toLowerCase();
         const originalFilePath = path.join(docDir, file.originalname);
         fs.copyFileSync(file.path, originalFilePath);
 
@@ -47,11 +54,9 @@ export const subirDocumento = async (req: Request, res: Response): Promise<any> 
         if (ext === '.docx' || ext === '.doc') {
             const inputBuffer = fs.readFileSync(originalFilePath);
             const pdfBuffer = await libreConvertAsync(inputBuffer, '.pdf', undefined);
-            pdfFilePath = path.join(docDir, path.basename(file.originalname, ext) + '.pdf');
+            pdfFilePath = path.join(docDir, archivoPdfInicial);
             fs.writeFileSync(pdfFilePath, pdfBuffer);
             await documento.update({ archivoPdf: path.basename(pdfFilePath) });
-        } else {
-            await documento.update({ archivoPdf: file.originalname });
         }
 
         const pdfData = new Uint8Array(fs.readFileSync(pdfFilePath));
@@ -86,8 +91,9 @@ export const subirDocumento = async (req: Request, res: Response): Promise<any> 
 
 export const obtenerDocumentos = async (req: Request, res: Response): Promise<any> => {
     try {
+        const userId = (req as any).userId;
         const { estado, empresa } = req.query;
-        const where: any = {};
+        const where: any = { creadoPor: userId };
 
         if (estado) where.estado = estado;
         if (empresa) where.empresa = empresa;
@@ -114,8 +120,10 @@ export const obtenerDocumentos = async (req: Request, res: Response): Promise<an
 export const obtenerDocumentoPorId = async (req: Request, res: Response): Promise<any> => {
     try {
         const id = parseId(req.params.id);
+        const userId = (req as any).userId;
 
-        const documento = await DocumentoFirma.findByPk(id, {
+        const documento = await DocumentoFirma.findOne({
+            where: { id, creadoPor: userId },
             include: [
                 {
                     model: CampoFirmaDocumento,
@@ -143,8 +151,9 @@ export const obtenerDocumentoPorId = async (req: Request, res: Response): Promis
 export const eliminarDocumento = async (req: Request, res: Response): Promise<any> => {
     try {
         const id = parseId(req.params.id);
+        const userId = (req as any).userId;
 
-        const documento = await DocumentoFirma.findByPk(id);
+        const documento = await DocumentoFirma.findOne({ where: { id, creadoPor: userId } });
         if (!documento) {
             return res.status(404).json({ msg: 'Documento no encontrado' });
         }

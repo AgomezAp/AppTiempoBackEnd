@@ -780,11 +780,11 @@ CampoFirmaDocumento.init(
     },
     etiqueta: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     nombreFirmante: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     emailFirmante: {
       type: DataTypes.STRING,

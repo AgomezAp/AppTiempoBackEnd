@@ -1286,7 +1286,7 @@ const sendEntregaEppEmail = async (to, nombreFirmante, data) => {
 
         <!-- Body -->
         <div style="${styles.body}">
-          <p style="${styles.greeting}">Hola <strong>${nombreFirmante}</strong>,</p>
+          <p style="${styles.greeting}">Hola <strong>${nombreFirmante || 'Firmante'}</strong>,</p>
           <p style="${styles.message}">
             Se ha registrado una entrega de Elementos de Protección Personal (EPP) y necesitamos
             que confirmes la recepción mediante tu firma digital.
@@ -1491,9 +1491,8 @@ const sendDocumentoFirmaEmail = async (to, nombreFirmante, data) => {
 
         <!-- Body -->
         <div style="${styles.body}">
-          <p style="${styles.greeting}">Hola <strong>${nombreFirmante}</strong>,</p>
+          <p style="${styles.greeting}">Hola <strong>${nombreFirmante || 'Firmante'}</strong>,</p>
           <p style="${styles.message}">
-            Se ha generado un documento que requiere tu firma digital.
             Por favor revisa los detalles a continuacion y procede a firmarlo.
           </p>
 

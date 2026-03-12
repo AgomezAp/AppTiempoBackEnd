@@ -10,7 +10,7 @@ import { User } from '../models/user';
 export const crearInspeccion = async (req: Request, res: Response): Promise<any> => {
     try {
         const data = req.body;
-        data.inspectorId = req.body.userId;
+        data.inspectorId = (req as any).userId;
 
         const inspeccion = await InspeccionSSGT.create(data);
 
@@ -129,7 +129,7 @@ export const guardarChecklist = async (req: Request, res: Response): Promise<any
 export const crearCondicionInsegura = async (req: Request, res: Response): Promise<any> => {
     try {
         const data = req.body;
-        data.reportadoPor = req.body.userId;
+        data.reportadoPor = (req as any).userId;
 
         const condicion = await CondicionInsegura.create(data);
 
