@@ -236,7 +236,7 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.fondoCesantias = fondoCesantias || user.fondoCesantias;
     user.celular = celular !== undefined ? celular || null : user.celular;
     if (fechaIngreso !== undefined && fechaIngreso !== '' && fechaIngreso !== null) {
-      const parsedFecha = new Date(fechaIngreso);
+      const parsedFecha = new Date(fechaIngreso + 'T12:00:00');
       if (!isNaN(parsedFecha.getTime())) {
         user.fechaIngreso = parsedFecha;
       }
