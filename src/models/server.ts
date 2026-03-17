@@ -20,6 +20,7 @@ import RReservation from '../routes/reservation';
 import RAsistencia from '../routes/asistencia';
 import RActaRecarga from '../routes/actaRecarga';
 import RSsgt from '../routes/ssgt';
+import RWhatsApp from '../routes/whatsapp';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -68,6 +69,7 @@ class Server{
         this.app.use('/api/asistencia', RAsistencia);
         this.app.use('/api/actas-recargas', RActaRecarga);
         this.app.use('/api/ssgt', RSsgt);
+        this.app.use('/api/whatsapp', RWhatsApp);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -98,6 +100,7 @@ class Server{
         
         // Servir archivos estáticos
         this.app.use('/uploads', express.static('public/uploads'));
+        this.app.use('/uploads', express.static('uploads'));
         this.app.use('/public', express.static('public'));
     }
     async DBconnect(){
@@ -107,7 +110,7 @@ class Server{
             
             await Role.sync();
             await Area.sync({alter: false});
-            await User.sync({alter: false});
+            await User.sync({alter: true});
             await Product.sync();
             await Permiso.sync({alter: true});
             await Registro.sync();
@@ -153,13 +156,15 @@ class Server{
             await DocumentoFirma.sync({ alter: true });
             await CampoFirmaDocumento.sync({ alter: true });
 
-            // Sincronizar modelos Inspecciones y Riesgos
-            const { InspeccionSSGT, ChecklistItemSSGT, CondicionInsegura, MatrizRiesgo, PlanAccion } = await import('./ssgt');
+            // Sincronizar modelos Inspecciones (SafetyCulture)
+            const { PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, InspeccionSSGT, RespuestaInspeccion, AccionCorrectivaInspeccion, CondicionInsegura } = await import('./ssgt');
+            await PlantillaInspeccion.sync({ alter: true });
+            await SeccionPlantilla.sync({ alter: true });
+            await PreguntaPlantilla.sync({ alter: true });
             await InspeccionSSGT.sync({ alter: true });
-            await ChecklistItemSSGT.sync({ alter: true });
+            await RespuestaInspeccion.sync({ alter: true });
+            await AccionCorrectivaInspeccion.sync({ alter: true });
             await CondicionInsegura.sync({ alter: true });
-            await MatrizRiesgo.sync({ alter: true });
-            await PlanAccion.sync({ alter: true });
 
             // Sincronizar modelos Capacitaciones SST
             const { CapacitacionSST, EvaluacionCapacitacion, PreguntaEvaluacion, RespuestaEvaluacion } = await import('./ssgt');

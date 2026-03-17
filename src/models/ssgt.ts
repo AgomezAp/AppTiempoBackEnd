@@ -830,11 +830,211 @@ CampoFirmaDocumento.init(
 );
 
 // ========================================
-// MODELOS INSPECCIONES Y RIESGOS
+// MODELOS INSPECCIONES (SafetyCulture)
 // ========================================
 
+// Plantilla de Inspección (template reutilizable)
+export class PlantillaInspeccion extends Model {
+  public id!: number;
+  public titulo!: string;
+  public descripcion!: string | null;
+  public categoria!: string | null;
+  public empresa!: string | null;
+  public creadorId!: number;
+  public puntajeMaximo!: number;
+  public umbralAprobacion!: number;
+  public estado!: 'activa' | 'inactiva';
+  public createdAt!: Date;
+  public updatedAt!: Date;
+}
+
+PlantillaInspeccion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    titulo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    descripcion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    categoria: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    empresa: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    creadorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'Uid',
+      },
+    },
+    puntajeMaximo: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    umbralAprobacion: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 80,
+    },
+    estado: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'activa',
+    },
+  },
+  {
+    sequelize,
+    tableName: 'ssgt_plantillas_inspeccion',
+    timestamps: true,
+  }
+);
+
+// Sección de Plantilla
+export class SeccionPlantilla extends Model {
+  public id!: number;
+  public plantillaId!: number;
+  public titulo!: string;
+  public descripcion!: string | null;
+  public orden!: number;
+  public peso!: number;
+  public createdAt!: Date;
+  public updatedAt!: Date;
+}
+
+SeccionPlantilla.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    plantillaId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_plantillas_inspeccion',
+        key: 'id',
+      },
+    },
+    titulo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    descripcion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    orden: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    peso: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 1.0,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'ssgt_secciones_plantilla',
+    timestamps: true,
+  }
+);
+
+// Pregunta de Plantilla
+export class PreguntaPlantilla extends Model {
+  public id!: number;
+  public seccionId!: number;
+  public texto!: string;
+  public tipo!: string;
+  public opciones!: string | null;
+  public requerida!: boolean;
+  public peso!: number;
+  public respuestaEsperada!: string | null;
+  public orden!: number;
+  public requiereAccionSiNoConforme!: boolean;
+  public createdAt!: Date;
+  public updatedAt!: Date;
+}
+
+PreguntaPlantilla.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    seccionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_secciones_plantilla',
+        key: 'id',
+      },
+    },
+    texto: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    tipo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'si_no',
+    },
+    opciones: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    requerida: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    peso: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 1.0,
+    },
+    respuestaEsperada: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    orden: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    requiereAccionSiNoConforme: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'ssgt_preguntas_plantilla',
+    timestamps: true,
+  }
+);
+
+// Inspección (ahora vinculada a plantilla)
 export class InspeccionSSGT extends Model {
   public id!: number;
+  public plantillaId!: number | null;
   public titulo!: string;
   public tipo!: string;
   public fechaInspeccion!: string;
@@ -843,6 +1043,10 @@ export class InspeccionSSGT extends Model {
   public empresa!: string | null;
   public estado!: string;
   public observacionesGenerales!: string | null;
+  public puntajeObtenido!: number | null;
+  public puntajeMaximo!: number | null;
+  public porcentaje!: number | null;
+  public aprobada!: boolean | null;
   public createdAt!: Date;
   public updatedAt!: Date;
 }
@@ -853,6 +1057,14 @@ InspeccionSSGT.init(
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
+    },
+    plantillaId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'ssgt_plantillas_inspeccion',
+        key: 'id',
+      },
     },
     titulo: {
       type: DataTypes.STRING,
@@ -891,6 +1103,22 @@ InspeccionSSGT.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    puntajeObtenido: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    puntajeMaximo: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    porcentaje: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    aprobada: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
   },
   {
     sequelize,
@@ -899,18 +1127,22 @@ InspeccionSSGT.init(
   }
 );
 
-export class ChecklistItemSSGT extends Model {
+// Respuesta de Inspección (reemplaza ChecklistItemSSGT)
+export class RespuestaInspeccion extends Model {
   public id!: number;
   public inspeccionId!: number;
-  public pregunta!: string;
-  public cumple!: boolean | null;
-  public observacion!: string | null;
+  public preguntaId!: number;
+  public seccionId!: number;
+  public valor!: string | null;
+  public valorArchivo!: string | null;
+  public puntos!: number;
   public orden!: number;
+  public observacion!: string | null;
   public createdAt!: Date;
   public updatedAt!: Date;
 }
 
-ChecklistItemSSGT.init(
+RespuestaInspeccion.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -925,27 +1157,139 @@ ChecklistItemSSGT.init(
         key: 'id',
       },
     },
-    pregunta: {
-      type: DataTypes.STRING(500),
+    preguntaId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: 'ssgt_preguntas_plantilla',
+        key: 'id',
+      },
     },
-    cumple: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
+    seccionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_secciones_plantilla',
+        key: 'id',
+      },
     },
-    observacion: {
+    valor: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    valorArchivo: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    puntos: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
     },
     orden: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
     },
+    observacion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     sequelize,
-    tableName: 'ssgt_checklist_items',
+    tableName: 'ssgt_respuestas_inspeccion',
+    timestamps: true,
+  }
+);
+
+// Acción Correctiva
+export class AccionCorrectivaInspeccion extends Model {
+  public id!: number;
+  public inspeccionId!: number;
+  public respuestaId!: number | null;
+  public preguntaTexto!: string | null;
+  public descripcion!: string;
+  public prioridad!: string;
+  public responsableId!: number | null;
+  public fechaLimite!: string | null;
+  public estado!: string;
+  public evidenciaArchivo!: string | null;
+  public observaciones!: string | null;
+  public fechaCompletada!: Date | null;
+  public createdAt!: Date;
+  public updatedAt!: Date;
+}
+
+AccionCorrectivaInspeccion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    inspeccionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_inspecciones',
+        key: 'id',
+      },
+    },
+    respuestaId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'ssgt_respuestas_inspeccion',
+        key: 'id',
+      },
+    },
+    preguntaTexto: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    descripcion: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    prioridad: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'media',
+    },
+    responsableId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'Uid',
+      },
+    },
+    fechaLimite: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    estado: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'pendiente',
+    },
+    evidenciaArchivo: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    observaciones: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    fechaCompletada: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'ssgt_acciones_correctivas',
     timestamps: true,
   }
 );
@@ -1016,162 +1360,6 @@ CondicionInsegura.init(
   {
     sequelize,
     tableName: 'ssgt_condiciones_inseguras',
-    timestamps: true,
-  }
-);
-
-export class MatrizRiesgo extends Model {
-  public id!: number;
-  public nombre!: string;
-  public descripcion!: string | null;
-  public proceso!: string;
-  public peligro!: string;
-  public probabilidad!: number;
-  public consecuencia!: number;
-  public nivelRiesgo!: string;
-  public controlesExistentes!: string | null;
-  public accionRecomendada!: string | null;
-  public responsableId!: number;
-  public empresa!: string | null;
-  public archivoAdjunto!: string | null;
-  public createdAt!: Date;
-  public updatedAt!: Date;
-}
-
-MatrizRiesgo.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    nombre: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    descripcion: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    proceso: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    peligro: {
-      type: DataTypes.STRING(500),
-      allowNull: false,
-    },
-    probabilidad: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    consecuencia: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    nivelRiesgo: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    controlesExistentes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    accionRecomendada: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    responsableId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'Uid',
-      },
-    },
-    empresa: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    archivoAdjunto: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
-    },
-  },
-  {
-    sequelize,
-    tableName: 'ssgt_matriz_riesgos',
-    timestamps: true,
-  }
-);
-
-export class PlanAccion extends Model {
-  public id!: number;
-  public origen!: string;
-  public origenId!: number;
-  public descripcion!: string;
-  public responsableId!: number;
-  public fechaInicio!: string | null;
-  public fechaLimite!: string;
-  public estado!: string;
-  public observaciones!: string | null;
-  public evidenciaArchivo!: string | null;
-  public createdAt!: Date;
-  public updatedAt!: Date;
-}
-
-PlanAccion.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    origen: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    origenId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    descripcion: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    responsableId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'Uid',
-      },
-    },
-    fechaInicio: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-    },
-    fechaLimite: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
-    estado: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'pendiente',
-    },
-    observaciones: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    evidenciaArchivo: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
-    },
-  },
-  {
-    sequelize,
-    tableName: 'ssgt_planes_accion',
     timestamps: true,
   }
 );
@@ -1432,17 +1620,37 @@ DocumentoFirma.belongsTo(User, { foreignKey: 'creadoPor', as: 'creador' });
 CampoFirmaDocumento.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
 // ========================================
-// RELACIONES INSPECCIONES Y RIESGOS
+// RELACIONES INSPECCIONES (SafetyCulture)
 // ========================================
 
-InspeccionSSGT.hasMany(ChecklistItemSSGT, { foreignKey: 'inspeccionId', as: 'checklist' });
-ChecklistItemSSGT.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
+// Plantilla -> Secciones -> Preguntas
+PlantillaInspeccion.hasMany(SeccionPlantilla, { foreignKey: 'plantillaId', as: 'secciones' });
+SeccionPlantilla.belongsTo(PlantillaInspeccion, { foreignKey: 'plantillaId', as: 'plantilla' });
+SeccionPlantilla.hasMany(PreguntaPlantilla, { foreignKey: 'seccionId', as: 'preguntas' });
+PreguntaPlantilla.belongsTo(SeccionPlantilla, { foreignKey: 'seccionId', as: 'seccion' });
+PlantillaInspeccion.belongsTo(User, { foreignKey: 'creadorId', as: 'creador' });
+
+// Inspección -> Plantilla
+InspeccionSSGT.belongsTo(PlantillaInspeccion, { foreignKey: 'plantillaId', as: 'plantilla' });
+PlantillaInspeccion.hasMany(InspeccionSSGT, { foreignKey: 'plantillaId', as: 'inspecciones' });
+
+// Inspección -> Respuestas
+InspeccionSSGT.hasMany(RespuestaInspeccion, { foreignKey: 'inspeccionId', as: 'respuestas' });
+RespuestaInspeccion.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
+RespuestaInspeccion.belongsTo(PreguntaPlantilla, { foreignKey: 'preguntaId', as: 'pregunta' });
+RespuestaInspeccion.belongsTo(SeccionPlantilla, { foreignKey: 'seccionId', as: 'seccion' });
+
+// Inspección -> Acciones Correctivas
+InspeccionSSGT.hasMany(AccionCorrectivaInspeccion, { foreignKey: 'inspeccionId', as: 'acciones' });
+AccionCorrectivaInspeccion.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
+AccionCorrectivaInspeccion.belongsTo(RespuestaInspeccion, { foreignKey: 'respuestaId', as: 'respuesta' });
+AccionCorrectivaInspeccion.belongsTo(User, { foreignKey: 'responsableId', as: 'responsable' });
+
+// Inspección -> Condiciones Inseguras (mantener)
 InspeccionSSGT.hasMany(CondicionInsegura, { foreignKey: 'inspeccionId', as: 'condiciones' });
 CondicionInsegura.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
 InspeccionSSGT.belongsTo(User, { foreignKey: 'inspectorId', as: 'inspector' });
 CondicionInsegura.belongsTo(User, { foreignKey: 'reportadoPor', as: 'reportante' });
-MatrizRiesgo.belongsTo(User, { foreignKey: 'responsableId', as: 'responsable' });
-PlanAccion.belongsTo(User, { foreignKey: 'responsableId', as: 'responsablePlan' });
 
 // ========================================
 // RELACIONES CAPACITACIONES SST

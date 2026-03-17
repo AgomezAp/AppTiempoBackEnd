@@ -91,6 +91,11 @@ User.init({
         allowNull: true,
         defaultValue: null,
     },
+    celular: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     sequelize: connection_1.default,
     tableName: "users",

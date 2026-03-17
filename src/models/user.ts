@@ -25,6 +25,7 @@ export class User extends Model {
   public tipoContrato!: 'termino-indefinido' | 'termino-fijo';
   public certificadosGenerados!: number;
   public fechaIngreso!: Date;
+  public celular!: string | null;
 
 }
 
@@ -106,6 +107,11 @@ User.init(
     },
     fechaIngreso: {
       type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    celular: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },

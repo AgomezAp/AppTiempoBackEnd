@@ -2,17 +2,77 @@ import { Request, Response } from 'express';
 import { parseId } from '../utils/parseId';
 import fs from 'fs';
 import path from 'path';
-import { InspeccionSSGT, ChecklistItemSSGT, CondicionInsegura, MatrizRiesgo, PlanAccion } from '../models/ssgt';
+import {
+    InspeccionSSGT,
+    PlantillaInspeccion,
+    SeccionPlantilla,
+    PreguntaPlantilla,
+    RespuestaInspeccion,
+    AccionCorrectivaInspeccion,
+    CondicionInsegura,
+} from '../models/ssgt';
 import { User } from '../models/user';
 
-// ===================== INSPECCIONES =====================
+// ===================== INSPECCIONES (SafetyCulture) =====================
 
 export const crearInspeccion = async (req: Request, res: Response): Promise<any> => {
     try {
-        const data = req.body;
-        data.inspectorId = (req as any).userId;
+        const { plantillaId, titulo, tipo, fechaInspeccion, lugar, empresa, observacionesGenerales } = req.body;
+
+        const data: any = {
+            titulo,
+            tipo: tipo || 'plantilla',
+            fechaInspeccion,
+            lugar,
+            empresa,
+            observacionesGenerales,
+            inspectorId: (req as any).userId,
+        };
+
+        if (plantillaId) {
+            const plantilla = await PlantillaInspeccion.findByPk(plantillaId, {
+                include: [{
+                    model: SeccionPlantilla,
+                    as: 'secciones',
+                    include: [{ model: PreguntaPlantilla, as: 'preguntas' }],
+                }],
+            });
+
+            if (!plantilla) {
+                return res.status(404).json({ msg: 'Plantilla no encontrada' });
+            }
+
+            data.plantillaId = plantillaId;
+            data.titulo = titulo || plantilla.titulo;
+            data.puntajeMaximo = plantilla.puntajeMaximo;
+        }
 
         const inspeccion = await InspeccionSSGT.create(data);
+
+        // Crear respuestas vacías basadas en la plantilla
+        if (plantillaId) {
+            const plantilla = await PlantillaInspeccion.findByPk(plantillaId, {
+                include: [{
+                    model: SeccionPlantilla,
+                    as: 'secciones',
+                    include: [{ model: PreguntaPlantilla, as: 'preguntas' }],
+                }],
+            });
+
+            const secciones = (plantilla as any)?.secciones || [];
+            for (const seccion of secciones) {
+                const preguntas = seccion.preguntas || [];
+                for (const pregunta of preguntas) {
+                    await RespuestaInspeccion.create({
+                        inspeccionId: inspeccion.id,
+                        preguntaId: pregunta.id,
+                        seccionId: seccion.id,
+                        orden: pregunta.orden,
+                        puntos: 0,
+                    });
+                }
+            }
+        }
 
         return res.status(201).json({ msg: 'Inspección creada correctamente', inspeccion });
     } catch (error) {
@@ -34,26 +94,94 @@ export const obtenerInspecciones = async (req: Request, res: Response): Promise<
             where,
             include: [
                 {
-                    model: ChecklistItemSSGT,
-                    as: 'checklist'
+                    model: PlantillaInspeccion,
+                    as: 'plantilla',
+                    attributes: ['id', 'titulo', 'categoria'],
+                },
+                {
+                    model: RespuestaInspeccion,
+                    as: 'respuestas',
+                    include: [{
+                        model: PreguntaPlantilla,
+                        as: 'pregunta',
+                    }],
+                },
+                {
+                    model: AccionCorrectivaInspeccion,
+                    as: 'acciones',
                 },
                 {
                     model: CondicionInsegura,
-                    as: 'condiciones'
+                    as: 'condiciones',
                 },
                 {
                     model: User,
                     as: 'inspector',
-                    attributes: ['Uid', 'name', 'lastName']
-                }
+                    attributes: ['Uid', 'name', 'lastName'],
+                },
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
         });
 
         return res.json(inspecciones);
     } catch (error) {
         console.error('Error al obtener inspecciones:', error);
         return res.status(500).json({ msg: 'Error al obtener las inspecciones' });
+    }
+};
+
+export const obtenerInspeccionPorId = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const id = parseId(req.params.id);
+
+        const inspeccion = await InspeccionSSGT.findByPk(id, {
+            include: [
+                {
+                    model: PlantillaInspeccion,
+                    as: 'plantilla',
+                    include: [{
+                        model: SeccionPlantilla,
+                        as: 'secciones',
+                        include: [{ model: PreguntaPlantilla, as: 'preguntas' }],
+                    }],
+                },
+                {
+                    model: RespuestaInspeccion,
+                    as: 'respuestas',
+                    include: [
+                        { model: PreguntaPlantilla, as: 'pregunta' },
+                        { model: SeccionPlantilla, as: 'seccion' },
+                    ],
+                },
+                {
+                    model: AccionCorrectivaInspeccion,
+                    as: 'acciones',
+                    include: [{
+                        model: User,
+                        as: 'responsable',
+                        attributes: ['Uid', 'name', 'lastName'],
+                    }],
+                },
+                {
+                    model: CondicionInsegura,
+                    as: 'condiciones',
+                },
+                {
+                    model: User,
+                    as: 'inspector',
+                    attributes: ['Uid', 'name', 'lastName'],
+                },
+            ],
+        });
+
+        if (!inspeccion) {
+            return res.status(404).json({ msg: 'Inspección no encontrada' });
+        }
+
+        return res.json(inspeccion);
+    } catch (error) {
+        console.error('Error al obtener inspección:', error);
+        return res.status(500).json({ msg: 'Error al obtener la inspección' });
     }
 };
 
@@ -84,7 +212,8 @@ export const eliminarInspeccion = async (req: Request, res: Response): Promise<a
             return res.status(404).json({ msg: 'Inspección no encontrada' });
         }
 
-        await ChecklistItemSSGT.destroy({ where: { inspeccionId: id } });
+        await AccionCorrectivaInspeccion.destroy({ where: { inspeccionId: id } });
+        await RespuestaInspeccion.destroy({ where: { inspeccionId: id } });
         await CondicionInsegura.destroy({ where: { inspeccionId: id } });
         await inspeccion.destroy();
 
@@ -95,32 +224,131 @@ export const eliminarInspeccion = async (req: Request, res: Response): Promise<a
     }
 };
 
-export const guardarChecklist = async (req: Request, res: Response): Promise<any> => {
+// Guardar respuestas y calcular puntaje
+export const guardarRespuestas = async (req: Request, res: Response): Promise<any> => {
     try {
         const id = parseId(req.params.id);
-        const { items } = req.body;
+        const { respuestas } = req.body;
+
+        const inspeccion = await InspeccionSSGT.findByPk(id, {
+            include: [{
+                model: PlantillaInspeccion,
+                as: 'plantilla',
+                include: [{
+                    model: SeccionPlantilla,
+                    as: 'secciones',
+                    include: [{ model: PreguntaPlantilla, as: 'preguntas' }],
+                }],
+            }],
+        });
+
+        if (!inspeccion) {
+            return res.status(404).json({ msg: 'Inspección no encontrada' });
+        }
+
+        let puntajeObtenido = 0;
+        let puntajeMaximo = 0;
+
+        for (const resp of respuestas) {
+            const respuestaExistente = await RespuestaInspeccion.findOne({
+                where: { inspeccionId: id, preguntaId: resp.preguntaId },
+            });
+
+            // Calcular puntos
+            const pregunta = await PreguntaPlantilla.findByPk(resp.preguntaId, {
+                include: [{ model: SeccionPlantilla, as: 'seccion' }],
+            });
+
+            let puntos = 0;
+            if (pregunta) {
+                const seccion = (pregunta as any).seccion;
+                const pesoSeccion = seccion?.peso || 1.0;
+                const pesoPregunta = pregunta.peso || 1.0;
+                const maxPuntos = pesoSeccion * pesoPregunta;
+                puntajeMaximo += maxPuntos;
+
+                // Evaluar si la respuesta es conforme
+                if (pregunta.tipo === 'si_no') {
+                    if (pregunta.respuestaEsperada && resp.valor === pregunta.respuestaEsperada) {
+                        puntos = maxPuntos;
+                    } else if (!pregunta.respuestaEsperada && resp.valor === 'si') {
+                        puntos = maxPuntos;
+                    }
+                } else if (pregunta.tipo === 'slider' || pregunta.tipo === 'numero') {
+                    const valorNum = parseFloat(resp.valor);
+                    if (!isNaN(valorNum)) {
+                        puntos = (valorNum / 100) * maxPuntos;
+                    }
+                } else {
+                    // texto, fecha, foto, firma: si hay valor = conforme
+                    if (resp.valor) puntos = maxPuntos;
+                }
+
+                puntajeObtenido += puntos;
+            }
+
+            if (respuestaExistente) {
+                await respuestaExistente.update({
+                    valor: resp.valor,
+                    valorArchivo: resp.valorArchivo || null,
+                    observacion: resp.observacion || null,
+                    puntos,
+                });
+            } else {
+                await RespuestaInspeccion.create({
+                    inspeccionId: id,
+                    preguntaId: resp.preguntaId,
+                    seccionId: resp.seccionId,
+                    valor: resp.valor,
+                    valorArchivo: resp.valorArchivo || null,
+                    observacion: resp.observacion || null,
+                    puntos,
+                    orden: resp.orden || 0,
+                });
+            }
+        }
+
+        const porcentaje = puntajeMaximo > 0 ? (puntajeObtenido / puntajeMaximo) * 100 : 0;
+        const plantilla = (inspeccion as any).plantilla;
+        const umbral = plantilla?.umbralAprobacion || 80;
+        const aprobada = porcentaje >= umbral;
+
+        await inspeccion.update({
+            puntajeObtenido,
+            puntajeMaximo,
+            porcentaje: Math.round(porcentaje * 100) / 100,
+            aprobada,
+        });
+
+        return res.json({
+            msg: 'Respuestas guardadas correctamente',
+            puntajeObtenido,
+            puntajeMaximo,
+            porcentaje: Math.round(porcentaje * 100) / 100,
+            aprobada,
+        });
+    } catch (error) {
+        console.error('Error al guardar respuestas:', error);
+        return res.status(500).json({ msg: 'Error al guardar las respuestas' });
+    }
+};
+
+// Completar inspección
+export const completarInspeccion = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const id = parseId(req.params.id);
 
         const inspeccion = await InspeccionSSGT.findByPk(id);
         if (!inspeccion) {
             return res.status(404).json({ msg: 'Inspección no encontrada' });
         }
 
-        await ChecklistItemSSGT.destroy({ where: { inspeccionId: id } });
+        await inspeccion.update({ estado: 'completada' });
 
-        const checklistItems = items.map((item: any) => ({
-            inspeccionId: id,
-            pregunta: item.pregunta,
-            cumple: item.cumple,
-            observacion: item.observacion,
-            orden: item.orden
-        }));
-
-        const creados = await ChecklistItemSSGT.bulkCreate(checklistItems);
-
-        return res.json({ msg: 'Checklist guardado correctamente', checklist: creados });
+        return res.json({ msg: 'Inspección completada', inspeccion });
     } catch (error) {
-        console.error('Error al guardar checklist:', error);
-        return res.status(500).json({ msg: 'Error al guardar el checklist' });
+        console.error('Error al completar inspección:', error);
+        return res.status(500).json({ msg: 'Error al completar la inspección' });
     }
 };
 
@@ -154,14 +382,14 @@ export const obtenerCondicionesInseguras = async (req: Request, res: Response): 
                 {
                     model: User,
                     as: 'reportante',
-                    attributes: ['Uid', 'name', 'lastName']
+                    attributes: ['Uid', 'name', 'lastName'],
                 },
                 {
                     model: InspeccionSSGT,
-                    as: 'inspeccion'
-                }
+                    as: 'inspeccion',
+                },
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
         });
 
         return res.json(condiciones);
@@ -235,217 +463,5 @@ export const subirFotoCondicion = async (req: Request, res: Response): Promise<a
     } catch (error) {
         console.error('Error al subir foto de condición:', error);
         return res.status(500).json({ msg: 'Error al subir la foto' });
-    }
-};
-
-// ===================== MATRIZ DE RIESGOS =====================
-
-const calcularNivelRiesgo = (probabilidad: number, consecuencia: number): string => {
-    const valor = probabilidad * consecuencia;
-    if (valor >= 21) return 'critico';
-    if (valor >= 16) return 'muy_alto';
-    if (valor >= 10) return 'alto';
-    if (valor >= 5) return 'medio';
-    return 'bajo';
-};
-
-export const crearRiesgo = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const data = req.body;
-        data.responsableId = req.body.responsableId;
-        data.nivelRiesgo = calcularNivelRiesgo(data.probabilidad, data.consecuencia);
-
-        const riesgo = await MatrizRiesgo.create(data);
-
-        return res.status(201).json({ msg: 'Riesgo creado correctamente', riesgo });
-    } catch (error) {
-        console.error('Error al crear riesgo:', error);
-        return res.status(500).json({ msg: 'Error al crear el riesgo' });
-    }
-};
-
-export const obtenerRiesgos = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const { empresa, nivelRiesgo } = req.query;
-        const where: any = {};
-
-        if (empresa) where.empresa = empresa;
-        if (nivelRiesgo) where.nivelRiesgo = nivelRiesgo;
-
-        const riesgos = await MatrizRiesgo.findAll({
-            where,
-            include: [
-                {
-                    model: User,
-                    as: 'responsable',
-                    attributes: ['Uid', 'name', 'lastName']
-                }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
-
-        return res.json(riesgos);
-    } catch (error) {
-        console.error('Error al obtener riesgos:', error);
-        return res.status(500).json({ msg: 'Error al obtener los riesgos' });
-    }
-};
-
-export const actualizarRiesgo = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const id = parseId(req.params.id);
-
-        const riesgo = await MatrizRiesgo.findByPk(id);
-        if (!riesgo) {
-            return res.status(404).json({ msg: 'Riesgo no encontrado' });
-        }
-
-        const data = req.body;
-        const probabilidad = data.probabilidad !== undefined ? data.probabilidad : (riesgo as any).probabilidad;
-        const consecuencia = data.consecuencia !== undefined ? data.consecuencia : (riesgo as any).consecuencia;
-        data.nivelRiesgo = calcularNivelRiesgo(probabilidad, consecuencia);
-
-        await riesgo.update(data);
-
-        return res.json({ msg: 'Riesgo actualizado correctamente', riesgo });
-    } catch (error) {
-        console.error('Error al actualizar riesgo:', error);
-        return res.status(500).json({ msg: 'Error al actualizar el riesgo' });
-    }
-};
-
-export const eliminarRiesgo = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const id = parseId(req.params.id);
-
-        const riesgo = await MatrizRiesgo.findByPk(id);
-        if (!riesgo) {
-            return res.status(404).json({ msg: 'Riesgo no encontrado' });
-        }
-
-        const archivo = (riesgo as any).archivoAdjunto;
-        if (archivo) {
-            const archivoPath = path.resolve(archivo);
-            if (fs.existsSync(archivoPath)) {
-                fs.unlinkSync(archivoPath);
-            }
-        }
-
-        await riesgo.destroy();
-
-        return res.json({ msg: 'Riesgo eliminado correctamente' });
-    } catch (error) {
-        console.error('Error al eliminar riesgo:', error);
-        return res.status(500).json({ msg: 'Error al eliminar el riesgo' });
-    }
-};
-
-export const subirArchivoRiesgo = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const id = parseId(req.params.id);
-        const file = req.file;
-
-        if (!file) {
-            return res.status(400).json({ msg: 'No se ha subido ningún archivo' });
-        }
-
-        const riesgo = await MatrizRiesgo.findByPk(id);
-        if (!riesgo) {
-            return res.status(404).json({ msg: 'Riesgo no encontrado' });
-        }
-
-        await riesgo.update({ archivoAdjunto: file.path });
-
-        return res.json({ msg: 'Archivo subido correctamente', archivo: file.path });
-    } catch (error) {
-        console.error('Error al subir archivo de riesgo:', error);
-        return res.status(500).json({ msg: 'Error al subir el archivo' });
-    }
-};
-
-// ===================== PLANES DE ACCION =====================
-
-export const crearPlanAccion = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const data = req.body;
-        data.responsableId = req.body.responsableId;
-
-        const plan = await PlanAccion.create(data);
-
-        return res.status(201).json({ msg: 'Plan de acción creado correctamente', plan });
-    } catch (error) {
-        console.error('Error al crear plan de acción:', error);
-        return res.status(500).json({ msg: 'Error al crear el plan de acción' });
-    }
-};
-
-export const obtenerPlanesAccion = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const { estado, origen } = req.query;
-        const where: any = {};
-
-        if (estado) where.estado = estado;
-        if (origen) where.origen = origen;
-
-        const planes = await PlanAccion.findAll({
-            where,
-            include: [
-                {
-                    model: User,
-                    as: 'responsablePlan',
-                    attributes: ['Uid', 'name', 'lastName']
-                }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
-
-        return res.json(planes);
-    } catch (error) {
-        console.error('Error al obtener planes de acción:', error);
-        return res.status(500).json({ msg: 'Error al obtener los planes de acción' });
-    }
-};
-
-export const actualizarPlanAccion = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const id = parseId(req.params.id);
-
-        const plan = await PlanAccion.findByPk(id);
-        if (!plan) {
-            return res.status(404).json({ msg: 'Plan de acción no encontrado' });
-        }
-
-        await plan.update(req.body);
-
-        return res.json({ msg: 'Plan de acción actualizado correctamente', plan });
-    } catch (error) {
-        console.error('Error al actualizar plan de acción:', error);
-        return res.status(500).json({ msg: 'Error al actualizar el plan de acción' });
-    }
-};
-
-export const eliminarPlanAccion = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const id = parseId(req.params.id);
-
-        const plan = await PlanAccion.findByPk(id);
-        if (!plan) {
-            return res.status(404).json({ msg: 'Plan de acción no encontrado' });
-        }
-
-        const evidencia = (plan as any).evidencia;
-        if (evidencia) {
-            const evidenciaPath = path.resolve(evidencia);
-            if (fs.existsSync(evidenciaPath)) {
-                fs.unlinkSync(evidenciaPath);
-            }
-        }
-
-        await plan.destroy();
-
-        return res.json({ msg: 'Plan de acción eliminado correctamente' });
-    } catch (error) {
-        console.error('Error al eliminar plan de acción:', error);
-        return res.status(500).json({ msg: 'Error al eliminar el plan de acción' });
     }
 };

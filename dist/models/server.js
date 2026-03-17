@@ -57,6 +57,7 @@ const reservation_1 = __importDefault(require("../routes/reservation"));
 const asistencia_1 = __importDefault(require("../routes/asistencia"));
 const actaRecarga_1 = __importDefault(require("../routes/actaRecarga"));
 const ssgt_1 = __importDefault(require("../routes/ssgt"));
+const whatsapp_1 = __importDefault(require("../routes/whatsapp"));
 const area_2 = require("./area");
 const permisos_2 = require("./permisos");
 const product_3 = require("./product");
@@ -100,6 +101,7 @@ class Server {
         this.app.use('/api/asistencia', asistencia_1.default);
         this.app.use('/api/actas-recargas', actaRecarga_1.default);
         this.app.use('/api/ssgt', ssgt_1.default);
+        this.app.use('/api/whatsapp', whatsapp_1.default);
     }
     middlewares() {
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -127,6 +129,7 @@ class Server {
         this.app.use(express_1.default.json());
         // Servir archivos estáticos
         this.app.use('/uploads', express_1.default.static('public/uploads'));
+        this.app.use('/uploads', express_1.default.static('uploads'));
         this.app.use('/public', express_1.default.static('public'));
     }
     async DBconnect() {
@@ -135,7 +138,7 @@ class Server {
             await connection_1.default.authenticate();
             await role_1.Role.sync();
             await area_2.Area.sync({ alter: false });
-            await user_2.User.sync({ alter: false });
+            await user_2.User.sync({ alter: true });
             await product_3.Product.sync();
             await permisos_2.Permiso.sync({ alter: true });
             await time_2.Registro.sync();
@@ -175,13 +178,15 @@ class Server {
             const { DocumentoFirma, CampoFirmaDocumento } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
             await DocumentoFirma.sync({ alter: true });
             await CampoFirmaDocumento.sync({ alter: true });
-            // Sincronizar modelos Inspecciones y Riesgos
-            const { InspeccionSSGT, ChecklistItemSSGT, CondicionInsegura, MatrizRiesgo, PlanAccion } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            // Sincronizar modelos Inspecciones (SafetyCulture)
+            const { PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, InspeccionSSGT, RespuestaInspeccion, AccionCorrectivaInspeccion, CondicionInsegura } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
+            await PlantillaInspeccion.sync({ alter: true });
+            await SeccionPlantilla.sync({ alter: true });
+            await PreguntaPlantilla.sync({ alter: true });
             await InspeccionSSGT.sync({ alter: true });
-            await ChecklistItemSSGT.sync({ alter: true });
+            await RespuestaInspeccion.sync({ alter: true });
+            await AccionCorrectivaInspeccion.sync({ alter: true });
             await CondicionInsegura.sync({ alter: true });
-            await MatrizRiesgo.sync({ alter: true });
-            await PlanAccion.sync({ alter: true });
             // Sincronizar modelos Capacitaciones SST
             const { CapacitacionSST, EvaluacionCapacitacion, PreguntaEvaluacion, RespuestaEvaluacion } = await Promise.resolve().then(() => __importStar(require('./ssgt')));
             await CapacitacionSST.sync({ alter: true });

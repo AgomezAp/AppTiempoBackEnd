@@ -46,24 +46,32 @@ import {
 import {
   crearInspeccion,
   obtenerInspecciones,
+  obtenerInspeccionPorId,
   actualizarInspeccion,
   eliminarInspeccion,
-  guardarChecklist,
+  guardarRespuestas,
+  completarInspeccion,
   crearCondicionInsegura,
   obtenerCondicionesInseguras,
   actualizarCondicionInsegura,
   eliminarCondicionInsegura,
   subirFotoCondicion,
-  crearRiesgo,
-  obtenerRiesgos,
-  actualizarRiesgo,
-  eliminarRiesgo,
-  subirArchivoRiesgo,
-  crearPlanAccion,
-  obtenerPlanesAccion,
-  actualizarPlanAccion,
-  eliminarPlanAccion,
 } from '../controllers/ssgtInspecciones';
+import {
+  crearPlantilla,
+  obtenerPlantillas,
+  obtenerPlantillaPorId,
+  actualizarPlantilla,
+  eliminarPlantilla,
+  duplicarPlantilla,
+} from '../controllers/ssgtPlantillas';
+import {
+  crearAccionCorrectiva,
+  obtenerAccionesCorrectivas,
+  actualizarAccionCorrectiva,
+  eliminarAccionCorrectiva,
+  subirEvidenciaAccion,
+} from '../controllers/ssgtAccionesCorrectivas';
 import {
   crearCapacitacion,
   obtenerCapacitaciones,
@@ -155,15 +163,91 @@ router.post('/documentos-firma/:id/campos/:campoId/reenviar', validateToken, ree
 router.get('/documentos-firma/:id/pdf-firmado', validateToken, generarPdfFirmado);
 
 // ========================================
-// INSPECCIONES Y RIESGOS
+// PLANTILLAS DE INSPECCIÓN
+// ========================================
+
+router.post('/plantillas', validateToken, crearPlantilla);
+router.get('/plantillas', validateToken, obtenerPlantillas);
+router.get('/plantillas/:id', validateToken, obtenerPlantillaPorId);
+router.put('/plantillas/:id', validateToken, actualizarPlantilla);
+router.delete('/plantillas/:id', validateToken, eliminarPlantilla);
+router.post('/plantillas/:id/duplicar', validateToken, duplicarPlantilla);
+
+// ========================================
+// INSPECCIONES (SafetyCulture)
 // ========================================
 
 // Inspecciones CRUD
 router.post('/inspecciones', validateToken, crearInspeccion);
 router.get('/inspecciones', validateToken, obtenerInspecciones);
+router.get('/inspecciones/:id', validateToken, obtenerInspeccionPorId);
 router.put('/inspecciones/:id', validateToken, actualizarInspeccion);
 router.delete('/inspecciones/:id', validateToken, eliminarInspeccion);
-router.post('/inspecciones/:id/checklist', validateToken, guardarChecklist);
+router.post('/inspecciones/:id/respuestas', validateToken, guardarRespuestas);
+router.post('/inspecciones/:id/respuestas/foto', validateToken, upload.single('foto'), async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ msg: 'No se envió ningún archivo' });
+    }
+    const rutaArchivo = `/uploads/ssgt/${req.file.filename}`;
+    return res.json({ msg: 'Foto subida correctamente', ruta: rutaArchivo });
+  } catch (error) {
+    console.error('Error al subir foto de inspección:', error);
+    return res.status(500).json({ msg: 'Error al subir la foto' });
+  }
+});
+router.post('/inspecciones/:id/completar', validateToken, completarInspeccion);
+
+// PDF de inspección
+router.get('/inspecciones/:id/pdf', validateToken, async (req: any, res: any) => {
+  try {
+    const { parseId } = await import('../utils/parseId');
+    const { InspeccionSSGT, PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, RespuestaInspeccion, AccionCorrectivaInspeccion } = await import('../models/ssgt');
+    const { User } = await import('../models/user');
+    const { generarPdfInspeccion } = await import('../services/inspeccionPdf');
+
+    const id = parseId(req.params.id);
+    const inspeccion = await InspeccionSSGT.findByPk(id, {
+      include: [
+        {
+          model: PlantillaInspeccion,
+          as: 'plantilla',
+        },
+        {
+          model: RespuestaInspeccion,
+          as: 'respuestas',
+          include: [
+            { model: PreguntaPlantilla, as: 'pregunta' },
+            { model: SeccionPlantilla, as: 'seccion' },
+          ],
+        },
+        {
+          model: AccionCorrectivaInspeccion,
+          as: 'acciones',
+          include: [{ model: User, as: 'responsable', attributes: ['Uid', 'name', 'lastName'] }],
+        },
+        {
+          model: User,
+          as: 'inspector',
+          attributes: ['Uid', 'name', 'lastName'],
+        },
+      ],
+    });
+
+    if (!inspeccion) {
+      res.status(404).json({ msg: 'Inspección no encontrada' });
+      return;
+    }
+
+    const pdfBuffer = await generarPdfInspeccion(inspeccion.toJSON());
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=inspeccion_${id}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error al generar PDF:', error);
+    res.status(500).json({ msg: 'Error al generar el PDF' });
+  }
+});
 
 // Condiciones Inseguras
 router.post('/condiciones-inseguras', validateToken, crearCondicionInsegura);
@@ -172,18 +256,15 @@ router.put('/condiciones-inseguras/:id', validateToken, actualizarCondicionInseg
 router.delete('/condiciones-inseguras/:id', validateToken, eliminarCondicionInsegura);
 router.post('/condiciones-inseguras/:id/foto', validateToken, upload.single('foto'), subirFotoCondicion);
 
-// Matriz de Riesgos
-router.post('/riesgos', validateToken, crearRiesgo);
-router.get('/riesgos', validateToken, obtenerRiesgos);
-router.put('/riesgos/:id', validateToken, actualizarRiesgo);
-router.delete('/riesgos/:id', validateToken, eliminarRiesgo);
-router.post('/riesgos/:id/archivo', validateToken, upload.single('archivo'), subirArchivoRiesgo);
+// ========================================
+// ACCIONES CORRECTIVAS
+// ========================================
 
-// Planes de Acción
-router.post('/planes-accion', validateToken, crearPlanAccion);
-router.get('/planes-accion', validateToken, obtenerPlanesAccion);
-router.put('/planes-accion/:id', validateToken, actualizarPlanAccion);
-router.delete('/planes-accion/:id', validateToken, eliminarPlanAccion);
+router.post('/acciones-correctivas', validateToken, crearAccionCorrectiva);
+router.get('/acciones-correctivas', validateToken, obtenerAccionesCorrectivas);
+router.put('/acciones-correctivas/:id', validateToken, actualizarAccionCorrectiva);
+router.delete('/acciones-correctivas/:id', validateToken, eliminarAccionCorrectiva);
+router.post('/acciones-correctivas/:id/evidencia', validateToken, upload.single('evidencia'), subirEvidenciaAccion);
 
 // ========================================
 // CAPACITACIONES SST

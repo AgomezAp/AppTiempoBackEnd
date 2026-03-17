@@ -145,6 +145,14 @@ export const obtenerInfoFirma = async (req: Request, res: Response): Promise<any
       return res.status(404).json({ msg: 'Token inválido o expirado' });
     }
 
+    if (participante.cancelado) {
+      return res.status(400).json({ msg: 'Este enlace de firma ha sido cancelado', tipo: 'cancelado' });
+    }
+
+    if (participante.anulado) {
+      return res.status(400).json({ msg: 'La firma de este participante ha sido anulada', tipo: 'anulado' });
+    }
+
     if (participante.firmado) {
       return res.status(400).json({ msg: 'Este registro ya ha sido firmado' });
     }
@@ -195,6 +203,14 @@ export const firmarAsistencia = async (req: Request, res: Response): Promise<any
       return res.status(404).json({ msg: 'Token inválido o expirado' });
     }
 
+    if (participante.cancelado) {
+      return res.status(400).json({ msg: 'Este enlace de firma ha sido cancelado', tipo: 'cancelado' });
+    }
+
+    if (participante.anulado) {
+      return res.status(400).json({ msg: 'La firma de este participante ha sido anulada', tipo: 'anulado' });
+    }
+
     if (participante.firmado) {
       return res.status(400).json({ msg: 'Este registro ya ha sido firmado' });
     }
@@ -206,13 +222,13 @@ export const firmarAsistencia = async (req: Request, res: Response): Promise<any
       firmado: true,
     });
 
-    // Verificar si todos los participantes han firmado
+    // Verificar si todos los participantes activos han firmado (excluir cancelados)
     const registro = (participante as any).registro;
     const totalParticipantes = await ParticipanteAsistencia.count({
-      where: { registroId: registro.id },
+      where: { registroId: registro.id, cancelado: false },
     });
     const firmados = await ParticipanteAsistencia.count({
-      where: { registroId: registro.id, firmado: true },
+      where: { registroId: registro.id, firmado: true, cancelado: false, anulado: false },
     });
 
     if (firmados === totalParticipantes) {
@@ -405,7 +421,7 @@ export const eliminarRegistro = async (req: Request, res: Response): Promise<any
 
     // Eliminar participantes primero
     await ParticipanteAsistencia.destroy({ where: { registroId: id } });
-    
+
     // Eliminar registro
     await registro.destroy();
 
@@ -414,6 +430,107 @@ export const eliminarRegistro = async (req: Request, res: Response): Promise<any
     console.error('Error al eliminar registro:', error);
     res.status(500).json({
       msg: 'Error al eliminar registro',
+      error: error.message,
+    });
+  }
+};
+
+// Cancelar token de firma de un participante (antes de firmar)
+export const cancelarTokenFirma = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { participanteId } = req.params;
+    const { motivo } = req.body;
+
+    const participante = await ParticipanteAsistencia.findByPk(parseId(participanteId), {
+      include: [{ model: RegistroAsistencia, as: 'registro' }],
+    });
+
+    if (!participante) {
+      return res.status(404).json({ msg: 'Participante no encontrado' });
+    }
+
+    if (participante.esExterno) {
+      return res.status(400).json({ msg: 'No se puede cancelar la firma de un participante externo' });
+    }
+
+    if (participante.cancelado) {
+      return res.status(400).json({ msg: 'Este participante ya está cancelado' });
+    }
+
+    if (participante.firmado) {
+      return res.status(400).json({ msg: 'Este participante ya firmó. Use la opción de anular firma.' });
+    }
+
+    await participante.update({
+      cancelado: true,
+      fechaCancelacion: new Date(),
+      motivoCancelacion: motivo || null,
+    });
+
+    // Recalcular estado del registro
+    const registro = (participante as any).registro;
+    const totalActivos = await ParticipanteAsistencia.count({
+      where: { registroId: registro.id, cancelado: false },
+    });
+    const firmadosActivos = await ParticipanteAsistencia.count({
+      where: { registroId: registro.id, firmado: true, cancelado: false, anulado: false },
+    });
+
+    if (totalActivos > 0 && firmadosActivos === totalActivos) {
+      await registro.update({ estado: 'completado' });
+    }
+
+    res.json({ msg: 'Token de firma cancelado exitosamente' });
+  } catch (error: any) {
+    console.error('Error al cancelar token:', error);
+    res.status(500).json({
+      msg: 'Error al cancelar token de firma',
+      error: error.message,
+    });
+  }
+};
+
+// Anular firma de un participante (después de firmar)
+export const anularFirma = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { participanteId } = req.params;
+    const { motivo } = req.body;
+
+    const participante = await ParticipanteAsistencia.findByPk(parseId(participanteId), {
+      include: [{ model: RegistroAsistencia, as: 'registro' }],
+    });
+
+    if (!participante) {
+      return res.status(404).json({ msg: 'Participante no encontrado' });
+    }
+
+    if (!participante.firmado) {
+      return res.status(400).json({ msg: 'Este participante no ha firmado aún' });
+    }
+
+    if (participante.anulado) {
+      return res.status(400).json({ msg: 'La firma de este participante ya fue anulada' });
+    }
+
+    await participante.update({
+      anulado: true,
+      firma: null,
+      firmado: false,
+      fechaCancelacion: new Date(),
+      motivoCancelacion: motivo || null,
+    });
+
+    // Recalcular estado del registro
+    const registro = (participante as any).registro;
+    if (registro.estado === 'completado') {
+      await registro.update({ estado: 'en_proceso' });
+    }
+
+    res.json({ msg: 'Firma anulada exitosamente' });
+  } catch (error: any) {
+    console.error('Error al anular firma:', error);
+    res.status(500).json({
+      msg: 'Error al anular firma',
       error: error.message,
     });
   }

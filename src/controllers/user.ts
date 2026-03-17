@@ -12,7 +12,7 @@ import { Novedad, NovedadHistorico, Registro, Sumatoria, HistoricoHorasExtras } 
 
 // Registro de usuario con asignación de rol
 export const register = async (req: Request, res: Response): Promise<any> => {
-  const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
+  const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular } = req.body;
 
   // Verificar si el usuario ya existe
   const userOne = await User.findOne({ where: { email: email } });
@@ -51,6 +51,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       fondoPension: fondoPension || 'PORVENIR',
       fondoCesantias: fondoCesantias || 'PORVENIR',
       fechaIngreso: fechaIngreso && !isNaN(new Date(fechaIngreso).getTime()) ? new Date(fechaIngreso) : null,
+      celular: celular || null,
     });
 
     res.status(200).json({
@@ -186,12 +187,13 @@ export const getListUser = async (
 ): Promise<any> => {
   try {
     const user = await User.findAll({
-      attributes: ["Uid", "name", "lastName", "email"],
+      attributes: ["Uid", "name", "lastName", "email", "celular"],
     });
     const userJS = user.map((us) => ({
       Uid: us.Uid,
       nombre: `${us.name} ${us.lastName}`,
       email: us.email,
+      celular: us.celular,
     }));
     res.status(200).json(userJS);
   } catch (error) {
@@ -201,7 +203,7 @@ export const getListUser = async (
 
 export const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;
-  const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
+  const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular } = req.body;
   try {
     const user = await User.findByPk(parseId(Uid));
 
@@ -232,6 +234,7 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.cargo = cargo || user.cargo;
     user.fondoPension = fondoPension || user.fondoPension;
     user.fondoCesantias = fondoCesantias || user.fondoCesantias;
+    user.celular = celular !== undefined ? celular || null : user.celular;
     if (fechaIngreso !== undefined) {
       const parsedFecha = fechaIngreso ? new Date(fechaIngreso) : null;
       user.fechaIngreso = (parsedFecha && !isNaN(parsedFecha.getTime())) ? parsedFecha : null;

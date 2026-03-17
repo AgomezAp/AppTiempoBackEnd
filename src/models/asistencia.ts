@@ -81,6 +81,10 @@ export class ParticipanteAsistencia extends Model {
   public tokenFirma!: string;
   public firmado!: boolean;
   public esExterno!: boolean;
+  public cancelado!: boolean;
+  public anulado!: boolean;
+  public fechaCancelacion!: Date | null;
+  public motivoCancelacion!: string | null;
 }
 
 ParticipanteAsistencia.init(
@@ -149,6 +153,24 @@ ParticipanteAsistencia.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    cancelado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    anulado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    fechaCancelacion: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    motivoCancelacion: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
     },
   },
   {

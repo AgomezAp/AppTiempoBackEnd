@@ -48,7 +48,7 @@ const permisos_1 = require("../models/permisos");
 const time_1 = require("../models/time");
 // Registro de usuario con asignación de rol
 const register = async (req, res) => {
-    const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
+    const { Uid, name, lastName, password, email, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular } = req.body;
     // Verificar si el usuario ya existe
     const userOne = await user_1.User.findOne({ where: { email: email } });
     if (userOne) {
@@ -83,6 +83,7 @@ const register = async (req, res) => {
             fondoPension: fondoPension || 'PORVENIR',
             fondoCesantias: fondoCesantias || 'PORVENIR',
             fechaIngreso: fechaIngreso && !isNaN(new Date(fechaIngreso).getTime()) ? new Date(fechaIngreso) : null,
+            celular: celular || null,
         });
         res.status(200).json({
             message: "Usuario registrado con éxito",
@@ -199,12 +200,13 @@ exports.getAllUsers = getAllUsers;
 const getListUser = async (req, res) => {
     try {
         const user = await user_1.User.findAll({
-            attributes: ["Uid", "name", "lastName", "email"],
+            attributes: ["Uid", "name", "lastName", "email", "celular"],
         });
         const userJS = user.map((us) => ({
             Uid: us.Uid,
             nombre: `${us.name} ${us.lastName}`,
             email: us.email,
+            celular: us.celular,
         }));
         res.status(200).json(userJS);
     }
@@ -215,7 +217,7 @@ const getListUser = async (req, res) => {
 exports.getListUser = getListUser;
 const updateUser = async (req, res) => {
     const { Uid } = req.params;
-    const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso } = req.body;
+    const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular } = req.body;
     try {
         const user = await user_1.User.findByPk((0, parseId_1.parseId)(Uid));
         if (!user) {
@@ -244,6 +246,7 @@ const updateUser = async (req, res) => {
         user.cargo = cargo || user.cargo;
         user.fondoPension = fondoPension || user.fondoPension;
         user.fondoCesantias = fondoCesantias || user.fondoCesantias;
+        user.celular = celular !== undefined ? celular || null : user.celular;
         if (fechaIngreso !== undefined) {
             const parsedFecha = fechaIngreso ? new Date(fechaIngreso) : null;
             user.fechaIngreso = (parsedFecha && !isNaN(parsedFecha.getTime())) ? parsedFecha : null;

@@ -6,25 +6,33 @@ import {
 import jwt from 'jsonwebtoken';
 
 const validateToken = (req: Request, res: Response, next:NextFunction)=>{
-    const headersToken  = req.headers['authorization']
+    const headersToken = req.headers['authorization'];
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
 
-    console.log(headersToken)
-    if (headersToken != undefined && headersToken.startsWith('Bearer ')){
-       try{
-        const token = headersToken.slice(7);
+    let token: string | undefined;
+
+    if (headersToken != undefined && headersToken.startsWith('Bearer ')) {
+        token = headersToken.slice(7);
+    } else if (queryToken && queryToken.trim() !== '') {
+        token = queryToken;
+    }
+
+    if (!token) {
+        res.status(401).json({
+            msg:`Acceso denegado`
+        });
+        return;
+    }
+
+    try{
         const decoded = jwt.verify(token,process.env.SECRET_KEY||'ptrYxZyMticytOs8eqKW17niMy8RR1JS') as any;
         (req as any).userId = decoded.userId;
         (req as any).userRole = decoded.role; // Nombre del rol como "Admin", "User", etc.
-        next()
-       }catch (error){
+        next();
+    }catch (error){
         res.status(401).json({
             msg:`La sesión ha terminado`
-        })
-       }
-    }else{
-        res.status(401).json({
-            msg:`Acceso denegado`
-        })
+        });
     }
   
 }
