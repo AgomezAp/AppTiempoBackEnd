@@ -2,7 +2,7 @@
 node_modules/
 dist/
 GUIA_MIGRACION_PRODUCCION.md
+package-lock.json
 MIGRACION_PRODUCCION.sql
 NUEVAS_FUNCIONALIDADES.md
-package-lock.json
 TESTING.md
