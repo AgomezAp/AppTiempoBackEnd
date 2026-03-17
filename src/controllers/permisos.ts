@@ -106,17 +106,20 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       if (horaEntrada) text += `\n Hora de regreso: ${horaEntrada}.`;
       text += `\n\n Observaciones: ${observaciones}`;
       
-      const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',') || [];
-      await sendMail([...fixedRecipients, emailLider, emailPersonal], subject, text, soporte);
+      const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
 
-      // Enviar correo a destinatarios filtrados SOLO para tipos específicos
-      // Se excluyen los que ya están en FIXED_RECIPIENTS para evitar correos duplicados
+      // Para tipos filtrados, agregar FILTERED_RECIPIENTS como CC en el mismo correo
       const filteredRecipients = process.env.FILTERED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
-      const fixedSet = new Set(fixedRecipients.map(e => e.trim().toLowerCase()));
-      const filteredSinDuplicados = filteredRecipients.filter(e => !fixedSet.has(e.toLowerCase()));
+      const mainRecipients = [...fixedRecipients, emailLider, emailPersonal];
+      const mainSet = new Set(mainRecipients.map(e => e.trim().toLowerCase()));
+      const filteredSinDuplicados = filteredRecipients.filter(e => !mainSet.has(e.toLowerCase()));
+
+      let ccRecipients: string[] = [];
       if (filteredSinDuplicados.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
-        await sendMail(filteredSinDuplicados, subject, text, soporte);
+        ccRecipients = filteredSinDuplicados;
       }
+
+      await sendMail(mainRecipients, subject, text, soporte, ccRecipients);
 
       res.status(200).json({
         message: 'Permiso creado con éxito',

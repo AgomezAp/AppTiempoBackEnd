@@ -235,9 +235,11 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.fondoPension = fondoPension || user.fondoPension;
     user.fondoCesantias = fondoCesantias || user.fondoCesantias;
     user.celular = celular !== undefined ? celular || null : user.celular;
-    if (fechaIngreso !== undefined) {
-      const parsedFecha = fechaIngreso ? new Date(fechaIngreso) : null;
-      user.fechaIngreso = (parsedFecha && !isNaN(parsedFecha.getTime())) ? parsedFecha : null;
+    if (fechaIngreso !== undefined && fechaIngreso !== '' && fechaIngreso !== null) {
+      const parsedFecha = new Date(fechaIngreso);
+      if (!isNaN(parsedFecha.getTime())) {
+        user.fechaIngreso = parsedFecha;
+      }
     }
 
     if (password) {

@@ -24,7 +24,8 @@ export const sendMail = (
   to: string[],
   subject: string,
   text: string,
-  attachments?: Buffer | Buffer[] | null
+  attachments?: Buffer | Buffer[] | null,
+  cc?: string[]
 ) => {
   const domain = process.env.EMAIL_SERVICE;
   const messageId = `<${crypto.randomUUID()}@${domain}.com>`;
@@ -32,6 +33,7 @@ export const sendMail = (
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: to.join(","),
+    cc: cc && cc.length > 0 ? cc.join(",") : undefined,
     subject: `[${crypto.randomUUID().substring(0, 8)}] ${subject}`,
     text,
     headers: {
