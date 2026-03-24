@@ -1,5 +1,7 @@
 import PdfPrinter from 'pdfmake';
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
+import fs from 'fs';
+import path from 'path';
 
 const fonts = {
     Helvetica: {
@@ -22,9 +24,26 @@ interface SeccionReporte {
         pesoMax: number;
         observacion: string | null;
         conforme: boolean;
+        omitida: boolean;
+        fotos: { rutaArchivo: string; descripcion?: string | null }[];
     }[];
     puntosObtenidos: number;
     puntosMaximos: number;
+}
+
+function cargarImagenBase64(rutaArchivo: string): string | null {
+    try {
+        const fullPath = path.resolve('.' + rutaArchivo);
+        if (fs.existsSync(fullPath)) {
+            const data = fs.readFileSync(fullPath);
+            const ext = path.extname(fullPath).toLowerCase();
+            const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+            return `data:${mime};base64,${data.toString('base64')}`;
+        }
+    } catch (err) {
+        console.error('Error cargando imagen para PDF:', err);
+    }
+    return null;
 }
 
 export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
@@ -34,7 +53,6 @@ export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
             const aprobada = inspeccion.aprobada;
             const colorResultado = aprobada ? '#27ae60' : '#e74c3c';
 
-            // Agrupar respuestas por sección
             const seccionesMap = new Map<number, SeccionReporte>();
             const respuestas = inspeccion.respuestas || [];
 
@@ -54,7 +72,8 @@ export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
 
                 const sec = seccionesMap.get(seccionId)!;
                 const pesoMax = (seccion.peso || 1) * (pregunta.peso || 1);
-                const conforme = resp.puntos >= pesoMax * 0.5;
+                const isOmitida = resp.omitida === true;
+                const conforme = isOmitida ? true : resp.puntos >= pesoMax * 0.5;
 
                 sec.preguntas.push({
                     texto: pregunta.texto || '',
@@ -64,14 +83,17 @@ export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
                     pesoMax,
                     observacion: resp.observacion,
                     conforme,
+                    omitida: isOmitida,
+                    fotos: resp.fotos || [],
                 });
-                sec.puntosObtenidos += resp.puntos;
-                sec.puntosMaximos += pesoMax;
+
+                if (!isOmitida) {
+                    sec.puntosObtenidos += resp.puntos;
+                    sec.puntosMaximos += pesoMax;
+                }
             }
 
             const secciones = Array.from(seccionesMap.values());
-
-            // Construir body de secciones
             const seccionesContent: any[] = [];
 
             for (const sec of secciones) {
@@ -96,13 +118,21 @@ export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
 
                 for (const preg of sec.preguntas) {
                     const valorStr = preg.valor || 'Sin respuesta';
-                    const estadoStr = preg.conforme ? 'Conforme' : 'No Conforme';
-                    const estadoColor = preg.conforme ? '#27ae60' : '#e74c3c';
+                    let estadoStr: string;
+                    let estadoColor: string;
+
+                    if (preg.omitida) {
+                        estadoStr = 'Omitida';
+                        estadoColor = '#95a5a6';
+                    } else {
+                        estadoStr = preg.conforme ? 'Conforme' : 'No Conforme';
+                        estadoColor = preg.conforme ? '#27ae60' : '#e74c3c';
+                    }
 
                     tableBody.push([
                         { text: preg.texto, fontSize: 8 },
                         { text: valorStr, fontSize: 8 },
-                        { text: `${preg.puntos.toFixed(1)}/${preg.pesoMax.toFixed(1)}`, fontSize: 8, alignment: 'center' },
+                        { text: preg.omitida ? 'N/A' : `${preg.puntos.toFixed(1)}/${preg.pesoMax.toFixed(1)}`, fontSize: 8, alignment: 'center' },
                         { text: estadoStr, fontSize: 8, color: estadoColor, bold: true },
                     ]);
 
@@ -122,9 +152,43 @@ export const generarPdfInspeccion = (inspeccion: any): Promise<Buffer> => {
                     },
                     layout: 'lightHorizontalLines',
                 });
+
+                // Agregar fotos de la sección
+                for (const preg of sec.preguntas) {
+                    if (preg.fotos && preg.fotos.length > 0) {
+                        seccionesContent.push({
+                            text: `Fotos: ${preg.texto}`,
+                            fontSize: 8,
+                            bold: true,
+                            margin: [0, 5, 0, 3] as [number, number, number, number],
+                        });
+
+                        const fotosColumns: any[] = [];
+                        for (const foto of preg.fotos) {
+                            const imgBase64 = cargarImagenBase64(foto.rutaArchivo);
+                            if (imgBase64) {
+                                fotosColumns.push({
+                                    image: imgBase64,
+                                    width: 120,
+                                    margin: [0, 0, 5, 5] as [number, number, number, number],
+                                });
+                            }
+                        }
+
+                        for (let i = 0; i < fotosColumns.length; i += 3) {
+                            const row = fotosColumns.slice(i, i + 3);
+                            while (row.length < 3) {
+                                row.push({ text: '', width: 120 });
+                            }
+                            seccionesContent.push({
+                                columns: row,
+                                margin: [0, 0, 0, 5] as [number, number, number, number],
+                            });
+                        }
+                    }
+                }
             }
 
-            // Acciones correctivas
             const accionesContent: any[] = [];
             const acciones = inspeccion.acciones || [];
             if (acciones.length > 0) {

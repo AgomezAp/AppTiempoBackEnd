@@ -47,10 +47,16 @@ import {
   crearInspeccion,
   obtenerInspecciones,
   obtenerInspeccionPorId,
+  obtenerInspeccionPorToken,
+  guardarRespuestasPorToken,
+  completarInspeccionPorToken,
+  subirFotoPorToken,
   actualizarInspeccion,
   eliminarInspeccion,
   guardarRespuestas,
   completarInspeccion,
+  subirFotosRespuesta,
+  eliminarFotoRespuesta,
   crearCondicionInsegura,
   obtenerCondicionesInseguras,
   actualizarCondicionInsegura,
@@ -163,6 +169,15 @@ router.post('/documentos-firma/:id/campos/:campoId/reenviar', validateToken, ree
 router.get('/documentos-firma/:id/pdf-firmado', validateToken, generarPdfFirmado);
 
 // ========================================
+// INSPECCIONES - ACCESO PÚBLICO MÓVIL (SIN auth)
+// ========================================
+
+router.get('/inspecciones/movil/:token', obtenerInspeccionPorToken);
+router.post('/inspecciones/movil/:token/respuestas', guardarRespuestasPorToken);
+router.post('/inspecciones/movil/:token/completar', completarInspeccionPorToken);
+router.post('/inspecciones/movil/:token/fotos', upload.array('fotos', 10), subirFotoPorToken);
+
+// ========================================
 // PLANTILLAS DE INSPECCIÓN
 // ========================================
 
@@ -184,25 +199,15 @@ router.get('/inspecciones/:id', validateToken, obtenerInspeccionPorId);
 router.put('/inspecciones/:id', validateToken, actualizarInspeccion);
 router.delete('/inspecciones/:id', validateToken, eliminarInspeccion);
 router.post('/inspecciones/:id/respuestas', validateToken, guardarRespuestas);
-router.post('/inspecciones/:id/respuestas/foto', validateToken, upload.single('foto'), async (req: any, res: any) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ msg: 'No se envió ningún archivo' });
-    }
-    const rutaArchivo = `/uploads/ssgt/${req.file.filename}`;
-    return res.json({ msg: 'Foto subida correctamente', ruta: rutaArchivo });
-  } catch (error) {
-    console.error('Error al subir foto de inspección:', error);
-    return res.status(500).json({ msg: 'Error al subir la foto' });
-  }
-});
+router.post('/inspecciones/:id/respuestas/:respuestaId/fotos', validateToken, upload.array('fotos', 10), subirFotosRespuesta);
+router.delete('/inspecciones/fotos/:fotoId', validateToken, eliminarFotoRespuesta);
 router.post('/inspecciones/:id/completar', validateToken, completarInspeccion);
 
 // PDF de inspección
 router.get('/inspecciones/:id/pdf', validateToken, async (req: any, res: any) => {
   try {
     const { parseId } = await import('../utils/parseId');
-    const { InspeccionSSGT, PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, RespuestaInspeccion, AccionCorrectivaInspeccion } = await import('../models/ssgt');
+    const { InspeccionSSGT, PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, RespuestaInspeccion, AccionCorrectivaInspeccion, FotoRespuestaInspeccion } = await import('../models/ssgt');
     const { User } = await import('../models/user');
     const { generarPdfInspeccion } = await import('../services/inspeccionPdf');
 
@@ -219,6 +224,7 @@ router.get('/inspecciones/:id/pdf', validateToken, async (req: any, res: any) =>
           include: [
             { model: PreguntaPlantilla, as: 'pregunta' },
             { model: SeccionPlantilla, as: 'seccion' },
+            { model: FotoRespuestaInspeccion, as: 'fotos' },
           ],
         },
         {

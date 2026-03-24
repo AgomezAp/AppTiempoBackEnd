@@ -967,6 +967,7 @@ export class PreguntaPlantilla extends Model {
   public respuestaEsperada!: string | null;
   public orden!: number;
   public requiereAccionSiNoConforme!: boolean;
+  public omitible!: boolean;
   public createdAt!: Date;
   public updatedAt!: Date;
 }
@@ -1023,6 +1024,11 @@ PreguntaPlantilla.init(
       allowNull: false,
       defaultValue: false,
     },
+    omitible: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
@@ -1047,6 +1053,7 @@ export class InspeccionSSGT extends Model {
   public puntajeMaximo!: number | null;
   public porcentaje!: number | null;
   public aprobada!: boolean | null;
+  public tokenAcceso!: string | null;
   public createdAt!: Date;
   public updatedAt!: Date;
 }
@@ -1119,6 +1126,11 @@ InspeccionSSGT.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },
+    tokenAcceso: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      unique: true,
+    },
   },
   {
     sequelize,
@@ -1138,6 +1150,7 @@ export class RespuestaInspeccion extends Model {
   public puntos!: number;
   public orden!: number;
   public observacion!: string | null;
+  public omitida!: boolean;
   public createdAt!: Date;
   public updatedAt!: Date;
 }
@@ -1194,6 +1207,11 @@ RespuestaInspeccion.init(
     observacion: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    omitida: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
@@ -1290,6 +1308,56 @@ AccionCorrectivaInspeccion.init(
   {
     sequelize,
     tableName: 'ssgt_acciones_correctivas',
+    timestamps: true,
+  }
+);
+
+// Fotos de Respuesta de Inspección (múltiples por respuesta)
+export class FotoRespuestaInspeccion extends Model {
+  public id!: number;
+  public respuestaId!: number;
+  public inspeccionId!: number;
+  public rutaArchivo!: string;
+  public descripcion!: string | null;
+  public createdAt!: Date;
+  public updatedAt!: Date;
+}
+
+FotoRespuestaInspeccion.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    respuestaId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_respuestas_inspeccion',
+        key: 'id',
+      },
+    },
+    inspeccionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'ssgt_inspecciones',
+        key: 'id',
+      },
+    },
+    rutaArchivo: {
+      type: DataTypes.STRING(500),
+      allowNull: false,
+    },
+    descripcion: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'ssgt_fotos_respuesta',
     timestamps: true,
   }
 );
@@ -1645,6 +1713,12 @@ InspeccionSSGT.hasMany(AccionCorrectivaInspeccion, { foreignKey: 'inspeccionId',
 AccionCorrectivaInspeccion.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
 AccionCorrectivaInspeccion.belongsTo(RespuestaInspeccion, { foreignKey: 'respuestaId', as: 'respuesta' });
 AccionCorrectivaInspeccion.belongsTo(User, { foreignKey: 'responsableId', as: 'responsable' });
+
+// Respuesta -> Fotos (1:N)
+RespuestaInspeccion.hasMany(FotoRespuestaInspeccion, { foreignKey: 'respuestaId', as: 'fotos' });
+FotoRespuestaInspeccion.belongsTo(RespuestaInspeccion, { foreignKey: 'respuestaId', as: 'respuesta' });
+FotoRespuestaInspeccion.belongsTo(InspeccionSSGT, { foreignKey: 'inspeccionId', as: 'inspeccion' });
+InspeccionSSGT.hasMany(FotoRespuestaInspeccion, { foreignKey: 'inspeccionId', as: 'fotos' });
 
 // Inspección -> Condiciones Inseguras (mantener)
 InspeccionSSGT.hasMany(CondicionInsegura, { foreignKey: 'inspeccionId', as: 'condiciones' });

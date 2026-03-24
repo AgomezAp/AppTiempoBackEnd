@@ -157,7 +157,7 @@ class Server{
             await CampoFirmaDocumento.sync({ alter: true });
 
             // Sincronizar modelos Inspecciones (SafetyCulture)
-            const { PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, InspeccionSSGT, RespuestaInspeccion, AccionCorrectivaInspeccion, CondicionInsegura } = await import('./ssgt');
+            const { PlantillaInspeccion, SeccionPlantilla, PreguntaPlantilla, InspeccionSSGT, RespuestaInspeccion, AccionCorrectivaInspeccion, CondicionInsegura, FotoRespuestaInspeccion } = await import('./ssgt');
             await PlantillaInspeccion.sync({ alter: true });
             await SeccionPlantilla.sync({ alter: true });
             await PreguntaPlantilla.sync({ alter: true });
@@ -165,6 +165,7 @@ class Server{
             await RespuestaInspeccion.sync({ alter: true });
             await AccionCorrectivaInspeccion.sync({ alter: true });
             await CondicionInsegura.sync({ alter: true });
+            await FotoRespuestaInspeccion.sync({ alter: true });
 
             // Sincronizar modelos Capacitaciones SST
             const { CapacitacionSST, EvaluacionCapacitacion, PreguntaEvaluacion, RespuestaEvaluacion } = await import('./ssgt');
