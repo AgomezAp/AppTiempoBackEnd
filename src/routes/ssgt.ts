@@ -77,6 +77,7 @@ import {
   actualizarAccionCorrectiva,
   eliminarAccionCorrectiva,
   subirEvidenciaAccion,
+  enviarCorreoAccionCorrectiva,
 } from '../controllers/ssgtAccionesCorrectivas';
 import {
   crearCapacitacion,
@@ -271,6 +272,7 @@ router.get('/acciones-correctivas', validateToken, obtenerAccionesCorrectivas);
 router.put('/acciones-correctivas/:id', validateToken, actualizarAccionCorrectiva);
 router.delete('/acciones-correctivas/:id', validateToken, eliminarAccionCorrectiva);
 router.post('/acciones-correctivas/:id/evidencia', validateToken, upload.single('evidencia'), subirEvidenciaAccion);
+router.post('/acciones-correctivas/:id/enviar-correo', validateToken, enviarCorreoAccionCorrectiva);
 
 // ========================================
 // CAPACITACIONES SST

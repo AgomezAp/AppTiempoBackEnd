@@ -114,6 +114,11 @@ export const obtenerInspecciones = async (req: Request, res: Response): Promise<
                 {
                     model: AccionCorrectivaInspeccion,
                     as: 'acciones',
+                    include: [{
+                        model: User,
+                        as: 'responsable',
+                        attributes: ['Uid', 'name', 'lastName', 'email'],
+                    }],
                 },
                 {
                     model: CondicionInsegura,
@@ -165,7 +170,7 @@ export const obtenerInspeccionPorId = async (req: Request, res: Response): Promi
                     include: [{
                         model: User,
                         as: 'responsable',
-                        attributes: ['Uid', 'name', 'lastName'],
+                        attributes: ['Uid', 'name', 'lastName', 'email'],
                     }],
                 },
                 {

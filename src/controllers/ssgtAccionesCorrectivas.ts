@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { AccionCorrectivaInspeccion, InspeccionSSGT } from '../models/ssgt';
 import { User } from '../models/user';
+import { sendMail } from '../utils/mailer';
 
 export const crearAccionCorrectiva = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -43,7 +44,7 @@ export const obtenerAccionesCorrectivas = async (req: Request, res: Response): P
                 {
                     model: User,
                     as: 'responsable',
-                    attributes: ['Uid', 'name', 'lastName'],
+                    attributes: ['Uid', 'name', 'lastName', 'email'],
                 },
             ],
             order: [['createdAt', 'DESC']],
@@ -124,5 +125,71 @@ export const subirEvidenciaAccion = async (req: Request, res: Response): Promise
     } catch (error) {
         console.error('Error al subir evidencia:', error);
         return res.status(500).json({ msg: 'Error al subir la evidencia' });
+    }
+};
+
+export const enviarCorreoAccionCorrectiva = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const id = parseId(req.params.id);
+
+        const accion = await AccionCorrectivaInspeccion.findByPk(id, {
+            include: [
+                {
+                    model: User,
+                    as: 'responsable',
+                    attributes: ['Uid', 'name', 'lastName', 'email'],
+                },
+                {
+                    model: InspeccionSSGT,
+                    as: 'inspeccion',
+                    attributes: ['id', 'titulo', 'fechaInspeccion'],
+                },
+            ],
+        });
+
+        if (!accion) {
+            return res.status(404).json({ msg: 'Acción correctiva no encontrada' });
+        }
+
+        const responsable = (accion as any).responsable;
+        if (!responsable || !responsable.email) {
+            return res.status(400).json({ msg: 'El responsable no tiene correo electrónico asignado' });
+        }
+
+        const inspeccion = (accion as any).inspeccion;
+        const prioridadTexto: Record<string, string> = {
+            alta: 'ALTA',
+            media: 'MEDIA',
+            baja: 'BAJA',
+            critica: 'CRÍTICA',
+        };
+
+        const asunto = `Acción Correctiva Asignada - ${inspeccion?.titulo || 'Inspección SSGT'}`;
+        const cuerpo = `Estimado/a ${responsable.name} ${responsable.lastName},
+
+Se le ha asignado una acción correctiva que requiere su atención:
+
+INSPECCIÓN: ${inspeccion?.titulo || 'N/A'}
+FECHA INSPECCIÓN: ${inspeccion?.fechaInspeccion || 'N/A'}
+
+DETALLE DE LA ACCIÓN CORRECTIVA:
+- Descripción: ${accion.descripcion}
+- Prioridad: ${prioridadTexto[accion.prioridad] || accion.prioridad}
+- Estado: ${accion.estado}
+${accion.preguntaTexto ? `- Pregunta relacionada: ${accion.preguntaTexto}` : ''}
+${accion.fechaLimite ? `- Fecha límite: ${accion.fechaLimite}` : ''}
+${accion.observaciones ? `- Observaciones: ${accion.observaciones}` : ''}
+
+Por favor, tome las medidas necesarias para resolver esta acción correctiva.
+
+Saludos,
+Sistema SSGT`;
+
+        await sendMail([responsable.email], asunto, cuerpo);
+
+        return res.json({ msg: `Correo enviado exitosamente a ${responsable.email}` });
+    } catch (error) {
+        console.error('Error al enviar correo de acción correctiva:', error);
+        return res.status(500).json({ msg: 'Error al enviar el correo' });
     }
 };
