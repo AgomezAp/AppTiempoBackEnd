@@ -214,7 +214,7 @@ export const obtenerProgramados = async (req: Request, res: Response): Promise<a
 // Cancelar mensaje programado
 export const cancelarProgramado = async (req: Request, res: Response): Promise<any> => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const ok = whatsappService.cancelarProgramado(id);
         if (ok) {
             return res.json({ msg: 'Mensaje programado cancelado' });
