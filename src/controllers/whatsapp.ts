@@ -84,52 +84,6 @@ export const enviarMensaje = async (req: Request, res: Response): Promise<any> =
     }
 };
 
-// Notificar capacitación por WhatsApp
-export const notificarCapacitacion = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const { capacitacionId, mensaje } = req.body;
-
-        const capacitacion = await CapacitacionSST.findByPk(capacitacionId);
-        if (!capacitacion) {
-            return res.status(404).json({ msg: 'Capacitación no encontrada' });
-        }
-
-        // Obtener usuarios con celular de la misma empresa
-        const where: any = { status: 1 };
-        if (capacitacion.empresa) {
-            where.empresa = capacitacion.empresa;
-        }
-
-        const usuarios = await User.findAll({
-            where,
-            attributes: ['Uid', 'name', 'lastName', 'celular'],
-        });
-
-        const conCelular = usuarios.filter(u => u.celular);
-
-        if (conCelular.length === 0) {
-            return res.status(400).json({ msg: 'No hay usuarios con celular registrado' });
-        }
-
-        const textoMensaje = mensaje || `Hola, le informamos que está programada la capacitación "${capacitacion.titulo}" para el ${capacitacion.fechaProgramada}${capacitacion.lugar ? ` en ${capacitacion.lugar}` : ''}${capacitacion.horaInicio ? ` a las ${capacitacion.horaInicio}` : ''}. Por favor asista puntualmente.`;
-
-        const recipients = conCelular.map(u => ({
-            phone: u.celular!,
-            message: textoMensaje,
-        }));
-
-        const result = await whatsappService.sendBulkMessages(recipients);
-
-        return res.json({
-            msg: `Notificación enviada: ${result.sent} exitosos, ${result.failed} fallidos`,
-            ...result,
-        });
-    } catch (error) {
-        console.error('Error al notificar capacitación:', error);
-        return res.status(500).json({ msg: 'Error al enviar notificaciones' });
-    }
-};
-
 // Enviar mensajes masivos
 export const enviarMensajeMasivo = async (req: Request, res: Response): Promise<any> => {
     try {
