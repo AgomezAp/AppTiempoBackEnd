@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import whatsappService from '../services/whatsapp';
 import { User } from '../models/user';
-import { CapacitacionSST } from '../models/ssgt';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Inicializar WhatsApp (genera QR)
 export const inicializarWhatsApp = async (req: Request, res: Response): Promise<any> => {
@@ -166,5 +167,106 @@ export const enviarMensajeMasivo = async (req: Request, res: Response): Promise<
     } catch (error) {
         console.error('Error al enviar mensaje masivo:', error);
         return res.status(500).json({ msg: 'Error al enviar mensajes' });
+    }
+};
+
+// Enviar mensaje con archivo adjunto
+export const enviarMensajeConMedia = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { telefonos, mensaje } = req.body;
+        const file = req.file;
+
+        if (!telefonos || !mensaje) {
+            return res.status(400).json({ msg: 'Teléfonos y mensaje son requeridos' });
+        }
+
+        const listaTelefonos: string[] = JSON.parse(telefonos);
+
+        let sent = 0;
+        let failed = 0;
+        const errors: string[] = [];
+
+        for (const tel of listaTelefonos) {
+            let result;
+            if (file) {
+                result = await whatsappService.sendMessageWithMedia(tel, mensaje, file.path, file.originalname);
+            } else {
+                result = await whatsappService.sendMessage(tel, mensaje);
+            }
+            if (result.success) sent++;
+            else {
+                failed++;
+                errors.push(`${tel}: ${result.error}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Limpiar archivo temporal
+        if (file && fs.existsSync(file.path)) {
+            try { fs.unlinkSync(file.path); } catch (e) {}
+        }
+
+        return res.json({
+            msg: `Mensajes enviados: ${sent} exitosos, ${failed} fallidos`,
+            sent, failed, errors,
+        });
+    } catch (error) {
+        console.error('Error al enviar mensaje con media:', error);
+        return res.status(500).json({ msg: 'Error al enviar mensaje con archivo' });
+    }
+};
+
+// Programar mensaje
+export const programarMensaje = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { telefonos, mensaje, fechaEnvio } = req.body;
+        const file = req.file;
+
+        if (!telefonos || !mensaje || !fechaEnvio) {
+            return res.status(400).json({ msg: 'Teléfonos, mensaje y fecha de envío son requeridos' });
+        }
+
+        const listaTelefonos: string[] = JSON.parse(telefonos);
+        const fecha = new Date(fechaEnvio);
+        if (fecha <= new Date()) {
+            return res.status(400).json({ msg: 'La fecha de envío debe ser futura' });
+        }
+
+        const scheduled = whatsappService.programarMensaje({
+            telefonos: listaTelefonos,
+            mensaje,
+            fechaEnvio: fecha.toISOString(),
+            mediaPath: file?.path,
+            mediaName: file?.originalname,
+        });
+
+        return res.json({ msg: 'Mensaje programado correctamente', scheduled });
+    } catch (error) {
+        console.error('Error al programar mensaje:', error);
+        return res.status(500).json({ msg: 'Error al programar mensaje' });
+    }
+};
+
+// Obtener mensajes programados
+export const obtenerProgramados = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const programados = whatsappService.obtenerProgramados();
+        return res.json(programados);
+    } catch (error) {
+        return res.status(500).json({ msg: 'Error al obtener programados' });
+    }
+};
+
+// Cancelar mensaje programado
+export const cancelarProgramado = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { id } = req.params;
+        const ok = whatsappService.cancelarProgramado(id);
+        if (ok) {
+            return res.json({ msg: 'Mensaje programado cancelado' });
+        }
+        return res.status(400).json({ msg: 'No se pudo cancelar (ya enviado o no existe)' });
+    } catch (error) {
+        return res.status(500).json({ msg: 'Error al cancelar mensaje' });
     }
 };

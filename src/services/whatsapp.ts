@@ -1,7 +1,22 @@
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import * as QRCode from 'qrcode';
+import * as cron from 'node-cron';
+import * as fs from 'fs';
+import * as path from 'path';
 
 type SessionStatus = 'disconnected' | 'qr_pending' | 'loading' | 'ready';
+
+interface ScheduledMessage {
+    id: string;
+    telefonos: string[];
+    mensaje: string;
+    fechaEnvio: string; // ISO string
+    mediaPath?: string;
+    mediaName?: string;
+    estado: 'pendiente' | 'enviado' | 'fallido' | 'cancelado';
+    resultado?: string;
+    creadoEn: string;
+}
 
 class WhatsAppService {
     private client: Client | null = null;
@@ -9,6 +24,8 @@ class WhatsAppService {
     private status: SessionStatus = 'disconnected';
     private lastError: string | null = null;
     private sseClients: Set<any> = new Set();
+    private scheduledMessages: ScheduledMessage[] = [];
+    private schedulerJob: cron.ScheduledTask | null = null;
 
     getStatus(): SessionStatus {
         return this.status;
@@ -20,6 +37,10 @@ class WhatsAppService {
 
     getLastError(): string | null {
         return this.lastError;
+    }
+
+    constructor() {
+        this.startScheduler();
     }
 
     async initialize(): Promise<void> {
@@ -150,6 +171,101 @@ class WhatsAppService {
         for (const client of this.sseClients) {
             client.write(`data: ${JSON.stringify(data)}\n\n`);
         }
+    }
+
+    // === Enviar mensaje con archivo adjunto ===
+    async sendMessageWithMedia(phoneNumber: string, message: string, filePath: string, fileName: string): Promise<{ success: boolean; error?: string }> {
+        if (!this.client || this.status !== 'ready') {
+            return { success: false, error: 'WhatsApp no está conectado' };
+        }
+
+        try {
+            let numero = phoneNumber.replace(/[\s\-\+\(\)]/g, '');
+            if (!numero.startsWith('57') && numero.length === 10) {
+                numero = '57' + numero;
+            }
+            const chatId = numero + '@c.us';
+
+            const media = MessageMedia.fromFilePath(filePath);
+            media.filename = fileName;
+
+            await this.client.sendMessage(chatId, media, { caption: message || '' });
+            return { success: true };
+        } catch (error: any) {
+            console.error('Error sending WhatsApp media:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // === Mensajes programados ===
+    private startScheduler(): void {
+        // Revisar cada minuto si hay mensajes pendientes
+        this.schedulerJob = cron.schedule('* * * * *', async () => {
+            const ahora = new Date();
+            const pendientes = this.scheduledMessages.filter(
+                m => m.estado === 'pendiente' && new Date(m.fechaEnvio) <= ahora
+            );
+
+            for (const msg of pendientes) {
+                if (this.status !== 'ready') {
+                    msg.estado = 'fallido';
+                    msg.resultado = 'WhatsApp no está conectado';
+                    continue;
+                }
+
+                let enviadosOk = 0;
+                let enviadosFail = 0;
+
+                for (const tel of msg.telefonos) {
+                    let result;
+                    if (msg.mediaPath && fs.existsSync(msg.mediaPath)) {
+                        result = await this.sendMessageWithMedia(tel, msg.mensaje, msg.mediaPath, msg.mediaName || 'archivo');
+                    } else {
+                        result = await this.sendMessage(tel, msg.mensaje);
+                    }
+                    if (result.success) enviadosOk++;
+                    else enviadosFail++;
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+
+                msg.estado = enviadosFail === 0 ? 'enviado' : 'fallido';
+                msg.resultado = `${enviadosOk} enviados, ${enviadosFail} fallidos`;
+
+                // Limpiar archivo temporal si existe
+                if (msg.mediaPath && fs.existsSync(msg.mediaPath)) {
+                    try { fs.unlinkSync(msg.mediaPath); } catch (e) {}
+                }
+            }
+        });
+    }
+
+    programarMensaje(data: Omit<ScheduledMessage, 'id' | 'estado' | 'creadoEn'>): ScheduledMessage {
+        const scheduled: ScheduledMessage = {
+            ...data,
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+            estado: 'pendiente',
+            creadoEn: new Date().toISOString(),
+        };
+        this.scheduledMessages.push(scheduled);
+        return scheduled;
+    }
+
+    obtenerProgramados(): ScheduledMessage[] {
+        return [...this.scheduledMessages].sort((a, b) =>
+            new Date(b.creadoEn).getTime() - new Date(a.creadoEn).getTime()
+        );
+    }
+
+    cancelarProgramado(id: string): boolean {
+        const msg = this.scheduledMessages.find(m => m.id === id);
+        if (msg && msg.estado === 'pendiente') {
+            msg.estado = 'cancelado';
+            if (msg.mediaPath && fs.existsSync(msg.mediaPath)) {
+                try { fs.unlinkSync(msg.mediaPath); } catch (e) {}
+            }
+            return true;
+        }
+        return false;
     }
 }
 
