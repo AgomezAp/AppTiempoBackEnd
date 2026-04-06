@@ -8,6 +8,7 @@ import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes, informeNovedadNuevo} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from '../models/time';
+import { getJornadaUsuario, HorarioUsuario } from '../models/horarioUsuario';
 import { parseId } from '../utils/parseId';
 import multer from 'multer';
 import dayjs from 'dayjs';
@@ -35,11 +36,15 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
         try {
             const xmlContent = req.file.buffer.toString();
             const [jsonData, jsonDataExtra] = await processXML(xmlContent);
-            console.log(`Cacasdac ${JSON.stringify(jsonDataExtra, null, 2)}`);
             if (!Array.isArray(jsonData) || jsonData.length === 0) {
                 throw new Error('Los datos procesados no son válidos o están vacíos');
             }
             
+            // Recopilar correcciones automáticas antes de guardar
+            const correcciones = jsonData
+                .filter((r: any) => r.Autocorregido && r.Autocorregido !== '')
+                .map((r: any) => ({ Hid: r.Hid, Name: r.Name, Fecha: r.Fecha, Correccion: r.Autocorregido }));
+
             jsonData.forEach((record, index) => {
                 if (!record.Hid || !record.Name || !record.Entrada || !record.Salida || !record.Fecha || !record.Extra) {
                     throw new Error(`Registro ${index} no tiene todos los campos requeridos`);
@@ -92,7 +97,6 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                         //     mintosFinales = Math.abs(mintosFinales);
                         // }
                         res.Acumulado = formatoHora({ horas: totalHoras, minutos: mintosFinales});
-                        console.log(res.Acumulado, totalHoras, mintosFinales)
                         return {
                             Sid: res.Sid,
                             Name: res.Name,
@@ -113,7 +117,13 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                    );
                 }
             }
-            return res.status(200).json({ message: 'Archivo procesado exitosamente', Extra, horario });
+            return res.status(200).json({ 
+                message: 'Archivo procesado exitosamente', 
+                Extra, 
+                horario,
+                correcciones: correcciones.length > 0 ? correcciones : undefined,
+                totalCorregidos: correcciones.length
+            });
         } catch (error) {
             console.error('Error al procesar el archivo:', error);
             return res.status(500).json({  'Error al procesar el archivo':error });
@@ -317,8 +327,6 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
         const extra = registro.getDataValue('Extra');
         var entradaactual = dayjs(registro.getDataValue('Entrada'));
         var salidaactual = dayjs(salidaformateada);
-        console.log('Entrada antes:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('Salida antes:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
         salidaactual = salidaactual.minute() >= 30 
             ? salidaactual.minute(30).second(0) 
             : salidaactual.minute(0).second(0);
@@ -327,14 +335,13 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
             : entradaactual.minute() > 0 
             ? entradaactual.minute(30).second(0)
             : entradaactual;
-        const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
+        const diaSemana = dayjs.tz(fecha, 'America/Bogota').day();
+        const jornada = await getJornadaUsuario(id, diaSemana);
+        const horasRestar = Math.floor(jornada.totalRestar / 60);
+        const minutosRestar = jornada.totalRestar % 60;
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual, horasRestar, minutosRestar);
         const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0))
         const extraactualformato = formatoHora(extraactual);
-        console.log('Extra anterior:', extra);
-        console.log('Entrada actual:', entradaactual.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('Salida actual:', salidaactual.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('Extra actual:', extraactualformato);
-        console.log('Total actual:', totalActual);
         await Registro.update(
             { 
                 Extra: extraactualformato,
@@ -362,11 +369,11 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
             }
         );
         res.status(200).json({
-            message: `Hora de salida del empleado con ID ${id} actualizada correctamente like`,
+            message: `Hora de salida del empleado con ID ${id} actualizada correctamente`,
         });
     } catch (error: any) {
         res.status(500).json({
-            error: 'Error al actualizar la hora de salida ajaj',
+            error: 'Error al actualizar la hora de salida',
             details: error.message,
         });
     }
@@ -418,7 +425,11 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
             ? entradaactual.minute(30).second(0)
             : entradaactual;
 
-        const extraactual = diferenciaUpdate(entradaactual, salidaactual, 9, 30);
+        const diaSemanaE = dayjs.tz(fecha, 'America/Bogota').day();
+        const jornadaE = await getJornadaUsuario(id, diaSemanaE);
+        const horasRestarE = Math.floor(jornadaE.totalRestar / 60);
+        const minutosRestarE = jornadaE.totalRestar % 60;
+        const extraactual = diferenciaUpdate(entradaactual, salidaactual, horasRestarE, minutosRestarE);
         const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0));
         const extraactualformato = formatoHora(extraactual);
         await Registro.update(
@@ -452,7 +463,7 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
         });
     } catch (error: any) {
         res.status(500).json({
-            error: 'Error al actualizar la hora de salida ajaj',
+            error: 'Error al actualizar la hora de entrada',
             details: error.message,
         });
     }
@@ -463,7 +474,9 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
     let segundo:{Fecha: string; Hid: string; Open_Time: string; Name: string;} = {Fecha: req.body.Fecha, Hid: req.body.Hid, Open_Time: req.body.Salida, Name: req.body.Name};
     
     const total = difereciaConMoment2(primero, segundo)
-    const extH = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - 570);
+    const diaSemanaR = dayjs.tz(req.body.Fecha, 'America/Bogota').day();
+    const jornadaR = await getJornadaUsuario(req.body.Hid, diaSemanaR);
+    const extH = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - jornadaR.totalRestar);
     try {
         await Registro.create({
             Hid:  req.body.Hid,
@@ -950,21 +963,35 @@ export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): 
 
 export const restarTiempoSabado = async (): Promise<void> => {
     try {
-        const tiempoARestar = '4:00';
-        const minutosARestar = convertTimeToMinutes(tiempoARestar);
+        // Obtener usuarios con sábado activo y su jornada configurada
+        const horariosSabado = await HorarioUsuario.findAll({
+            where: { diaSemana: 6, activo: true }
+        });
+
+        // Construir mapa Uid -> minutos a restar por sábado
+        const sabadoMap = new Map<number, number>();
+        for (const h of horariosSabado) {
+            const uid = h.getDataValue('Uid');
+            const totalRestar = h.getDataValue('jornadaMinutos') + h.getDataValue('almuerzoMinutos');
+            sabadoMap.set(uid, totalRestar);
+        }
+
         const registros = await Sumatoria.findAll();
 
         for (const reg of registros) {
+            const sid = parseInt(reg.getDataValue('Sid'), 10);
+            const minutosARestar = sabadoMap.get(sid);
+            if (!minutosARestar) continue; // No tiene sábado activo, no restar
+
             const acumuladoActual = reg.getDataValue('Acumulado');
             const minutosAcumulados = convertTimeToMinutes(acumuladoActual);
             const sabadoMinutos = minutosAcumulados - minutosARestar;
-            const sabado = sabadoMinutos < 0 ? `${Math.ceil(sabadoMinutos/60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}` : `${Math.floor(sabadoMinutos/60)}:${Math.abs(sabadoMinutos % 60).toString().padStart(2, '0')}`;
+            const sabado = convertMinutesToTime(sabadoMinutos);
             await Sumatoria.update(
-                { Acumulado: sabado},
-                { where: { Sid: reg.getDataValue('Sid')}}
+                { Acumulado: sabado },
+                { where: { Sid: reg.getDataValue('Sid') } }
             );
         }
-        console.log('Tiempo restado exitosamente')
     } catch (error: any) {
         console.error('Error al restar el tiempo:', error);
         throw error;

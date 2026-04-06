@@ -13,7 +13,8 @@ export const Registro = sequelize.define(
         Salida: {type: DataTypes.DATE, allowNull: false},
         Fecha: {type: DataTypes.DATE, allowNull: false},
         Extra: {type: DataTypes.STRING, allowNull: false},
-        Total: {type: DataTypes.STRING, allowNull: true}
+        Total: {type: DataTypes.STRING, allowNull: true},
+        Autocorregido: {type: DataTypes.STRING, allowNull: true, defaultValue: ''}
     },
     {
         timestamps: false,

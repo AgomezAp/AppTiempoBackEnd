@@ -6,6 +6,8 @@ import timezone from 'dayjs/plugin/timezone';
 import PdfPrinter from 'pdfmake';
 import { width } from 'pdfkit/js/page';
 import { fontSize } from 'pdfkit';
+import { Op } from 'sequelize';
+import { HorarioUsuario } from '../models/horarioUsuario';
 dayjs.extend(duration);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -36,7 +38,7 @@ export async function processXML(xmlContent: string): Promise<any> {
                 console.warn(`Fila ${i} no tiene 5 celdas:`, cells[0].Data[0]._);
             }
         }
-        const result_Data = ordenarDatos(data);
+        const result_Data = await ordenarDatos(data);
         // console.log(result_Data);
         const result_Extra = sumarExtra(result_Data);
 
@@ -46,9 +48,9 @@ export async function processXML(xmlContent: string): Promise<any> {
     }
 }
 
-function ordenarDatos(data: any): Array<{Hid: string, Name: string, Entrada: string, Salida: string, Fecha: string , Extra: string  , Total: string}> {
+async function ordenarDatos(data: any): Promise<Array<{Hid: string, Name: string, Entrada: string, Salida: string, Fecha: string , Extra: string  , Total: string, Autocorregido: string}>> {
     const dataf = filtrarProcesar(data);
-    const datosp = procesarDatos(dataf);
+    const datosp = await procesarDatos(dataf);
     return datosp;
 }
 
@@ -69,7 +71,7 @@ function organizarTiempoMoment(data: Array<{ Hid: string; Name: string; Open_Tim
     });
 }
 
-function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }>): Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string }> {
+async function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }>): Promise<Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string; Autocorregido: string }>> {
     const agrupados: { [key: string]: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> } = {};
     data.forEach(item => {
         const clave = `${item.Fecha}-${item.Hid}`;
@@ -78,51 +80,100 @@ function procesarDatos(data: Array<{ Fecha: string; Hid: string; Open_Time: stri
         }
         agrupados[clave].push(item);
     });
-    const agrupadosLimpios = removeDuplicate(agrupados)
-    const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string }> = [];
-    let total: string = '0:0';
-    let primero: any = [];
-    let ultimo: any = [];
-    let entradaOriginal: any = []
-    let extra: string = ''; 
-    const datosExtraProcesados: Array<{Hid: string; Name: string; Extras: string}> = [];
+    const agrupadosLimpios = removeDuplicate(agrupados);
+
+    // Pre-cargar jornadas de todos los usuarios en una sola consulta
+    const uniqueHids = [...new Set(data.map(item => item.Hid))];
+    const uidsNumeric = uniqueHids.map(h => parseInt(h, 10)).filter(n => !isNaN(n));
+    const horariosDB = await HorarioUsuario.findAll({
+        where: { Uid: { [Op.in]: uidsNumeric }, activo: true },
+    });
+    const STANDARD_RESTAR: Record<number, number> = { 1: 570, 2: 570, 3: 570, 4: 570, 5: 570, 6: 240 };
+    const jornadaCache = new Map<string, Map<number, number>>();
+    for (const hid of uniqueHids) {
+        const uid = parseInt(hid, 10);
+        const diaMap = new Map<number, number>();
+        const userHorarios = horariosDB.filter((h: any) => h.getDataValue('Uid') === uid);
+        for (const h of userHorarios) {
+            diaMap.set(h.getDataValue('diaSemana'), h.getDataValue('jornadaMinutos') + h.getDataValue('almuerzoMinutos'));
+        }
+        for (let d = 1; d <= 6; d++) {
+            if (!diaMap.has(d)) diaMap.set(d, STANDARD_RESTAR[d]);
+        }
+        jornadaCache.set(hid, diaMap);
+    }
+
+    const datosProcesados: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string; Total: string; Autocorregido: string }> = [];
+    let extra: string = '';
     for (const clave in agrupadosLimpios) {
-        console.log(agrupadosLimpios[clave])
-        let sumTotal: string = '0:0';
         const grupo: Array<{ Fecha: string; Hid: string; Open_Time: string; Name: string }> = agrupadosLimpios[clave];
-        for (let i = 0; i < grupo.length; i = i+2) {
-            primero = grupo[i];
-            ultimo =  !grupo[i+1] ? sinHuella(primero) : grupo[i+1];
+
+        // --- Normalización automática de marcas impares ---
+        const correcciones: string[] = [];
+        if (grupo.length % 2 !== 0) {
+            const primerMarca = dayjs.tz(grupo[0].Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+            const diaSem = primerMarca.day();
+            const esSabado = diaSem === 6;
+
+            if (primerMarca.hour() >= 10) {
+                // Primera marca es tarde: falta la entrada → insertar 7:30
+                const entradaAuto = primerMarca.hour(7).minute(30).second(0).format('YYYY-MM-DD HH:mm:ss');
+                grupo.unshift({
+                    Fecha: grupo[0].Fecha,
+                    Hid: grupo[0].Hid,
+                    Open_Time: entradaAuto,
+                    Name: grupo[0].Name
+                });
+                correcciones.push('Entrada auto 07:30');
+            } else {
+                // Última marca es temprana: falta la salida → insertar 17:00 (o 12:00 sábados)
+                const horaSalida = esSabado ? 12 : 17;
+                const ultimaMarca = dayjs.tz(grupo[grupo.length - 1].Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+                const salidaAuto = ultimaMarca.hour(horaSalida).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss');
+                grupo.push({
+                    Fecha: grupo[0].Fecha,
+                    Hid: grupo[0].Hid,
+                    Open_Time: salidaAuto,
+                    Name: grupo[0].Name
+                });
+                correcciones.push(`Salida auto ${horaSalida}:00`);
+            }
+        }
+
+        let sumTotal: string = '0:0';
+        for (let i = 0; i < grupo.length; i = i + 2) {
+            let primero = grupo[i];
+            let ultimo = !grupo[i + 1] ? sinHuella(primero) : grupo[i + 1];
             if (dayjs(primero.Open_Time).isAfter(dayjs(ultimo.Open_Time))) {
                 const temp = primero;
                 primero = ultimo;
                 ultimo = temp;
             }
-            total = formatoHora(difereciaConMoment2(primero, ultimo))
-            sumTotal = convertMinutesToTime(convertTimeToMinutes(sumTotal) + convertTimeToMinutes(total))
-            if (grupo.length === 1) {
-                entradaOriginal = primero;
-            } else if (i === 0) {
-                entradaOriginal = grupo[0];
-            }
+            const total = formatoHora(difereciaConMoment2(primero, ultimo));
+            sumTotal = convertMinutesToTime(convertTimeToMinutes(sumTotal) + convertTimeToMinutes(total));
         }
-        let opentimeEntrada = dayjs.tz(primero.Open_Time, 'YYYY-MM-D D HH:mm:ss', 'America/Bogota')
-        if(opentimeEntrada.day() !== 6 && opentimeEntrada.day() !== 0){
-            extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - 570);
+        const entradaOriginal = grupo[0];
+        const salidaFinal = grupo[grupo.length - 1];
+        const opentimeEntrada = dayjs.tz(entradaOriginal.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota');
+        const diaSemana = opentimeEntrada.day();
+        if (diaSemana !== 6 && diaSemana !== 0) {
+            const totalRestar = jornadaCache.get(grupo[0].Hid)?.get(diaSemana) ?? 570;
+            extra = extraConvertMinutesToTime(convertTimeToMinutes(sumTotal) - totalRestar);
         } else {
             extra = sumTotal;
         }
         const modificadoextra = (convertTimeToMinutes(extra) >= 0 && convertTimeToMinutes(extra) <= 30) && extra[0] !== '-' ? '0:00' : extra;
         const procesado = {
-            Hid: primero.Hid,
-            Name: primero.Name,
+            Hid: grupo[0].Hid,
+            Name: grupo[0].Name,
             Entrada: entradaOriginal.Open_Time,
-            Salida: ultimo.Open_Time, // Puede ser nulo si solo hay un registro
-            Fecha: primero.Fecha,
+            Salida: salidaFinal.Open_Time,
+            Fecha: grupo[0].Fecha,
             Extra: modificadoextra,
-            Total: sumTotal
+            Total: sumTotal,
+            Autocorregido: correcciones.length > 0 ? correcciones.join(', ') : ''
         };
-    datosProcesados.push(procesado);
+        datosProcesados.push(procesado);
     }
     return datosProcesados;
 }
@@ -201,56 +252,6 @@ export function difereciaConMoment2(entrada: {Fecha: string; Hid: string; Open_T
     return { horas, minutos };
 
 }
-// FUNCION CAMBIADA POR DIFERENCIACONMOMENT2 PARA QUE NO HAYA PROBLEMAS CON LOS SABADOS Y MENOS ESPECIFICA
-
-export function diferenciaConMoment(entrada: {Fecha: string; Hid: string; Open_Time: string; Name: string;}, salida: {Fecha: string; Hid: string; Open_Time: string; Name: string;}): {horas: number; minutos: number}{
-    let entradaMoment = dayjs.tz(entrada.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
-    let entradaMinutos = entradaMoment.minute();
-    let salidaMoment = dayjs.tz(salida.Open_Time, 'YYYY-MM-DD HH:mm:ss', 'America/Bogota').set('seconds', 0);
-    let salidaMinutos = salidaMoment.minute();
-
-    if (entradaMinutos <= 30 && entradaMinutos > 0 )  {
-        entradaMoment = entradaMoment.set('minute', 30);
-    } else if (entradaMinutos > 30 && entradaMinutos <= 59 ) {
-        entradaMoment = entradaMoment.set('minute', 0).add(1, 'hour');
-    }
-    if (salidaMinutos <= 30 && salidaMinutos > 0 )  {
-        salidaMoment = salidaMoment.set('minute', 0);
-    } else if (salidaMinutos > 30 && salidaMinutos <= 59 ) {
-        salidaMoment = salidaMoment.set('minute', 30);
-    }
-
-    let duracion = dayjs.duration(salidaMoment.diff(entradaMoment));
-    var horas: number = 0
-    var minutos: number = 0
-    if (entradaMoment.day() !== 6) {
-        duracion = duracion.subtract(9, 'hours');
-        duracion = duracion.subtract(30, 'minutes');
-        if (duracion.seconds() > 30) {
-            duracion = duracion.add(1, 'minutes');
-            duracion = duracion.subtract(duracion.seconds(), 'seconds');
-        }
-        horas = duracion.hours();
-        minutos = duracion.minutes();
-        if (horas == 0 && minutos >= 0) {
-            minutos = 0;
-        }
-    } else if (entradaMoment.day() === 6) {
-        duracion = duracion.subtract(4, 'hours');
-        duracion = duracion.subtract(0, 'minutes');
-        if (duracion.seconds() > 30) {
-            duracion = duracion.add(1, 'minutes');
-            duracion = duracion.subtract(duracion.seconds(), 'seconds');
-        }
-        horas = duracion.hours();
-        minutos = duracion.minutes();
-        if (horas == 0 && minutos >= 0) {
-            minutos = 0;
-        }
-        
-    }
-    return { horas, minutos };
-}
 
 export function diferenciaUpdate(entrada: Dayjs, salida: Dayjs, hora: number, minuto: number): {horas: number; minutos: number}{
     let duracion = dayjs.duration(salida.diff(entrada));
@@ -261,67 +262,35 @@ export function diferenciaUpdate(entrada: Dayjs, salida: Dayjs, hora: number, mi
         duracion = duracion.subtract(duracion.seconds(), 'seconds');
     }
     const horas: number = duracion.hours();
-    var minutos: number = duracion.minutes();
-    if (horas == 0 && minutos >= 0) {
-        minutos = 0;
-    }
+    const minutos: number = duracion.minutes();
     return { horas, minutos };
 }
 
 
 
 function sumarExtra(data: Array<{ Hid: string; Name: string; Entrada: string; Salida: string; Fecha: string; Extra: string }>): Array<{ Sid: string; Name: string; Acumulado: string }> {
-    // Filtrar y mostrar los datos específicos para Hid 2 y 9
-    const datosFiltrados = data.filter(item => item.Hid === '2' || item.Hid === '16');
-    // console.log('Datos filtrados para Hid 2 y 9:', datosFiltrados);
-
-    // Crear un mapa para acumular los datos
     const acumulado: { [key: string]: { totalMinutos: number; Name: string } } = {};
 
     data.forEach(item => {
-        // console.log('Procesando item:', item);
+        const totalMinutos = convertTimeToMinutes(item.Extra);
 
-            // Convertir el tiempo extra a minutos
-            let [horas, minutos] = item.Extra.split(':').map(Number);
-            if (item.Extra.startsWith('-')) {
-                minutos = -Math.abs(minutos);
-            }
-            const totalMinutos = horas * 60 + minutos;
-            // console.log(`totalMinutos = ${horas * 60} + ${Math.sign(horas)} + ${minutos}`);
-            // console.log(`Hid: ${item.Hid}, Extra: ${item.Extra}, Total minutos: ${totalMinutos}`);
-
-            // Si el Hid no existe en el acumulador, inicializarlo
-            if (!acumulado[item.Hid]) {
-                acumulado[item.Hid] = {
-                    totalMinutos,
-                    Name: item.Name,
-                };
-            } else {
-                // Sumar los minutos al acumulador existente
-                acumulado[item.Hid].totalMinutos += totalMinutos;
-            }
-
-            // Mostrar el estado actual del acumulador
-            // console.log('Estado actual del acumulador:', acumulado);
-        // Solo procesar y mostrar datos cuando el Hid sea 2 o 9
-        
+        if (!acumulado[item.Hid]) {
+            acumulado[item.Hid] = { totalMinutos, Name: item.Name };
+        } else {
+            acumulado[item.Hid].totalMinutos += totalMinutos;
+        }
     });
 
-    // Convertir el acumulador en un array de resultados
     const resultado = Object.entries(acumulado).map(([Hid, { totalMinutos, Name }]) => {
-        // console.log(acumulado, "acumulado dentro de resultado")
-        const horas = Math.floor(Math.abs(totalMinutos) / 60) * Math.sign(totalMinutos);
+        const horas = Math.floor(Math.abs(totalMinutos) / 60);
         const minutos = Math.abs(totalMinutos % 60);
+        const sign = totalMinutos < 0 ? '-' : '';
 
-        const acumuladoFinal = {
+        return {
             Sid: Hid,
             Name,
-            Acumulado: horas === 0 ? `-${horas}:${minutos.toString().padStart(2, '0')}` : `${horas}:${minutos.toString().padStart(2, '0')}`,
+            Acumulado: `${sign}${horas}:${minutos.toString().padStart(2, '0')}`,
         };
-        // console.log(acumuladoFinal)
-        // Mostrar el resultado final para cada Hid
-
-        return acumuladoFinal;
     });
 
     return resultado;
@@ -335,8 +304,7 @@ export function convertTimeToMinutes(time: string): number {
 export function convertMinutesToTime(minutes: number): string {
     let horas = 0;
     if(minutes < 0){
-        let horas = Math.floor(Math.abs(minutes)/60);
-        horas = -horas
+        horas = -Math.floor(Math.abs(minutes) / 60);
     } else {
         horas = Math.floor(minutes / 60);
     }

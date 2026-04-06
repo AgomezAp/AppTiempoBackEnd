@@ -21,12 +21,14 @@ import RAsistencia from '../routes/asistencia';
 import RActaRecarga from '../routes/actaRecarga';
 import RSsgt from '../routes/ssgt';
 import RWhatsApp from '../routes/whatsapp';
+import RHorarioUsuario from '../routes/horarioUsuario';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
 import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from './time'
+import { HorarioUsuario } from './horarioUsuario'
 import { Archivo } from './archivo';
 import NominaConfig from './nominaConfig';
 import { Room } from './room';
@@ -70,6 +72,7 @@ class Server{
         this.app.use('/api/actas-recargas', RActaRecarga);
         this.app.use('/api/ssgt', RSsgt);
         this.app.use('/api/whatsapp', RWhatsApp);
+        this.app.use('/api/horario-usuario', RHorarioUsuario);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -116,6 +119,7 @@ class Server{
             await Registro.sync();
             await Sumatoria.sync();
             await HistoricoHorasExtras.sync();
+            await HorarioUsuario.sync({ alter: true });
             await Novedad.sync({alter: false});
             await NovedadHistorico.sync({alter: false});
             await Archivo.sync({alter: false});
@@ -133,7 +137,7 @@ class Server{
             // Sincronizar modelos de actas de recargas
             const { ActaRecarga } = await import('./actaRecarga');
             const { ActaRecargaAcceso } = await import('./actaRecargaAcceso');
-            await ActaRecarga.sync({ force: true });
+            await ActaRecarga.sync({ alter: true });
             await ActaRecargaAcceso.sync({ alter: false });
 
             // Sincronizar modelos SSGT
