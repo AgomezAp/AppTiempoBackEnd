@@ -1194,7 +1194,7 @@ export const getUploadHistorial = async (req: Request, res: Response): Promise<a
 
 // Revertir una subida específica
 export const revertUpload = async (req: Request, res: Response): Promise<any> => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     try {
         const upload = await UploadHistorial.findByPk(id);
         if (!upload) {
