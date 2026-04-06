@@ -4,7 +4,7 @@ import { User } from '../models/user';
 
 // Obtener horario semanal de un usuario
 export const getHorarioUsuario = async (req: Request, res: Response): Promise<any> => {
-    const { uid } = req.params;
+    const uid = req.params.uid as string;
     try {
         const horarios = await HorarioUsuario.findAll({
             where: { Uid: uid },
@@ -30,7 +30,7 @@ export const getHorarioUsuario = async (req: Request, res: Response): Promise<an
 
 // Actualizar horario semanal completo de un usuario
 export const updateHorarioUsuario = async (req: Request, res: Response): Promise<any> => {
-    const { uid } = req.params;
+    const uid = req.params.uid as string;
     const { horarios } = req.body;
 
     try {
