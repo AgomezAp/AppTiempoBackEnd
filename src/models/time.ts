@@ -2,6 +2,7 @@ import { DataTypes } from 'sequelize';
 
 import sequelize from '../database/connection';
 import { User } from './user';
+import { UploadHistorial } from './uploadHistorial';
 
 export const Registro = sequelize.define(
     "Registro",
@@ -14,7 +15,8 @@ export const Registro = sequelize.define(
         Fecha: {type: DataTypes.DATE, allowNull: false},
         Extra: {type: DataTypes.STRING, allowNull: false},
         Total: {type: DataTypes.STRING, allowNull: true},
-        Autocorregido: {type: DataTypes.STRING, allowNull: true, defaultValue: ''}
+        Autocorregido: {type: DataTypes.STRING, allowNull: true, defaultValue: ''},
+        uploadId: {type: DataTypes.INTEGER, allowNull: true, references: {model: UploadHistorial, key: "id"}}
     },
     {
         timestamps: false,
@@ -25,6 +27,8 @@ export const Registro = sequelize.define(
 
 User.hasMany(Registro, {foreignKey: "Hid", as: "registros" });
 Registro.belongsTo(User, {foreignKey: "Hid", as: "usuario" });
+UploadHistorial.hasMany(Registro, {foreignKey: "uploadId", as: "registros"});
+Registro.belongsTo(UploadHistorial, {foreignKey: "uploadId", as: "upload"});
 
 export const Sumatoria = sequelize.define(
     "Sumatoria",

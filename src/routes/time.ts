@@ -24,7 +24,9 @@ import {
     nuevaNovedad,
     getHistoricoExtras,
     getHistoricoExtrasAll,
-    getDetalleExtras
+    getDetalleExtras,
+    getUploadHistorial,
+    revertUpload
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -77,4 +79,8 @@ router.get("/api/horario/historicoExtras/:id", getHistoricoExtras)
 router.get("/api/horario/historicoExtras/fecha/:fecha", getHistoricoExtrasAll)
 //Detalle diario de horas extras por usuario
 router.get("/api/horario/detalleExtras/:id", getDetalleExtras)
+//Historial de subidas
+router.get("/api/horario/uploadHistorial", getUploadHistorial)
+//Revertir una subida
+router.post("/api/horario/revertirUpload/:id", revertUpload)
 export default router

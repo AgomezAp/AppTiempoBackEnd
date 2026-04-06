@@ -8,6 +8,7 @@ import {DOMParser, XMLSerializer, Document} from '@xmldom/xmldom';
 import {diferenciaUpdate, formatoHora, processXML, informePersonal, informeNovedades, informeRiesgo, difereciaConMoment2, convertMinutesToTime, convertTimeToMinutes, informeNovedadNuevo} from '../services/Manejo'
 import { convertirMinuto , convertirHora } from '../services/novedad'
 import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from '../models/time';
+import { UploadHistorial } from '../models/uploadHistorial';
 import { getJornadaUsuario, HorarioUsuario } from '../models/horarioUsuario';
 import { parseId } from '../utils/parseId';
 import multer from 'multer';
@@ -55,6 +56,63 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                 record.Salida = dayjs.tz(record.Salida, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
                 record.Fecha = dayjs.tz(record.Fecha,'YYYY-MM-DD', 'America/Bogota').format('YYYY-MM-DD');
             });
+
+            // === FAILSAFE: Detectar rango de fechas y duplicados ===
+            const fechas = jsonData.map((r: any) => r.Fecha).filter(Boolean);
+            const rangoInicio = fechas.reduce((min: string, f: string) => f < min ? f : min, fechas[0]);
+            const rangoFin = fechas.reduce((max: string, f: string) => f > max ? f : max, fechas[0]);
+
+            // Verificar si ya hay registros en ese rango de fechas
+            const registrosExistentes = await Registro.count({
+                where: {
+                    Fecha: { [Op.between]: [rangoInicio, rangoFin] }
+                }
+            });
+
+            // Si se envía forzar=true se permite sobrescribir (el frontend pregunta primero)
+            const forzar = req.body?.forzar === 'true' || req.body?.forzar === true;
+
+            if (registrosExistentes > 0 && !forzar) {
+                // Buscar la subida anterior que se solapa
+                const uploadPrevio = await UploadHistorial.findOne({
+                    where: {
+                        estado: 'activo',
+                        [Op.or]: [
+                            { rangoInicio: { [Op.between]: [rangoInicio, rangoFin] } },
+                            { rangoFin: { [Op.between]: [rangoInicio, rangoFin] } },
+                            { [Op.and]: [
+                                { rangoInicio: { [Op.lte]: rangoInicio } },
+                                { rangoFin: { [Op.gte]: rangoFin } }
+                            ]}
+                        ]
+                    },
+                    order: [['fechaSubida', 'DESC']]
+                });
+
+                return res.status(409).json({
+                    error: 'DUPLICADO',
+                    message: `Ya existen ${registrosExistentes} registros entre ${rangoInicio} y ${rangoFin}. ¿Desea revertir la subida anterior y subir de nuevo?`,
+                    registrosExistentes,
+                    rangoInicio,
+                    rangoFin,
+                    uploadPrevioId: uploadPrevio?.getDataValue('id') || null
+                });
+            }
+
+            // === Crear registro de historial de subida ===
+            const uploadRecord = await UploadHistorial.create({
+                archivoNombre: req.file.originalname || 'archivo.xml',
+                rangoInicio,
+                rangoFin,
+                cantidadRegistros: jsonData.length,
+                deltaExtras: jsonDataExtra, // Guardar los deltas para poder revertir
+                estado: 'activo'
+            });
+            const uploadId = uploadRecord.getDataValue('id');
+
+            // Etiquetar cada registro con el uploadId
+            jsonData.forEach((record: any) => { record.uploadId = uploadId; });
+
             const horario = await Registro.bulkCreate(jsonData);
 
             // Guardar snapshot ANTES de actualizar valores
@@ -92,10 +150,6 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                         const totalMinutos = (horasRes * 60) + (horasExtra * 60) + mintosRes + mintosExtra;
                         let totalHoras = totalMinutos < 0 ? Math.ceil(totalMinutos/60) : Math.floor(totalMinutos/60);
                         let mintosFinales = totalMinutos % 60
-                        // if (totalHoras < 0 || mintosFinales < 0) {
-                        //     totalHoras = totalHoras < 0 ? totalHoras : -totalHoras;
-                        //     mintosFinales = Math.abs(mintosFinales);
-                        // }
                         res.Acumulado = formatoHora({ horas: totalHoras, minutos: mintosFinales});
                         return {
                             Sid: res.Sid,
@@ -122,7 +176,8 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                 Extra, 
                 horario,
                 correcciones: correcciones.length > 0 ? correcciones : undefined,
-                totalCorregidos: correcciones.length
+                totalCorregidos: correcciones.length,
+                uploadId
             });
         } catch (error) {
             console.error('Error al procesar el archivo:', error);
@@ -1119,5 +1174,84 @@ export const getDetalleExtras = async (req: Request, res: Response): Promise<any
     } catch (error) {
         console.error('Error al obtener detalle de extras:', error);
         res.status(500).json({ error: 'Error al obtener detalle de horas extras' });
+    }
+};
+
+// ===== HISTORIAL DE SUBIDAS =====
+
+// Obtener historial de todas las subidas
+export const getUploadHistorial = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const historial = await UploadHistorial.findAll({
+            order: [['fechaSubida', 'DESC']],
+        });
+        res.status(200).json(historial);
+    } catch (error) {
+        console.error('Error al obtener historial de subidas:', error);
+        res.status(500).json({ error: 'Error al obtener historial de subidas' });
+    }
+};
+
+// Revertir una subida específica
+export const revertUpload = async (req: Request, res: Response): Promise<any> => {
+    const { id } = req.params;
+    try {
+        const upload = await UploadHistorial.findByPk(id);
+        if (!upload) {
+            return res.status(404).json({ error: 'Subida no encontrada' });
+        }
+        if (upload.getDataValue('estado') === 'revertido') {
+            return res.status(400).json({ error: 'Esta subida ya fue revertida anteriormente' });
+        }
+
+        // 1. Eliminar todos los registros asociados a esta subida
+        const registrosEliminados = await Registro.destroy({
+            where: { uploadId: id }
+        });
+
+        // 2. Revertir las horas extras (restar los deltas que se sumaron)
+        const deltaExtras = upload.getDataValue('deltaExtras');
+        if (Array.isArray(deltaExtras) && deltaExtras.length > 0) {
+            for (const delta of deltaExtras) {
+                const sumatoria = await Sumatoria.findByPk(delta.Sid);
+                if (sumatoria) {
+                    const acumuladoActual = sumatoria.getDataValue('Acumulado') || '0:00';
+                    const deltaAcumulado = delta.Acumulado || '0:00';
+
+                    // Convertir ambos a minutos
+                    const minutosActual = convertTimeToMinutes(acumuladoActual);
+                    const minutosDelta = convertTimeToMinutes(deltaAcumulado);
+
+                    // Restar el delta
+                    const minutosRevertido = minutosActual - minutosDelta;
+                    const horasR = minutosRevertido < 0 ? Math.ceil(minutosRevertido / 60) : Math.floor(minutosRevertido / 60);
+                    const minsR = minutosRevertido % 60;
+                    let nuevoAcumulado = formatoHora({ horas: horasR, minutos: minsR });
+                    if (nuevoAcumulado.startsWith("--")) {
+                        nuevoAcumulado = nuevoAcumulado.replace("--", "-");
+                    }
+
+                    await Sumatoria.update(
+                        { Acumulado: nuevoAcumulado },
+                        { where: { Sid: delta.Sid } }
+                    );
+                }
+            }
+        }
+
+        // 3. Marcar la subida como revertida
+        await UploadHistorial.update(
+            { estado: 'revertido' },
+            { where: { id } }
+        );
+
+        res.status(200).json({
+            message: 'Subida revertida exitosamente',
+            registrosEliminados,
+            uploadId: id
+        });
+    } catch (error) {
+        console.error('Error al revertir subida:', error);
+        res.status(500).json({ error: 'Error al revertir la subida' });
     }
 };

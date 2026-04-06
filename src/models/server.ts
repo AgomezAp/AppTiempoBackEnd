@@ -28,6 +28,7 @@ import { Product } from './product';
 import { Role } from './role';
 import { User } from './user';
 import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} from './time'
+import { UploadHistorial } from './uploadHistorial'
 import { HorarioUsuario } from './horarioUsuario'
 import { Archivo } from './archivo';
 import NominaConfig from './nominaConfig';
@@ -116,7 +117,8 @@ class Server{
             await User.sync({alter: true});
             await Product.sync();
             await Permiso.sync({alter: true});
-            await Registro.sync();
+            await UploadHistorial.sync({ alter: true });
+            await Registro.sync({ alter: true });
             await Sumatoria.sync();
             await HistoricoHorasExtras.sync();
             await HorarioUsuario.sync({ alter: true });
