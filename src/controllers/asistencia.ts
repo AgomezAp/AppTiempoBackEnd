@@ -328,7 +328,7 @@ export const generarPDF = async (req: Request, res: Response): Promise<any> => {
         {
           model: ParticipanteAsistencia,
           as: 'participantes',
-          where: { empresa: empresa as string },
+          where: { empresa: empresa as string, cancelado: false },
           required: false,
         },
       ],
