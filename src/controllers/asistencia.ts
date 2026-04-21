@@ -9,30 +9,43 @@ import { parseId } from '../utils/parseId';
 // Crear un nuevo registro de asistencia
 export const crearRegistroAsistencia = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { fecha, tema, facilitadorId, participantesIds, participantesExternos } = req.body;
+    const { fecha, tema, facilitadorId, facilitadorExternoNombre, facilitadorExternoEmpresa, participantesIds, participantesExternos } = req.body;
 
     // Validaciones
     const tieneInternos = participantesIds && participantesIds.length > 0;
     const tieneExternos = participantesExternos && participantesExternos.length > 0;
 
-    if (!fecha || !tema || !facilitadorId || (!tieneInternos && !tieneExternos)) {
+    // Validar que exista fecha, tema y facilitador (interno o externo)
+    const tieneFacilitadorExterno = facilitadorExternoNombre && facilitadorExternoNombre.trim().length > 0;
+
+    if (!fecha || !tema || (!facilitadorId && !tieneFacilitadorExterno) || (!tieneInternos && !tieneExternos)) {
       return res.status(400).json({
         msg: 'Fecha, tema, facilitador y al menos un participante son requeridos',
       });
     }
 
-    // Obtener datos del facilitador
-    const facilitador = await User.findByPk(parseId(facilitadorId));
-    if (!facilitador) {
-      return res.status(404).json({ msg: 'Facilitador no encontrado' });
+    // Obtener datos del facilitador (interno) o usar facilitador externo
+    let facilitadorNombre = '';
+    let facilitadorIdNumeric: any = null;
+
+    if (facilitadorId) {
+      const facilitador = await User.findByPk(parseId(facilitadorId));
+      if (!facilitador) {
+        return res.status(404).json({ msg: 'Facilitador no encontrado' });
+      }
+      facilitadorNombre = `${facilitador.name} ${facilitador.lastName}`;
+      facilitadorIdNumeric = parseId(facilitadorId);
+    } else {
+      // Facilitador externo
+      facilitadorNombre = facilitadorExternoNombre.trim();
     }
 
     // Crear el registro principal
     const registro = await RegistroAsistencia.create({
       fecha,
       tema,
-      facilitadorId,
-      facilitadorNombre: `${facilitador.name} ${facilitador.lastName}`,
+      facilitadorId: facilitadorIdNumeric,
+      facilitadorNombre: facilitadorNombre,
       codigo: 'GH-FOR-046',
       version: '03',
       estado: 'pendiente',
@@ -75,7 +88,7 @@ export const crearRegistroAsistencia = async (req: Request, res: Response): Prom
             {
               fecha,
               tema,
-              facilitador: `${facilitador.name} ${facilitador.lastName}`,
+              facilitador: facilitadorNombre,
               enlaceFirma,
             }
           );

@@ -33,7 +33,7 @@ RegistroAsistencia.init(
     },
     facilitadorId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'Uid',
