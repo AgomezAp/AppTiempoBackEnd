@@ -22,6 +22,7 @@ import RActaRecarga from '../routes/actaRecarga';
 import RSsgt from '../routes/ssgt';
 import RWhatsApp from '../routes/whatsapp';
 import RHorarioUsuario from '../routes/horarioUsuario';
+import RCompensacion from '../routes/compensacion';
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -74,6 +75,7 @@ class Server{
         this.app.use('/api/ssgt', RSsgt);
         this.app.use('/api/whatsapp', RWhatsApp);
         this.app.use('/api/horario-usuario', RHorarioUsuario);
+        this.app.use('/api/compensacion-horas', RCompensacion);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -148,6 +150,10 @@ class Server{
             await InvestigacionAccidente.sync({ alter: true });
             await EvidenciaAccidente.sync({ alter: true });
             await SeguimientoAccion.sync({ alter: true });
+
+            // Sincronizar modelo CompensacionHoras
+            const { CompensacionHoras } = await import('./compensacionHoras');
+            await CompensacionHoras.sync({ alter: true });
 
             // Sincronizar modelos EPP
             const { CatalogoEPP, EntregaEPP, DetalleEntregaEPP, FirmaEntregaEPP, AlertaEPP } = await import('./ssgt');

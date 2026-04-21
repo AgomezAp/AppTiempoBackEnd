@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compensación de Horas Extras</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #1a1a1a;
+      background: #f0f0f0;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      background: #fff;
+      padding: 18mm 20mm 20mm 20mm;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    /* ── ENCABEZADO ── */
+    .header {
+      display: flex;
+      align-items: stretch;
+      border: 1.5px solid #1a1a1a;
+      margin-bottom: 12px;
+    }
+    .header-logo {
+      width: 42mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1.5px solid #1a1a1a;
+      padding: 8px;
+      font-size: 10px;
+      color: #777;
+      text-align: center;
+      min-height: 22mm;
+    }
+    .header-logo img { max-width: 100%; max-height: 20mm; }
+    .header-title {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px 12px;
+    }
+    .header-title h1 {
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      line-height: 1.4;
+    }
+    .header-meta {
+      width: 42mm;
+      border-left: 1.5px solid #1a1a1a;
+      font-size: 10px;
+    }
+    .header-meta .meta-row {
+      display: flex;
+      border-bottom: 1px solid #1a1a1a;
+      padding: 4px 6px;
+    }
+    .header-meta .meta-row:last-child { border-bottom: none; }
+    .header-meta .meta-label { font-weight: bold; margin-right: 4px; white-space: nowrap; }
+
+    /* ── SECCIÓN DE CAMPOS ── */
+    .section {
+      border: 1.5px solid #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      background: #1a1a1a;
+      color: #fff;
+      font-weight: bold;
+      font-size: 11px;
+      padding: 4px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .section-body {
+      padding: 8px 10px;
+    }
+    .field-grid {
+      display: grid;
+      gap: 6px 14px;
+    }
+    .field-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .field label {
+      font-weight: bold;
+      font-size: 10px;
+      color: #555;
+      text-transform: uppercase;
+    }
+    .field-value {
+      border-bottom: 1px solid #888;
+      min-height: 16px;
+      padding: 1px 2px;
+      font-size: 12px;
+    }
+
+    /* ── TABLA ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    thead th {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 5px 6px;
+      text-align: center;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border: 1px solid #1a1a1a;
+    }
+    tbody td {
+      border: 1px solid #bbb;
+      padding: 5px 6px;
+      text-align: center;
+      min-height: 18px;
+      height: 18px;
+    }
+    tbody tr:nth-child(even) td { background: #f8f8f8; }
+    tbody tr:last-child td { border-bottom: 1px solid #bbb; }
+
+    .td-obs { text-align: left !important; }
+
+    .total-row td {
+      background: #e8e8e8 !important;
+      font-weight: bold;
+      border: 1px solid #1a1a1a !important;
+    }
+
+    /* ── RESUMEN ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border: 1.5px solid #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .summary-item {
+      padding: 7px 10px;
+      border-right: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .summary-item:last-child { border-right: none; }
+    .summary-item label {
+      font-size: 9px;
+      text-transform: uppercase;
+      color: #555;
+      font-weight: bold;
+    }
+    .summary-item .summary-val {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1a1a1a;
+    }
+    .summary-item.highlight .summary-val { color: #c0392b; }
+
+    /* ── OBSERVACIONES ── */
+    .obs-area {
+      border: 1.5px solid #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .obs-area .section-title { background: #1a1a1a; color: #fff; font-weight: bold; font-size: 11px; padding: 4px 8px; text-transform: uppercase; }
+    .obs-lines { padding: 6px 10px; }
+    .obs-line {
+      border-bottom: 1px solid #ccc;
+      min-height: 16px;
+      margin-bottom: 6px;
+    }
+    .obs-line:last-child { margin-bottom: 0; }
+
+    /* ── FIRMAS ── */
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .signature-box {
+      border-top: 1.5px solid #1a1a1a;
+      padding-top: 5px;
+      text-align: center;
+    }
+    .signature-line {
+      height: 22px;
+      border-bottom: 1px solid #888;
+      margin-bottom: 4px;
+    }
+    .signature-label { font-size: 10px; color: #555; text-transform: uppercase; font-weight: bold; }
+    .signature-sublabel { font-size: 9px; color: #888; }
+
+    /* ── AVISO DE IMPRESIÓN ── */
+    .no-print { font-size: 11px; color: #888; text-align: center; margin: 6px 0 0 0; }
+
+    @media print {
+      body { background: #fff; }
+      .page { margin: 0; box-shadow: none; padding: 12mm 14mm 14mm 14mm; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ENCABEZADO -->
+  <div class="header">
+    <div class="header-logo">
+      <!-- Reemplace esta imagen por el logo de la empresa -->
+      <span>LOGO<br/>EMPRESA</span>
+    </div>
+    <div class="header-title">
+      <h1>Solicitud de Compensación<br/>de Horas Extras</h1>
+    </div>
+    <div class="header-meta">
+      <div class="meta-row"><span class="meta-label">Código:</span> RH-HE-01</div>
+      <div class="meta-row"><span class="meta-label">Versión:</span> 1.0</div>
+      <div class="meta-row"><span class="meta-label">Vigencia:</span> 2025</div>
+      <div class="meta-row"><span class="meta-label">Página:</span> 1 de 1</div>
+    </div>
+  </div>
+
+  <!-- INFORMACIÓN DEL EMPLEADO -->
+  <div class="section">
+    <div class="section-title">Información del Empleado</div>
+    <div class="section-body">
+      <div class="field-grid cols-2" style="margin-bottom:8px;">
+        <div class="field">
+          <label>Nombre completo</label>
+          <div class="field-value">&nbsp;</div>
+        </div>
+        <div class="field">
+          <label>Cargo / Área</label>
+          <div class="field-value">&nbsp;</div>
+        </div>
+      </div>
+      <div class="field-grid cols-3">
+        <div class="field">
+          <label>Mes que generó las horas extras</label>
+          <div class="field-value">&nbsp;</div>
+        </div>
+        <div class="field">
+          <label>Año</label>
+          <div class="field-value">&nbsp;</div>
+        </div>
+        <div class="field">
+          <label>Mes en que se compensarán</label>
+          <div class="field-value">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMEN DE HORAS -->
+  <div class="summary-grid">
+    <div class="summary-item">
+      <label>Total horas extras acumuladas</label>
+      <div class="summary-val">______ h</div>
+    </div>
+    <div class="summary-item">
+      <label>Total horas a compensar (tabla)</label>
+      <div class="summary-val">______ h</div>
+    </div>
+    <div class="summary-item highlight">
+      <label>Diferencia / Saldo pendiente</label>
+      <div class="summary-val">______ h</div>
+    </div>
+  </div>
+
+  <!-- TABLA DE DÍAS -->
+  <div class="section">
+    <div class="section-title">Plan de Compensación — Detalle por Día</div>
+    <div class="section-body" style="padding: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:10%">#</th>
+            <th style="width:22%">Fecha</th>
+            <th style="width:18%">Horas a compensar</th>
+            <th style="width:50%">Observaciones / Modalidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>2</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>3</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>4</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>5</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>6</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>7</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr><td>8</td><td>&nbsp;</td><td>&nbsp;</td><td class="td-obs">&nbsp;</td></tr>
+          <tr class="total-row">
+            <td colspan="2" style="text-align:right;">TOTAL HORAS:</td>
+            <td>&nbsp;</td>
+            <td class="td-obs"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OBSERVACIONES GENERALES -->
+  <div class="obs-area">
+    <div class="section-title">Observaciones Generales</div>
+    <div class="obs-lines">
+      <div class="obs-line"></div>
+      <div class="obs-line"></div>
+      <div class="obs-line"></div>
+    </div>
+  </div>
+
+  <!-- FIRMAS -->
+  <div class="signatures">
+    <div class="signature-box">
+      <div class="signature-line"></div>
+      <div class="signature-label">Firma del Empleado</div>
+      <div class="signature-sublabel">Nombre y fecha</div>
+    </div>
+    <div class="signature-box">
+      <div class="signature-line"></div>
+      <div class="signature-label">Visto Bueno — Jefe Inmediato</div>
+      <div class="signature-sublabel">Nombre y fecha</div>
+    </div>
+  </div>
+
+</div>
+
+<p class="no-print">Para guardar como PDF: use <strong>Ctrl+P</strong> → Impresora: "Guardar como PDF" → Tamaño A4.</p>
+
+</body>
+</html>
