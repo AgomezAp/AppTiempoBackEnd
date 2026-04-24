@@ -32,7 +32,7 @@ export const crearEPP = async (req: Request, res: Response): Promise<any> => {
 
     const epp = await CatalogoEPP.create({
       nombre, descripcion, categoria, stockActual,
-      stockMinimo, fechaVencimiento, proveedor, imagen,
+      stockMinimo, fechaVencimiento: fechaVencimiento || null, proveedor, imagen,
     });
 
     return res.status(201).json({ msg: 'EPP creado exitosamente', epp });
@@ -91,7 +91,7 @@ export const actualizarEPP = async (req: Request, res: Response): Promise<any> =
       ...(categoria !== undefined && { categoria }),
       ...(stockActual !== undefined && { stockActual }),
       ...(stockMinimo !== undefined && { stockMinimo }),
-      ...(fechaVencimiento !== undefined && { fechaVencimiento }),
+      ...(fechaVencimiento !== undefined && { fechaVencimiento: fechaVencimiento || null }),
       ...(proveedor !== undefined && { proveedor }),
       ...(imagen !== undefined && { imagen }),
     });

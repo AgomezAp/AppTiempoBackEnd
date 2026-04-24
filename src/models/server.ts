@@ -135,7 +135,7 @@ class Server{
             
             // Sincronizar modelos de asistencia
             const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
-            await RegistroAsistencia.sync();
+            await RegistroAsistencia.sync({ alter: true });
             await ParticipanteAsistencia.sync({ alter: true });
 
             // Sincronizar modelos de actas de recargas
