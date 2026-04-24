@@ -28,7 +28,7 @@ RegistroAsistencia.init(
       allowNull: false,
     },
     tema: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     facilitadorId: {

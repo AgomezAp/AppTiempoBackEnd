@@ -137,6 +137,12 @@ class Server{
             const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
             await RegistroAsistencia.sync({ alter: true });
             await ParticipanteAsistencia.sync({ alter: true });
+            // Migraciones manuales por limitaciones de Sequelize con PostgreSQL
+            await sequelize.query('ALTER TABLE "registros_asistencia" ALTER COLUMN "facilitadorId" DROP NOT NULL;');
+            await sequelize.query('ALTER TABLE "registros_asistencia" ALTER COLUMN "tema" TYPE TEXT;');
+            // Recrear FK para garantizar que apunta a la tabla actual tras cualquier reescritura
+            await sequelize.query('ALTER TABLE "participantes_asistencia" DROP CONSTRAINT IF EXISTS "participantes_asistencia_registroId_fkey";');
+            await sequelize.query('ALTER TABLE "participantes_asistencia" ADD CONSTRAINT "participantes_asistencia_registroId_fkey" FOREIGN KEY ("registroId") REFERENCES "registros_asistencia"("id");');
 
             // Sincronizar modelos de actas de recargas
             const { ActaRecarga } = await import('./actaRecarga');

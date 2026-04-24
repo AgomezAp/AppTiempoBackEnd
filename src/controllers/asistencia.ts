@@ -5,6 +5,7 @@ import { User } from '../models/user';
 import { sendAsistenciaEmail } from '../utils/mailer';
 import { generarActaPDF } from '../services/asistenciaPdf';
 import { parseId } from '../utils/parseId';
+import sequelize from '../database/connection';
 
 // Crear un nuevo registro de asistencia
 export const crearRegistroAsistencia = async (req: Request, res: Response): Promise<any> => {
@@ -36,103 +37,109 @@ export const crearRegistroAsistencia = async (req: Request, res: Response): Prom
       facilitadorNombre = `${facilitador.name} ${facilitador.lastName}`;
       facilitadorIdNumeric = parseId(facilitadorId);
     } else {
-      // Facilitador externo
       facilitadorNombre = facilitadorExternoNombre.trim();
     }
 
-    // Crear el registro principal
-    const registro = await RegistroAsistencia.create({
-      fecha,
-      tema,
-      facilitadorId: facilitadorIdNumeric,
-      facilitadorNombre: facilitadorNombre,
-      codigo: 'GH-FOR-046',
-      version: '03',
-      estado: 'pendiente',
-    });
-
-    // Obtener datos de los participantes internos y crear registros
-    const participantesCreados = [];
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+    const participantesCreados: any[] = [];
+    const correosPendientes: { email: string; nombre: string; enlace: string }[] = [];
 
-    if (tieneInternos) {
-      const participantes = await User.findAll({
-        where: { Uid: participantesIds },
-      });
+    // Toda la escritura en BD en una sola transacción
+    const t = await sequelize.transaction();
+    try {
+      // Crear el registro principal
+      const registro = await RegistroAsistencia.create({
+        fecha,
+        tema,
+        facilitadorId: facilitadorIdNumeric,
+        facilitadorNombre,
+        codigo: 'GH-FOR-046',
+        version: '03',
+        estado: 'pendiente',
+      }, { transaction: t });
 
-      for (const usuario of participantes) {
-        const tokenFirma = crypto.randomBytes(32).toString('hex');
+      // Participantes internos
+      if (tieneInternos) {
+        const usuarios = await User.findAll({ where: { Uid: participantesIds } });
 
-        const participante = await ParticipanteAsistencia.create({
-          registroId: registro.id,
-          usuarioId: usuario.Uid,
-          nombreCompleto: `${usuario.name} ${usuario.lastName}`,
-          documentoIdentificacion: usuario.documentoIdentificacion || '',
-          cargo: usuario.cargo || '',
-          empresa: usuario.empresa || 'AP',
-          email: usuario.email,
-          tokenFirma,
-          firmado: false,
-          esExterno: false,
-        });
+        for (const usuario of usuarios) {
+          const tokenFirma = crypto.randomBytes(32).toString('hex');
 
-        participantesCreados.push(participante);
+          const participante = await ParticipanteAsistencia.create({
+            registroId: registro.id,
+            usuarioId: usuario.Uid,
+            nombreCompleto: `${usuario.name} ${usuario.lastName}`,
+            documentoIdentificacion: usuario.documentoIdentificacion || '',
+            cargo: usuario.cargo || '',
+            empresa: usuario.empresa || 'AP',
+            email: usuario.email,
+            tokenFirma,
+            firmado: false,
+            esExterno: false,
+          }, { transaction: t });
 
-        // Enviar correo con enlace de firma
-        const enlaceFirma = `${frontendUrl}/firmar-asistencia/${tokenFirma}`;
-
-        try {
-          await sendAsistenciaEmail(
-            usuario.email,
-            `${usuario.name} ${usuario.lastName}`,
-            {
-              fecha,
-              tema,
-              facilitador: facilitadorNombre,
-              enlaceFirma,
-            }
-          );
-        } catch (emailError) {
-          console.error(`Error enviando correo a ${usuario.email}:`, emailError);
+          participantesCreados.push(participante);
+          correosPendientes.push({
+            email: usuario.email,
+            nombre: `${usuario.name} ${usuario.lastName}`,
+            enlace: `${frontendUrl}/firmar-asistencia/${tokenFirma}`,
+          });
         }
       }
-    }
 
-    // Crear participantes externos (sin enviar correo)
-    if (tieneExternos) {
-      for (const externo of participantesExternos) {
-        const tokenFirma = crypto.randomBytes(32).toString('hex');
+      // Participantes externos (sin correo)
+      if (tieneExternos) {
+        for (const externo of participantesExternos) {
+          const tokenFirma = crypto.randomBytes(32).toString('hex');
 
-        const participante = await ParticipanteAsistencia.create({
-          registroId: registro.id,
-          usuarioId: null,
-          nombreCompleto: externo.nombreCompleto,
-          documentoIdentificacion: externo.documentoIdentificacion || '',
-          cargo: externo.cargo || '',
-          empresa: externo.empresa || 'EXTERNO',
-          email: externo.email || '',
-          tokenFirma,
-          firmado: true,
-          esExterno: true,
-        });
+          const participante = await ParticipanteAsistencia.create({
+            registroId: registro.id,
+            usuarioId: null,
+            nombreCompleto: externo.nombreCompleto,
+            documentoIdentificacion: externo.documentoIdentificacion || '',
+            cargo: externo.cargo || '',
+            empresa: externo.empresa || 'EXTERNO',
+            email: externo.email || '',
+            tokenFirma,
+            firmado: true,
+            esExterno: true,
+          }, { transaction: t });
 
-        participantesCreados.push(participante);
+          participantesCreados.push(participante);
+        }
       }
+
+      await registro.update({ estado: 'en_proceso' }, { transaction: t });
+      await t.commit();
+
+      // Enviar correos DESPUÉS del commit (fuera de la transacción)
+      for (const c of correosPendientes) {
+        try {
+          await sendAsistenciaEmail(c.email, c.nombre, {
+            fecha,
+            tema,
+            facilitador: facilitadorNombre,
+            enlaceFirma: c.enlace,
+          });
+        } catch (emailError) {
+          console.error(`Error enviando correo a ${c.email}:`, emailError);
+        }
+      }
+
+      return res.status(201).json({
+        msg: 'Registro de asistencia creado exitosamente',
+        registro: {
+          ...registro.toJSON(),
+          participantes: participantesCreados,
+        },
+      });
+    } catch (txError) {
+      await t.rollback();
+      throw txError;
     }
-
-    // Actualizar estado a en_proceso
-    await registro.update({ estado: 'en_proceso' });
-
-    res.status(201).json({
-      msg: 'Registro de asistencia creado exitosamente',
-      registro: {
-        ...registro.toJSON(),
-        participantes: participantesCreados,
-      },
-    });
   } catch (error: any) {
     console.error('Error al crear registro de asistencia:', error);
-    res.status(500).json({
+    return res.status(500).json({
       msg: 'Error al crear registro de asistencia',
       error: error.message,
     });
