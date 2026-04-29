@@ -5,7 +5,7 @@ import {
 } from 'express';
 import jwt from 'jsonwebtoken';
 
-const validateToken = (req: Request, res: Response, next:NextFunction)=>{
+export const validateToken = (req: Request, res: Response, next:NextFunction)=>{
     const headersToken = req.headers['authorization'];
     const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
 
@@ -27,14 +27,22 @@ const validateToken = (req: Request, res: Response, next:NextFunction)=>{
     try{
         const decoded = jwt.verify(token,process.env.SECRET_KEY||'ptrYxZyMticytOs8eqKW17niMy8RR1JS') as any;
         (req as any).userId = decoded.userId;
-        (req as any).userRole = decoded.role; // Nombre del rol como "Admin", "User", etc.
+        (req as any).userRole = decoded.role;
         next();
     }catch (error){
         res.status(401).json({
             msg:`La sesión ha terminado`
         });
     }
-  
 }
 
-export default validateToken 
+export const validateAdmin = (req: Request, res: Response, next: NextFunction) => {
+    const role = (req as any).userRole;
+    if (role === 'Admin' || role === 'Tecnologia') {
+        next();
+    } else {
+        res.status(403).json({ msg: 'Acceso restringido: se requiere rol Admin o Tecnologia' });
+    }
+};
+
+export default validateToken;

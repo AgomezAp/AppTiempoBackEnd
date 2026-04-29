@@ -1,8 +1,13 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { Application, Request, Response, NextFunction } from 'express';
+import http from 'http';
 
 import sequelize from '../database/connection';
+import '../database/connection-inventario'; // Inicializa y autentica la BD inventario al arrancar
+import { initIO } from '../services/websocket.service';
+
+// ---- Rutas módulo RRHH / horarios ----
 import RArea from '../routes/area';
 import Rcategory from '../routes/category';
 import RPermisos from '../routes/permisos';
@@ -23,6 +28,25 @@ import RSsgt from '../routes/ssgt';
 import RWhatsApp from '../routes/whatsapp';
 import RHorarioUsuario from '../routes/horarioUsuario';
 import RCompensacion from '../routes/compensacion';
+import RContratos from '../routes/contratos';
+import RHojaVida from '../routes/hojaVida';
+import REvaluaciones from '../routes/evaluaciones';
+import RRoles from '../routes/roles';
+
+// ---- Rutas módulo Inventario ----
+import RInvDispositivo from '../routes/inventario/dispositivo';
+import RInvActaEntrega from '../routes/inventario/actaEntrega';
+import RInvFirmaExterna from '../routes/inventario/firmaExterna';
+import RInvConsumible from '../routes/inventario/consumible';
+import RInvMobiliario from '../routes/inventario/mobiliario';
+import RInvActaConsumible from '../routes/inventario/actaConsumible';
+import RInvActaMobiliario from '../routes/inventario/actaMobiliario';
+import RInvActaDevolucion from '../routes/inventario/actaDevolucion';
+import RInvFirmaMobiliario from '../routes/inventario/firmaMobiliario';
+import RInvTipoInventario from '../routes/inventario/tipoInventario';
+import RInvAnalista from '../routes/inventario/analista';
+
+// ---- Modelos de api_inventario (horarios) ----
 import { Area } from './area';
 import { Permiso } from './permisos';
 import { Product } from './product';
@@ -41,21 +65,25 @@ class Server{
 
     private app: Application;
     private port?: string;
+    private httpServer: http.Server;
 
     constructor(){
         this.app = express();
         this.port = process.env.PORT;
+        this.httpServer = http.createServer(this.app);
         this.middlewares();
         this.router();
         this.DBconnect();
         this.listen();
     }
     listen (){
-        this.app.listen(this.port, () => {
+        initIO(this.httpServer);
+        this.httpServer.listen(this.port, () => {
             console.log("Server running on port: " + this.port);
         });
     }
     router(){
+        // ---- Rutas horarios (existentes) ----
         this.app.use(rUser)
         this.app.use(Rproduct)
         this.app.use(Rcategory);
@@ -76,6 +104,25 @@ class Server{
         this.app.use('/api/whatsapp', RWhatsApp);
         this.app.use('/api/horario-usuario', RHorarioUsuario);
         this.app.use('/api/compensacion-horas', RCompensacion);
+
+        // ---- Rutas nuevos módulos RRHH ----
+        this.app.use('/api/contratos', RContratos);
+        this.app.use('/api/hoja-vida', RHojaVida);
+        this.app.use('/api/evaluaciones', REvaluaciones);
+        this.app.use('/api/roles', RRoles);
+
+        // ---- Rutas módulo Inventario ----
+        this.app.use('/api/inventario/dispositivos', RInvDispositivo);
+        this.app.use('/api/inventario/actas-entrega', RInvActaEntrega);
+        this.app.use('/api/inventario/firma-externa', RInvFirmaExterna);
+        this.app.use('/api/inventario/consumibles', RInvConsumible);
+        this.app.use('/api/inventario/mobiliario', RInvMobiliario);
+        this.app.use('/api/inventario/actas-consumibles', RInvActaConsumible);
+        this.app.use('/api/inventario/actas-mobiliario', RInvActaMobiliario);
+        this.app.use('/api/inventario/actas-devolucion', RInvActaDevolucion);
+        this.app.use('/api/inventario/firma-mobiliario', RInvFirmaMobiliario);
+        this.app.use('/api/inventario/tipos-inventario', RInvTipoInventario);
+        this.app.use('/api/inventario/analistas', RInvAnalista);
     }
     middlewares(){
         // CORS debe ir ANTES de express.json() y cualquier otra cosa
@@ -86,14 +133,14 @@ class Server{
             credentials: true,
             optionsSuccessStatus: 200 // Algunos navegadores antiguos (IE11, varios SmartTVs) tienen problemas con 204
         }));
-        
+
         // Middleware adicional para asegurar headers CORS en todas las respuestas
         this.app.use((req: Request, res: Response, next: NextFunction) => {
             res.header('Access-Control-Allow-Origin', '*');
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
             res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
             res.header('Access-Control-Allow-Credentials', 'true');
-            
+
             // Maneja las solicitudes OPTIONS (preflight)
             if (req.method === 'OPTIONS') {
                 res.status(200).end();
@@ -101,9 +148,10 @@ class Server{
                 next();
             }
         });
-        
-        this.app.use(express.json());
-        
+
+        this.app.use(express.json({ limit: '50mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
         // Servir archivos estáticos
         this.app.use('/uploads', express.static('public/uploads'));
         this.app.use('/uploads', express.static('uploads'));
@@ -113,7 +161,7 @@ class Server{
         try{
             /* {force: true}{alter: true} */
             await sequelize.authenticate();
-            
+
             await Role.sync();
             await Area.sync({alter: false});
             await User.sync({alter: true});
@@ -132,7 +180,7 @@ class Server{
             await Alert.sync({ alter: false });
             await Room.sync({ alter: false });
             await Reservation.sync({ alter: false });
-            
+
             // Sincronizar modelos de asistencia
             const { RegistroAsistencia, ParticipanteAsistencia } = await import('./asistencia');
             await RegistroAsistencia.sync({ alter: true });
@@ -192,9 +240,34 @@ class Server{
             await PreguntaEvaluacion.sync({ alter: true });
             await RespuestaEvaluacion.sync({ alter: true });
 
+            // Sincronizar nuevos módulos RRHH (contratos, hoja de vida, evaluaciones)
+            // Usar alter: false → crea la tabla si no existe, sin modificar columnas existentes
+            const { Contrato, ContratoModificacion } = await import('./contratos');
+            await Contrato.sync({ alter: false });
+            await ContratoModificacion.sync({ alter: false });
+
+            const { ExperienciaLaboral, FormacionAcademica, Habilidad, Referencia, GrupoFamiliar } = await import('./hojaVida');
+            await ExperienciaLaboral.sync({ alter: false });
+            await FormacionAcademica.sync({ alter: false });
+            await Habilidad.sync({ alter: false });
+            await Referencia.sync({ alter: false });
+            await GrupoFamiliar.sync({ alter: false });
+
+            const { PeriodoEvaluacion, CategoriaEvaluacion, CriterioEvaluacion, EvaluacionDesempeno, CalificacionDetalle, EvaluacionObjetivo } = await import('./evaluaciones');
+            await PeriodoEvaluacion.sync({ alter: false });
+            await CategoriaEvaluacion.sync({ alter: false });
+            await CriterioEvaluacion.sync({ alter: false });
+            await EvaluacionDesempeno.sync({ alter: false });
+            await CalificacionDetalle.sync({ alter: false });
+            await EvaluacionObjetivo.sync({ alter: false });
+
+            // Sincronizar tabla de permisos de módulos por rol
+            const { RoleModulo } = await import('./roleModulo');
+            await RoleModulo.sync({ alter: false });
+
             console.log('Conexión establecida correctamente');
         }catch (error){
-            console.log("Error de conexion"); 
+            console.log("Error de conexion");
 
         }
     }
