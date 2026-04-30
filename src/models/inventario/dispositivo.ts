@@ -346,7 +346,6 @@ export class DetalleDevolucion extends Model {
     public condicionDevolucion?: string;
     public fotosDevolucion?: string;
     public observaciones?: string;
-    public cantidad?: number;
 }
 
 DetalleDevolucion.init(
@@ -368,8 +367,7 @@ DetalleDevolucion.init(
         },
         condicionDevolucion: { type: DataTypes.STRING },
         fotosDevolucion: { type: DataTypes.TEXT },
-        observaciones: { type: DataTypes.TEXT },
-        cantidad: { type: DataTypes.INTEGER, defaultValue: 1 }
+        observaciones: { type: DataTypes.TEXT }
     },
     {
         sequelize: sequelizeInventario,
