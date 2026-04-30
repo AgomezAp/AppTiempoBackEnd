@@ -35,7 +35,7 @@ export const listarPeriodos = async (req: Request, res: Response) => {
 
 export const actualizarPeriodo = async (req: Request, res: Response) => {
     try {
-        const periodo = await PeriodoEvaluacion.findByPk(req.params.id);
+        const periodo = await PeriodoEvaluacion.findByPk(req.params.id as string);
         if (!periodo) return res.status(404).json({ msg: 'Período no encontrado' });
         await periodo.update(req.body);
         res.json({ msg: 'Período actualizado', periodo });
@@ -103,7 +103,7 @@ export const crearEvaluacion = async (req: Request, res: Response) => {
 
 export const obtenerEvaluacion = async (req: Request, res: Response) => {
     try {
-        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id, {
+        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id as string, {
             include: [
                 { model: PeriodoEvaluacion, as: 'periodo' },
                 {
@@ -160,7 +160,7 @@ export const listarEvaluacionesPeriodo = async (req: Request, res: Response) => 
 
 export const guardarCalificaciones = async (req: Request, res: Response) => {
     try {
-        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id);
+        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id as string);
         if (!evaluacion) return res.status(404).json({ msg: 'Evaluación no encontrada' });
         if ((evaluacion as any).estado === 'aprobada') {
             return res.status(400).json({ msg: 'No se puede modificar una evaluación aprobada' });
@@ -172,7 +172,7 @@ export const guardarCalificaciones = async (req: Request, res: Response) => {
         // Guardar/actualizar cada calificación (upsert)
         for (const cal of calificaciones) {
             await CalificacionDetalle.upsert({
-                evaluacion_id: parseInt(req.params.id),
+                evaluacion_id: parseInt(req.params.id as string),
                 criterio_id: cal.criterio_id,
                 calificacion: cal.calificacion,
                 comentario: cal.comentario
@@ -180,7 +180,7 @@ export const guardarCalificaciones = async (req: Request, res: Response) => {
         }
 
         // Calcular calificación final ponderada
-        const calificacionFinal = await calcularCalificacionFinal(parseInt(req.params.id));
+        const calificacionFinal = await calcularCalificacionFinal(parseInt(req.params.id as string));
         await evaluacion.update({
             calificacion_final: calificacionFinal,
             estado: 'en_proceso'
@@ -195,7 +195,7 @@ export const guardarCalificaciones = async (req: Request, res: Response) => {
 
 export const guardarObjetivos = async (req: Request, res: Response) => {
     try {
-        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id);
+        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id as string);
         if (!evaluacion) return res.status(404).json({ msg: 'Evaluación no encontrada' });
 
         const { objetivos } = req.body;
@@ -204,7 +204,7 @@ export const guardarObjetivos = async (req: Request, res: Response) => {
         // Eliminar objetivos existentes y recrear
         await EvaluacionObjetivo.destroy({ where: { evaluacion_id: req.params.id } });
         const nuevosObjetivos = await EvaluacionObjetivo.bulkCreate(
-            objetivos.map((obj: any) => ({ ...obj, evaluacion_id: parseInt(req.params.id) }))
+            objetivos.map((obj: any) => ({ ...obj, evaluacion_id: parseInt(req.params.id as string) }))
         );
 
         res.json({ msg: 'Objetivos guardados', objetivos: nuevosObjetivos });
@@ -216,14 +216,14 @@ export const guardarObjetivos = async (req: Request, res: Response) => {
 
 export const completarEvaluacion = async (req: Request, res: Response) => {
     try {
-        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id);
+        const evaluacion = await EvaluacionDesempeno.findByPk(req.params.id as string);
         if (!evaluacion) return res.status(404).json({ msg: 'Evaluación no encontrada' });
 
         const { fortalezas, areas_mejora, compromisos, plan_mejora,
                 comentarios_evaluador, comentarios_evaluado,
                 firma_evaluador, firma_evaluado } = req.body;
 
-        const calificacionFinal = await calcularCalificacionFinal(parseInt(req.params.id));
+        const calificacionFinal = await calcularCalificacionFinal(parseInt(req.params.id as string));
 
         await evaluacion.update({
             estado: 'completada',
@@ -298,7 +298,7 @@ export const graficaRadar = async (req: Request, res: Response) => {
             type: QueryTypes.SELECT
         });
 
-        const colaborador = await User.findByPk(uid, { attributes: ['Uid', 'name', 'lastName'] });
+        const colaborador = await User.findByPk(uid as string, { attributes: ['Uid', 'name', 'lastName'] });
 
         res.json({
             colaborador,
@@ -346,7 +346,7 @@ export const graficaComparativoArea = async (req: Request, res: Response) => {
             type: QueryTypes.SELECT
         });
 
-        const area = await Area.findByPk(areaId, { attributes: ['Aid', 'Aname'] });
+        const area = await Area.findByPk(areaId as string, { attributes: ['Aid', 'Aname'] });
 
         if (datos.length === 0) return res.json({ labels: [], datasets: [], area });
 
@@ -399,7 +399,7 @@ export const graficaEvolucion = async (req: Request, res: Response) => {
             ORDER BY pe.fecha_inicio ASC
         `, { replacements: { uid }, type: QueryTypes.SELECT });
 
-        const colaborador = await User.findByPk(uid, { attributes: ['Uid', 'name', 'lastName'] });
+        const colaborador = await User.findByPk(uid as string, { attributes: ['Uid', 'name', 'lastName'] });
 
         res.json({
             colaborador,
@@ -469,7 +469,7 @@ export const graficaDashboard = async (req: Request, res: Response) => {
 
         const [periodo, resumenGeneral, porArea, topEmpleados] = await Promise.all([
             // Datos del período
-            PeriodoEvaluacion.findByPk(periodoId),
+            PeriodoEvaluacion.findByPk(periodoId as string),
 
             // KPIs generales
             sequelize.query<{

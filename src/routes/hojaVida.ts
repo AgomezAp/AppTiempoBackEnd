@@ -31,7 +31,7 @@ const rh = (fn: Function): RequestHandler => fn as RequestHandler;
 // Multer para documentos del expediente
 const storageExpediente = multer.diskStorage({
     destination: (req, _file, cb) => {
-        const uid = req.params.uid || 'general';
+        const uid = (req.params.uid as string) || 'general';
         const dir = path.join('public', 'uploads', 'expediente', uid);
         fs.mkdirSync(dir, { recursive: true });
         cb(null, dir);

@@ -23,7 +23,7 @@ export const obtenerHojaVidaCompleta = async (req: Request, res: Response) => {
         const { uid } = req.params;
 
         // Obtener datos del colaborador (incluyendo nuevos campos de hoja de vida)
-        const colaborador = await User.findByPk(uid, {
+        const colaborador = await User.findByPk(uid as string, {
             attributes: { exclude: ['password'] }
         });
         if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
@@ -59,7 +59,7 @@ export const generarPdfHojaVida = async (req: Request, res: Response) => {
     try {
         const { uid } = req.params;
 
-        const colaborador = await User.findByPk(uid, { attributes: { exclude: ['password'] } });
+        const colaborador = await User.findByPk(uid as string, { attributes: { exclude: ['password'] } });
         if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
 
         const [experiencias, formaciones, habilidades, referencias, grupoFamiliar] = await Promise.all([
@@ -268,7 +268,7 @@ export const agregarExperiencia = async (req: Request, res: Response) => {
 
 export const editarExperiencia = async (req: Request, res: Response) => {
     try {
-        const item = await ExperienciaLaboral.findByPk(req.params.id);
+        const item = await ExperienciaLaboral.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.update(req.body);
         res.json({ msg: 'Experiencia actualizada', item });
@@ -277,7 +277,7 @@ export const editarExperiencia = async (req: Request, res: Response) => {
 
 export const eliminarExperiencia = async (req: Request, res: Response) => {
     try {
-        const item = await ExperienciaLaboral.findByPk(req.params.id);
+        const item = await ExperienciaLaboral.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.destroy();
         res.json({ msg: 'Experiencia eliminada' });
@@ -294,7 +294,7 @@ export const agregarFormacion = async (req: Request, res: Response) => {
 
 export const editarFormacion = async (req: Request, res: Response) => {
     try {
-        const item = await FormacionAcademica.findByPk(req.params.id);
+        const item = await FormacionAcademica.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.update(req.body);
         res.json({ msg: 'Formación actualizada', item });
@@ -303,7 +303,7 @@ export const editarFormacion = async (req: Request, res: Response) => {
 
 export const eliminarFormacion = async (req: Request, res: Response) => {
     try {
-        const item = await FormacionAcademica.findByPk(req.params.id);
+        const item = await FormacionAcademica.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.destroy();
         res.json({ msg: 'Formación eliminada' });
@@ -320,7 +320,7 @@ export const agregarHabilidad = async (req: Request, res: Response) => {
 
 export const eliminarHabilidad = async (req: Request, res: Response) => {
     try {
-        const item = await Habilidad.findByPk(req.params.id);
+        const item = await Habilidad.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.destroy();
         res.json({ msg: 'Habilidad eliminada' });
@@ -337,7 +337,7 @@ export const agregarReferencia = async (req: Request, res: Response) => {
 
 export const eliminarReferencia = async (req: Request, res: Response) => {
     try {
-        const item = await Referencia.findByPk(req.params.id);
+        const item = await Referencia.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.destroy();
         res.json({ msg: 'Referencia eliminada' });
@@ -354,7 +354,7 @@ export const agregarFamiliar = async (req: Request, res: Response) => {
 
 export const editarFamiliar = async (req: Request, res: Response) => {
     try {
-        const item = await GrupoFamiliar.findByPk(req.params.id);
+        const item = await GrupoFamiliar.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.update(req.body);
         res.json({ msg: 'Familiar actualizado', item });
@@ -363,7 +363,7 @@ export const editarFamiliar = async (req: Request, res: Response) => {
 
 export const eliminarFamiliar = async (req: Request, res: Response) => {
     try {
-        const item = await GrupoFamiliar.findByPk(req.params.id);
+        const item = await GrupoFamiliar.findByPk(req.params.id as string);
         if (!item) return res.status(404).json({ msg: 'Registro no encontrado' });
         await item.destroy();
         res.json({ msg: 'Familiar eliminado' });
@@ -403,7 +403,7 @@ export const obtenerNovedadesExpediente = async (req: Request, res: Response) =>
 // --- Actas de Inventario (dispositivos + consumibles + mobiliario) ---
 export const obtenerActasInventarioExpediente = async (req: Request, res: Response) => {
     try {
-        const colaborador = await User.findByPk(req.params.uid, {
+        const colaborador = await User.findByPk(req.params.uid as string, {
             attributes: ['documentoIdentificacion', 'name', 'lastName']
         });
         if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
@@ -470,7 +470,7 @@ export const subirDocumentoExpediente = async (req: Request, res: Response) => {
         const adminNombre = tokenPayload ? `${tokenPayload.name || ''} ${tokenPayload.lastName || ''}`.trim() : 'Admin';
 
         const doc = await DocumentoExpediente.create({
-            Uid: parseInt(req.params.uid),
+            Uid: parseInt(req.params.uid as string),
             nombre: req.body.nombre || file.originalname,
             descripcion: req.body.descripcion || '',
             ruta: file.path.replace(/\\/g, '/'),
@@ -486,7 +486,7 @@ export const subirDocumentoExpediente = async (req: Request, res: Response) => {
 
 export const eliminarDocumentoExpediente = async (req: Request, res: Response) => {
     try {
-        const doc = await DocumentoExpediente.findByPk(req.params.docId);
+        const doc = await DocumentoExpediente.findByPk(req.params.docId as string);
         if (!doc) return res.status(404).json({ msg: 'Documento no encontrado' });
 
         // Eliminar archivo físico
@@ -502,7 +502,7 @@ export const eliminarDocumentoExpediente = async (req: Request, res: Response) =
 
 export const descargarDocumentoExpediente = async (req: Request, res: Response) => {
     try {
-        const doc = await DocumentoExpediente.findByPk(req.params.docId);
+        const doc = await DocumentoExpediente.findByPk(req.params.docId as string);
         if (!doc) return res.status(404).json({ msg: 'Documento no encontrado' });
 
         const ruta = (doc as any).ruta;
@@ -539,7 +539,7 @@ export const agregarNotaExpediente = async (req: Request, res: Response) => {
         const adminNombre = tokenPayload ? `${tokenPayload.name || ''} ${tokenPayload.lastName || ''}`.trim() : 'Admin';
 
         const nuevaNota = await NotaExpediente.create({
-            Uid: parseInt(req.params.uid),
+            Uid: parseInt(req.params.uid as string),
             nota: nota.trim(),
             admin_nombre: adminNombre
         });
@@ -552,7 +552,7 @@ export const agregarNotaExpediente = async (req: Request, res: Response) => {
 
 export const eliminarNotaExpediente = async (req: Request, res: Response) => {
     try {
-        const notaItem = await NotaExpediente.findByPk(req.params.notaId);
+        const notaItem = await NotaExpediente.findByPk(req.params.notaId as string);
         if (!notaItem) return res.status(404).json({ msg: 'Nota no encontrada' });
         await notaItem.destroy();
         res.json({ msg: 'Nota eliminada' });

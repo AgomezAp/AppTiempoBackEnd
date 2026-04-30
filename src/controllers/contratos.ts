@@ -55,7 +55,7 @@ export const obtenerContratosVigentes = async (req: Request, res: Response) => {
  */
 export const obtenerContrato = async (req: Request, res: Response) => {
     try {
-        const contrato = await Contrato.findByPk(req.params.id, {
+        const contrato = await Contrato.findByPk(req.params.id as string, {
             include: [
                 {
                     model: User,
@@ -109,7 +109,7 @@ export const crearContrato = async (req: Request, res: Response) => {
  */
 export const actualizarContrato = async (req: Request, res: Response) => {
     try {
-        const contrato = await Contrato.findByPk(req.params.id);
+        const contrato = await Contrato.findByPk(req.params.id as string);
         if (!contrato) return res.status(404).json({ msg: 'Contrato no encontrado' });
 
         await contrato.update(req.body);
@@ -126,7 +126,7 @@ export const actualizarContrato = async (req: Request, res: Response) => {
  */
 export const agregarModificacion = async (req: Request, res: Response) => {
     try {
-        const contrato = await Contrato.findByPk(req.params.id);
+        const contrato = await Contrato.findByPk(req.params.id as string);
         if (!contrato) return res.status(404).json({ msg: 'Contrato no encontrado' });
 
         const {
@@ -171,7 +171,7 @@ export const agregarModificacion = async (req: Request, res: Response) => {
  */
 export const generarPdfContrato = async (req: Request, res: Response) => {
     try {
-        const contrato = await Contrato.findByPk(req.params.id, {
+        const contrato = await Contrato.findByPk(req.params.id as string, {
             include: [
                 {
                     model: User,

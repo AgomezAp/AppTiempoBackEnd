@@ -26,7 +26,7 @@ export const listarRoles = async (req: Request, res: Response): Promise<any> => 
 export const getModulosRol = async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
   try {
-    const role = await Role.findByPk(id);
+    const role = await Role.findByPk(id as string);
     if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
 
     // Asegura que existan filas para todos los módulos del sistema
@@ -45,7 +45,7 @@ export const actualizarModulosRol = async (req: Request, res: Response): Promise
   const { id } = req.params;
   const { modulos }: { modulos: string[] } = req.body;
   try {
-    const role = await Role.findByPk(id);
+    const role = await Role.findByPk(id as string);
     if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
 
     // Asegura filas base
@@ -89,7 +89,7 @@ export const actualizarNombreRol = async (req: Request, res: Response): Promise<
   const { Rname } = req.body;
   if (!Rname?.trim()) return res.status(400).json({ msg: 'El nombre es requerido' });
   try {
-    const role = await Role.findByPk(id);
+    const role = await Role.findByPk(id as string);
     if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
     await Role.update({ Rname: Rname.trim() }, { where: { Rid: id } });
     return res.json({ msg: 'Rol actualizado' });
@@ -103,7 +103,7 @@ export const eliminarRol = async (req: Request, res: Response): Promise<any> => 
   const { id } = req.params;
   const ROLES_PROTEGIDOS = ['Admin', 'User', 'Tecnologia'];
   try {
-    const role: any = await Role.findByPk(id);
+    const role: any = await Role.findByPk(id as string);
     if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
     if (ROLES_PROTEGIDOS.includes(role.Rname)) {
       return res.status(400).json({ msg: `El rol "${role.Rname}" es de sistema y no puede eliminarse` });
