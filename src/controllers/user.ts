@@ -6,6 +6,7 @@ import { Op } from "sequelize";
 
 import { Area } from "../models/area";
 import { Role } from "../models/role";
+import { RoleModulo } from "../models/roleModulo";
 import { User } from "../models/user";
 import { Permiso } from "../models/permisos";
 import { Novedad, NovedadHistorico, Registro, Sumatoria, HistoricoHorasExtras } from "../models/time";
@@ -102,6 +103,15 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Obtener módulos habilitados para el rol
+    const modulosHabilitados: string[] = [];
+    try {
+      const modulos = await RoleModulo.findAll({
+        where: { Rid: user.role.Rid, habilitado: true }
+      });
+      modulos.forEach((m: any) => modulosHabilitados.push(m.modulo));
+    } catch (_) { /* Si no hay módulos no bloquear el login */ }
+
     // Crear token con datos del usuario y su rol
     const token = jwt.sign(
       {
@@ -131,6 +141,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       lastname: user.lastName,
       documentoIdentificacion: user.documentoIdentificacion || '',
       correolider: user.area.correoLider,
+      modulos: modulosHabilitados,
     });
   } catch (error: any) {
     console.error('ERROR EN LOGIN:', error);
