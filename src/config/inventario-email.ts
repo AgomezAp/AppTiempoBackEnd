@@ -81,18 +81,27 @@ export async function enviarCorreoFirmaConsumible(
     nombreReceptor: string,
     numeroActa: string,
     token: string,
-    tipoInventarioCodigo: string
+    tipoInventarioCodigo: string,
+    esReenvio: boolean = false
 ): Promise<void> {
     const enlace = `${frontendUrl()}/firmar-consumible/${token}`;
     const tipoLabel = tipoInventarioCodigo === 'aseo' ? 'Aseo' :
         tipoInventarioCodigo === 'papeleria' ? 'Papelería' :
         tipoInventarioCodigo === 'botiquin' ? 'Botiquín' :
-        tipoInventarioCodigo === 'dotacion' ? 'Dotación' : tipoInventarioCodigo;
+        tipoInventarioCodigo === 'dotacion' ? 'Dotación' :
+        tipoInventarioCodigo === 'desechables' ? 'Desechables' : tipoInventarioCodigo;
+    const asunto = esReenvio
+        ? `Recordatorio - Firma requerida: Acta ${numeroActa} - ${tipoLabel}`
+        : `Firma requerida: Acta ${numeroActa} - ${tipoLabel}`;
+    const fechaEnvio = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+    const bannerReenvio = esReenvio
+        ? `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 15px;margin-bottom:15px;font-size:13px;color:#856404;">⚠️ Este es un correo de recordatorio. Si ya firmó el acta, puede ignorar este mensaje.</div>`
+        : '';
 
     await getTransporter().sendMail({
         from: `"Andrés Publicidad - Inventario" <${process.env.EMAIL_USER}>`,
         to: destinatario,
-        subject: `Firma requerida: Acta ${numeroActa} - ${tipoLabel}`,
+        subject: asunto,
         html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#43a047;color:white;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
@@ -100,6 +109,7 @@ export async function enviarCorreoFirmaConsumible(
             <p>${numeroActa}</p>
           </div>
           <div style="background:#f9f9f9;padding:20px;border:1px solid #ddd;border-top:none;">
+            ${bannerReenvio}
             <p>Estimado(a) <strong>${nombreReceptor}</strong>,</p>
             <p>Se han preparado artículos de <strong>${tipoLabel}</strong> para su entrega. Por favor firme el acta de entrega.</p>
             <div style="text-align:center;margin:25px 0;">
@@ -108,6 +118,7 @@ export async function enviarCorreoFirmaConsumible(
               </a>
             </div>
             <p style="color:#666;font-size:12px;">Este enlace es válido por 7 días.</p>
+            <p style="color:#aaa;font-size:11px;">Enviado el ${fechaEnvio}</p>
           </div>
         </div>`
     });

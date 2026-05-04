@@ -6,8 +6,20 @@ import {
   ActaConsumible, DetalleActaConsumible, TokenFirmaConsumible,
   Consumible, MovimientoConsumible, TipoInventario
 } from '../../models/inventario/consumibles';
+import { UserMapping } from '../../models/inventario/userMapping';
 import { getIO } from '../../services/websocket.service';
 import { enviarCorreoFirmaConsumible } from '../../config/inventario-email';
+
+// Resuelve el Uid de inventario_general a partir del Uid de horarios (api_inventario)
+async function resolveInventarioUid(horariosUid: number | undefined): Promise<number | null> {
+  if (!horariosUid) return null;
+  try {
+    const mapping = await UserMapping.findOne({ where: { horarios_uid: horariosUid } });
+    return mapping ? mapping.inventario_uid : null;
+  } catch {
+    return null;
+  }
+}
 
 const generarNumeroActa = async (tipoInventarioCodigo: string): Promise<string> => {
   const prefijo = tipoInventarioCodigo.toUpperCase();
@@ -101,6 +113,7 @@ export const crearActaConsumible = async (req: Request, res: Response): Promise<
         res.status(400).json({ msg: `Stock insuficiente para "${consumible.nombre}". Disponible: ${consumible.stockActual}, Solicitado: ${art.cantidad}` }); return;
       }
     }
+    const inventarioUid = await resolveInventarioUid(Uid);
     const numeroActa = await generarNumeroActa(tipoInventarioCodigo);
     const acta = await ActaConsumible.create({
       numeroActa, tipoInventarioId: tipoInventario.id, nombreReceptor, cedulaReceptor,
@@ -121,7 +134,7 @@ export const crearActaConsumible = async (req: Request, res: Response): Promise<
         consumibleId: art.consumibleId, tipoMovimiento: 'salida', cantidad: art.cantidad,
         stockAnterior, stockNuevo, motivo: 'entrega',
         descripcion: `Entrega por Acta ${numeroActa} a ${nombreReceptor}`,
-        actaEntregaId: acta.id, fecha: new Date(), Uid
+        actaEntregaId: acta.id, fecha: new Date(), Uid: inventarioUid
       });
     }
     const token = uuidv4();
@@ -259,7 +272,7 @@ export const reenviarCorreoFirmaConsumible = async (req: Request, res: Response)
         await TokenFirmaConsumible.create({ actaConsumibleId: acta.id, token, fechaExpiracion });
       }
     }
-    await enviarCorreoFirmaConsumible(acta.correoReceptor, acta.nombreReceptor, acta.numeroActa, token, (acta as any).tipoInventario?.codigo || 'consumible');
+    await enviarCorreoFirmaConsumible(acta.correoReceptor, acta.nombreReceptor, acta.numeroActa, token, (acta as any).tipoInventario?.codigo || 'consumible', true);
     res.json({ msg: 'Correo reenviado exitosamente' });
   } catch (error) {
     console.error('Error al reenviar correo:', error);
@@ -272,6 +285,7 @@ export const cancelarActaConsumible = async (req: Request, res: Response): Promi
   try {
     const { id } = req.params;
     const { Uid } = req.body;
+    const inventarioUid = await resolveInventarioUid(Uid);
     const acta = await ActaConsumible.findByPk(Number(id), {
       include: [{ model: DetalleActaConsumible, as: 'detalles', include: [{ model: Consumible, as: 'consumible' }] }],
       transaction
@@ -289,7 +303,7 @@ export const cancelarActaConsumible = async (req: Request, res: Response): Promi
         consumibleId: consumible.id, tipoMovimiento: 'devolucion', cantidad: detalle.cantidad,
         stockAnterior, stockNuevo, motivo: 'cancelacion_acta',
         descripcion: `Cancelación${acta.estado === 'firmada' ? ' post-firma' : ''} de Acta ${acta.numeroActa} - Stock restaurado`,
-        actaEntregaId: acta.id, fecha: new Date(), Uid
+        actaEntregaId: acta.id, fecha: new Date(), Uid: inventarioUid
       }, { transaction });
     }
     await TokenFirmaConsumible.update({ usado: true }, { where: { actaConsumibleId: acta.id, usado: false }, transaction });
