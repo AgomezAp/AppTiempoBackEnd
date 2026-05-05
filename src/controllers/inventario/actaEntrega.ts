@@ -28,7 +28,7 @@ const generarNumeroActa = async (): Promise<string> => {
 
 export const obtenerActas = async (req: Request, res: Response) => {
   try {
-    const { estado, busqueda } = req.query;
+    const { estado, busqueda, limite } = req.query;
     let where: any = {};
     if (estado && estado !== 'todas') where.estado = estado;
     if (busqueda) {
@@ -38,9 +38,18 @@ export const obtenerActas = async (req: Request, res: Response) => {
         { cargoReceptor: { [Op.iLike]: `%${busqueda}%` } },
         { cedulaReceptor: { [Op.iLike]: `%${busqueda}%` } }
       ];
+    } else {
+        // QA OPTIMIZATION: Si no buscan nada en especifico, mostrar max los ultimos 2 meses para no romper RAM
+        const fechaLimite = new Date();
+        fechaLimite.setMonth(fechaLimite.getMonth() - 2);
+        where.fechaEntrega = { [Op.gte]: fechaLimite };
     }
+
+    const customLimit = limite ? parseInt(limite as string) : 200; // Máximo 200 actas por default
+
     const actas = await ActaEntrega.findAll({
       where,
+      limit: customLimit,
       include: [{
         model: DetalleActa,
         as: 'detalles',
@@ -91,9 +100,13 @@ export const crearActaEntrega = async (req: Request, res: Response): Promise<voi
       await transaction.rollback(); res.status(400).json({ msg: 'Debe seleccionar al menos un dispositivo' }); return;
     }
 
-    // Obtener y validar dispositivos
+    // Obtener y validar dispositivos (CON BLOQUEO para evitar doble asignacion concurrente)
     const dispositivosIds = dispositivos.map((d: any) => d.dispositivoId);
-    const dispositivosDB = await Dispositivo.findAll({ where: { id: dispositivosIds }, transaction });
+    const dispositivosDB = await Dispositivo.findAll({ 
+      where: { id: dispositivosIds }, 
+      lock: transaction.LOCK.UPDATE,
+      transaction 
+    });
 
     // Calcular reservas pendientes para dispositivos de stock
     const stockDispositivos = dispositivosDB.filter(d => d.tipoRegistro === 'stock');

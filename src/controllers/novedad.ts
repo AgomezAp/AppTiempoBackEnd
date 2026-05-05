@@ -44,7 +44,19 @@ export const convertNovedad = async (req: Request, res: Response): Promise<any> 
 
 export const getNovedad = async (req: Request, res: Response): Promise<any> => {
     try {
+        const { desde, hasta } = req.query;
+        let whereClause: any = {};
+
+        if (desde && hasta) {
+            whereClause = { Fecha: { [Op.between]: [desde, hasta] } };
+        } else {
+            // QA OPTIMIZATION: Por defecto, si no solicitan rango, solo los últimos 2 meses para no romper apps
+            const fechaLimite = dayjs().subtract(2, 'month').format('YYYY-MM-DD');
+            whereClause = { Fecha: { [Op.gte]: fechaLimite } };
+        }
+
         const listaNovedades = await Novedad.findAll({
+          where: whereClause,
           order: [['id', 'ASC']]
         });
         const datosConvertidos = listaNovedades.map(registro => {

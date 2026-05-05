@@ -205,10 +205,11 @@ function removeDuplicate(data: any): any {
     return cleanedData;
 }
 export function formatoHora(tiempo: { horas: number, minutos: number }): string {
-    const horas = tiempo.horas;
-    const minutos = tiempo.minutos;
-    const formatedminutos = (minutos < 0 ? (minutos * -1) : minutos).toString().padStart(2, '0');
-    return `${minutos < 0 ? `-${horas}` : horas}:${formatedminutos}`
+    const isNegative = tiempo.horas < 0 || (tiempo.horas === 0 && tiempo.minutos < 0);
+    const absHoras = Math.abs(tiempo.horas);
+    const absMinutos = Math.abs(tiempo.minutos);
+    const formatedminutos = absMinutos.toString().padStart(2, '0');
+    return `${isNegative ? '-' : ''}${absHoras}:${formatedminutos}`;
 }
 
 function sinHuella(primero: {Fecha: string; Hid: string; Open_Time: string; Name: string;}): {Fecha: string; Hid: string; Open_Time: string; Name: string;}{
@@ -297,8 +298,15 @@ function sumarExtra(data: Array<{ Hid: string; Name: string; Entrada: string; Sa
 }
 
 export function convertTimeToMinutes(time: string): number {
-    const [hours, minutes] = time.split(':').map(Number);
-    return (hours * 60) + (Math.sign(hours) * minutes);
+    if (!time || !time.includes(':')) return NaN;
+    const isNegative = time.startsWith('-');
+    const clean = time.replace('-', '');
+    const parts = clean.split(':');
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    if (isNaN(hours) || isNaN(minutes)) return NaN;
+    const total = hours * 60 + minutes;
+    return isNegative ? -total : total;
 }
 
 export function convertMinutesToTime(minutes: number): string {

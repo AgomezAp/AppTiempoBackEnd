@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 
 import {
     //registrarHorarios,
@@ -26,7 +26,8 @@ import {
     getHistoricoExtrasAll,
     getDetalleExtras,
     getUploadHistorial,
-    revertUpload
+    revertUpload,
+    recalcularSumatoria
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -72,7 +73,10 @@ router.post("/api/horario/concatenar",upload.array('files'), concatenar)
 //Eliminar Registro 
 router.delete("/api/horario/delete/:Hid/:Fecha", deleteRegistroByHidAndFecha)
 //Restar tiempo de sabado
-router.post("/api/horario/restaTiempo", restarTiempoSabado)
+router.post("/api/horario/restaTiempo", async (req: Request, res: Response) => {
+    await restarTiempoSabado();
+    res.status(200).json({ message: 'Tiempo restado correctamente' });
+})
 //Historial de horas extras por usuario
 router.get("/api/horario/historicoExtras/:id", getHistoricoExtras)
 //Historial de horas extras por fecha (todos)
@@ -83,4 +87,6 @@ router.get("/api/horario/detalleExtras/:id", getDetalleExtras)
 router.get("/api/horario/uploadHistorial", getUploadHistorial)
 //Revertir una subida
 router.post("/api/horario/revertirUpload/:id", revertUpload)
+//Recalcular Sumatoria desde registros de asistencia (fallback de corrección)
+router.post("/api/horario/recalcularSumatoria", recalcularSumatoria)
 export default router

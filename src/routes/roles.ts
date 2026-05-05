@@ -8,6 +8,7 @@ import {
   actualizarNombreRol,
   eliminarRol,
   getMisModulos,
+  getUsuariosRol,
   validateJWT,
 } from '../controllers/roles';
 
@@ -25,5 +26,8 @@ router.delete('/:id', validateAdmin, eliminarRol);
 // Módulos de un rol específico (solo Admin)
 router.get('/:id/modulos', validateAdmin, getModulosRol);
 router.put('/:id/modulos', validateAdmin, actualizarModulosRol);
+
+// Usuarios de un rol específico (solo Admin)
+router.get('/:id/usuarios', validateAdmin, getUsuariosRol);
 
 export default router;

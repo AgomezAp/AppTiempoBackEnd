@@ -138,19 +138,8 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                 const resultadoActualizado = resultado.map(res => {
                     const matchingExtra = jsonDataExtra.find((extra: {Sid: string; Name: string; Acumulado: string}) => extra.Sid === res.Sid);
                     if(matchingExtra) {
-
-                        let [horasRes, mintosRes] = res.Acumulado.split(':').map(Number);
-                        if(res.Acumulado.startsWith("-")) {
-                            mintosRes = -Math.abs(mintosRes)
-                        }
-                        let [horasExtra, mintosExtra] = matchingExtra.Acumulado.split(':').map(Number);
-                        if(matchingExtra.Acumulado.startsWith("-")) {
-                            mintosExtra = -Math.abs(mintosExtra)
-                        }
-                        const totalMinutos = (horasRes * 60) + (horasExtra * 60) + mintosRes + mintosExtra;
-                        let totalHoras = totalMinutos < 0 ? Math.ceil(totalMinutos/60) : Math.floor(totalMinutos/60);
-                        let mintosFinales = totalMinutos % 60
-                        res.Acumulado = formatoHora({ horas: totalHoras, minutos: mintosFinales});
+                        const totalMinutos = convertTimeToMinutes(res.Acumulado) + convertTimeToMinutes(matchingExtra.Acumulado);
+                        res.Acumulado = convertMinutesToTime(totalMinutos);
                         return {
                             Sid: res.Sid,
                             Name: res.Name,
@@ -159,11 +148,6 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                     }
                     return res;
                 })
-                resultadoActualizado.forEach(res => {
-                    if (res.Acumulado.startsWith("--")) {
-                        res.Acumulado = res.Acumulado.replace("--", "-");
-                    }
-                });
                 for(const data of resultadoActualizado) {
                    Extra = await Sumatoria.update(
                     {Acumulado: data.Acumulado},
@@ -185,9 +169,21 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
         }
     });
 };
- export const getHorario = async (req: Request, res: Response): Promise<any> => {
+export const getHorario = async (req: Request, res: Response): Promise<any> => {
     try {
+        const { desde, hasta } = req.query;
+        let whereClause: any = {};
+
+        if (desde && hasta) {
+            whereClause = { Fecha: { [Op.between]: [desde, hasta] } };
+        } else {
+            // QA OPTIMIZATION: Por defecto, si no solicitan rango, solo el último mes (30 días)
+            const fechaLimite = dayjs().subtract(1, 'month').format('YYYY-MM-DD');
+            whereClause = { Fecha: { [Op.gte]: fechaLimite } };
+        }
+
         const listahorario = await Registro.findAll({
+          where: whereClause,
           order: [['unique_key', 'ASC']]
         });
         const convertirAHorarioLocal = (fechaUTC: string | null) => {
@@ -348,9 +344,9 @@ export const getHorarioByFecha = async (req: Request, res: Response): Promise<an
 export const updateSalidaById = async (req: Request, res: Response): Promise<any> => {
     const { id, fecha, salida } = req.body;
     try {
-        if (!fecha || !salida) {
+        if (!id || !fecha || !salida) {
             return res.status(400).json({
-                message: 'Fecha y hora de salida son requeridas',
+                message: 'ID, fecha y hora de salida son requeridos',
             });
         }
 
@@ -397,9 +393,11 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
         const extraactual = diferenciaUpdate(entradaactual, salidaactual, horasRestar, minutosRestar);
         const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0))
         const extraactualformato = formatoHora(extraactual);
+        // Aplicar mismo filtro de tolerancia que en carga XML (0-30 min → 0:00)
+        const extraFinalSalida = (convertirHora(extraactualformato) >= 0 && convertirHora(extraactualformato) <= 30) ? '0:00' : extraactualformato;
         await Registro.update(
-            { 
-                Extra: extraactualformato,
+            {
+                Extra: extraFinalSalida,
                 Total: totalActual
             },
             {
@@ -409,20 +407,16 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
                 },
             }
         );
-        var sum = convertirMinuto(convertirHora(extraactualformato) - convertirHora(extra));
-        const sumatoria = await Sumatoria.findOne({
-            where: {
-                Sid: id
-            }
-        }); 
-        await Sumatoria.update(
-            {Acumulado: convertirMinuto(convertirHora(sumatoria?.getDataValue('Acumulado')) + convertirHora(sum))},
-            {
-                where: {
-                    Sid: id,
-                }
-            }
-        );
+        const sum = convertirMinuto(convertirHora(extraFinalSalida) - convertirHora(extra));
+        const sumatoria = await Sumatoria.findOne({ where: { Sid: id } });
+        if (!sumatoria) {
+            await Sumatoria.create({ Sid: id, Name: registro.getDataValue('Name'), Acumulado: sum });
+        } else {
+            await Sumatoria.update(
+                { Acumulado: convertirMinuto(convertirHora(sumatoria.getDataValue('Acumulado')) + convertirHora(sum)) },
+                { where: { Sid: id } }
+            );
+        }
         res.status(200).json({
             message: `Hora de salida del empleado con ID ${id} actualizada correctamente`,
         });
@@ -436,9 +430,9 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
 export const updateEntradaById = async (req: Request, res: Response): Promise<any> => {
     const { id, fecha, entrada } = req.body;
     try {
-        if (!fecha || !entrada) {
+        if (!id || !fecha || !entrada) {
             return res.status(400).json({
-                message: 'Fecha y hora de salida son requeridas',
+                message: 'ID, fecha y hora de entrada son requeridos',
             });
         }
         const entradacompleta = `${fecha} ${entrada}`
@@ -487,9 +481,11 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
         const extraactual = diferenciaUpdate(entradaactual, salidaactual, horasRestarE, minutosRestarE);
         const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0));
         const extraactualformato = formatoHora(extraactual);
+        // Aplicar mismo filtro de tolerancia que en carga XML (0-30 min → 0:00)
+        const extraFinalEntrada = (convertirHora(extraactualformato) >= 0 && convertirHora(extraactualformato) <= 30) ? '0:00' : extraactualformato;
         await Registro.update(
-            { 
-                Extra: extraactualformato,
+            {
+                Extra: extraFinalEntrada,
                 Total : totalActual
             },
             {
@@ -499,20 +495,16 @@ export const updateEntradaById = async (req: Request, res: Response): Promise<an
                 },
             }
         );
-        var sum = convertirMinuto(convertirHora(extraactualformato) - convertirHora(extra));
-        const sumatoria = await Sumatoria.findOne({
-            where: {
-                Sid: id
-            }
-        });
-        await Sumatoria.update(
-            {Acumulado: convertirMinuto(convertirHora(sumatoria?.getDataValue('Acumulado')) + convertirHora(sum))},
-            {
-                where: {
-                    Sid: id
-                }
-            }
-        );
+        const sumE = convertirMinuto(convertirHora(extraFinalEntrada) - convertirHora(extra));
+        const sumatoriaE = await Sumatoria.findOne({ where: { Sid: id } });
+        if (!sumatoriaE) {
+            await Sumatoria.create({ Sid: id, Name: registro.getDataValue('Name'), Acumulado: sumE });
+        } else {
+            await Sumatoria.update(
+                { Acumulado: convertirMinuto(convertirHora(sumatoriaE.getDataValue('Acumulado')) + convertirHora(sumE)) },
+                { where: { Sid: id } }
+            );
+        }
         res.status(200).json({
             message: `Hora de entrada del empleado con ID ${id} actualizada correctamente`,
         });
@@ -531,7 +523,10 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
     const total = difereciaConMoment2(primero, segundo)
     const diaSemanaR = dayjs.tz(req.body.Fecha, 'America/Bogota').day();
     const jornadaR = await getJornadaUsuario(req.body.Hid, diaSemanaR);
-    const extH = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - jornadaR.totalRestar);
+    const extHRaw = convertMinutesToTime(convertTimeToMinutes(formatoHora(total)) - jornadaR.totalRestar);
+    // Aplicar mismo filtro de tolerancia que en carga XML (0-30 min → 0:00)
+    const extHMins = convertTimeToMinutes(extHRaw);
+    const extH = (extHMins >= 0 && extHMins <= 30) ? '0:00' : extHRaw;
     try {
         await Registro.create({
             Hid:  req.body.Hid,
@@ -553,7 +548,7 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
             const acum = listaExtras.map(ls => ls.toJSON() as { Acumulado: string });
             const suma = convertirMinuto(convertirHora(acum[0].Acumulado) + convertirHora(extH));
             await Sumatoria.update(
-                {Extra: suma},
+                { Acumulado: suma },
                 {
                     where: {
                         Sid: req.body.Hid
@@ -855,8 +850,8 @@ export const updateExtra = async (req: Request, res: Response): Promise<any> => 
             { where: { Sid: id } }
         );
 
-        // Guardar snapshot después de actualizar
-        await guardarSnapshotExtras();
+        // Guardar snapshot SÓLO del usuario afectado
+        await guardarSnapshotExtras(id);
 
         res.status(200).json({
             message: `Valor de extra actualizado correctamente para el ID ${id}`,
@@ -1016,37 +1011,39 @@ export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): 
     }
 };
 
+const MINUTOS_SABADO_LABORAL = 240; // 4 horas fijas para todos los usuarios
+
 export const restarTiempoSabado = async (): Promise<void> => {
     try {
-        // Obtener usuarios con sábado activo y su jornada configurada
-        const horariosSabado = await HorarioUsuario.findAll({
-            where: { diaSemana: 6, activo: true }
-        });
-
-        // Construir mapa Uid -> minutos a restar por sábado
-        const sabadoMap = new Map<number, number>();
-        for (const h of horariosSabado) {
-            const uid = h.getDataValue('Uid');
-            const totalRestar = h.getDataValue('jornadaMinutos') + h.getDataValue('almuerzoMinutos');
-            sabadoMap.set(uid, totalRestar);
-        }
+        // Guardar snapshot ANTES de la deducción para auditoría y posible reversión
+        await guardarSnapshotExtras();
 
         const registros = await Sumatoria.findAll();
 
         for (const reg of registros) {
-            const sid = parseInt(reg.getDataValue('Sid'), 10);
-            const minutosARestar = sabadoMap.get(sid);
-            if (!minutosARestar) continue; // No tiene sábado activo, no restar
+            const sid = reg.getDataValue('Sid');
+            const acumuladoActual = reg.getDataValue('Acumulado') as string;
 
-            const acumuladoActual = reg.getDataValue('Acumulado');
+            // Proteger contra valores corruptos o nulos en BD
+            if (!acumuladoActual || !acumuladoActual.includes(':')) {
+                console.warn(`restarTiempoSabado: Acumulado inválido para Sid ${sid}: "${acumuladoActual}", omitiendo.`);
+                continue;
+            }
+
             const minutosAcumulados = convertTimeToMinutes(acumuladoActual);
-            const sabadoMinutos = minutosAcumulados - minutosARestar;
-            const sabado = convertMinutesToTime(sabadoMinutos);
+            if (isNaN(minutosAcumulados)) {
+                console.warn(`restarTiempoSabado: convertTimeToMinutes devolvió NaN para "${acumuladoActual}" (Sid ${sid}), omitiendo.`);
+                continue;
+            }
+
+            const nuevoAcumulado = convertMinutesToTime(minutosAcumulados - MINUTOS_SABADO_LABORAL);
             await Sumatoria.update(
-                { Acumulado: sabado },
-                { where: { Sid: reg.getDataValue('Sid') } }
+                { Acumulado: nuevoAcumulado },
+                { where: { Sid: sid } }
             );
         }
+
+        console.log(`restarTiempoSabado: ${MINUTOS_SABADO_LABORAL} minutos restados a ${registros.length} usuarios.`);
     } catch (error: any) {
         console.error('Error al restar el tiempo:', error);
         throw error;
@@ -1076,10 +1073,13 @@ function formatearAcumuladoDias(acumulado: string): string {
 }
 
 // Guardar snapshot de todas las horas extras actuales (1 por usuario por día)
-export const guardarSnapshotExtras = async (): Promise<void> => {
+export const guardarSnapshotExtras = async (idAfectado?: number): Promise<void> => {
     try {
         const hoy = dayjs().format('YYYY-MM-DD');
-        const registros = await Sumatoria.findAll();
+        
+        // Si se pasa un ID, solo traer a ese usuario, de lo contrario a todos (para CRON jobs)
+        const whereClause = idAfectado ? { Sid: idAfectado } : {};
+        const registros = await Sumatoria.findAll({ where: whereClause });
 
         for (const reg of registros) {
             const sid = reg.getDataValue('Sid');
@@ -1179,6 +1179,43 @@ export const getDetalleExtras = async (req: Request, res: Response): Promise<any
 
 // ===== HISTORIAL DE SUBIDAS =====
 
+// Recalcular Sumatoria sumando todos los Registros.Extra por usuario (fallback de corrección)
+export const recalcularSumatoria = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const sumatoriasAll = await Sumatoria.findAll();
+        const resultados: Array<{ Sid: number; Name: string; anterior: string; recalculado: string }> = [];
+
+        for (const sum of sumatoriasAll) {
+            const sid = sum.getDataValue('Sid');
+            const name = sum.getDataValue('Name');
+            const anterior = sum.getDataValue('Acumulado');
+
+            const registros = await Registro.findAll({ where: { Hid: sid } });
+            let totalMinutos = 0;
+            for (const reg of registros) {
+                const extra = reg.getDataValue('Extra') as string;
+                if (extra && extra.includes(':')) {
+                    const mins = convertTimeToMinutes(extra);
+                    if (!isNaN(mins)) totalMinutos += mins;
+                }
+            }
+
+            const recalculado = convertMinutesToTime(totalMinutos);
+            await Sumatoria.update({ Acumulado: recalculado }, { where: { Sid: sid } });
+            resultados.push({ Sid: sid, Name: name, anterior, recalculado });
+        }
+
+        await guardarSnapshotExtras();
+        return res.status(200).json({
+            message: 'Sumatoria recalculada desde registros de asistencia. NOTA: las deducciones mensuales de sábados no están incluidas.',
+            resultados
+        });
+    } catch (error: any) {
+        console.error('Error al recalcular sumatoria:', error);
+        return res.status(500).json({ error: 'Error al recalcular sumatoria', details: error.message });
+    }
+};
+
 // Obtener historial de todas las subidas
 export const getUploadHistorial = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -1221,15 +1258,7 @@ export const revertUpload = async (req: Request, res: Response): Promise<any> =>
                     // Convertir ambos a minutos
                     const minutosActual = convertTimeToMinutes(acumuladoActual);
                     const minutosDelta = convertTimeToMinutes(deltaAcumulado);
-
-                    // Restar el delta
-                    const minutosRevertido = minutosActual - minutosDelta;
-                    const horasR = minutosRevertido < 0 ? Math.ceil(minutosRevertido / 60) : Math.floor(minutosRevertido / 60);
-                    const minsR = minutosRevertido % 60;
-                    let nuevoAcumulado = formatoHora({ horas: horasR, minutos: minsR });
-                    if (nuevoAcumulado.startsWith("--")) {
-                        nuevoAcumulado = nuevoAcumulado.replace("--", "-");
-                    }
+                    const nuevoAcumulado = convertMinutesToTime(minutosActual - minutosDelta);
 
                     await Sumatoria.update(
                         { Acumulado: nuevoAcumulado },

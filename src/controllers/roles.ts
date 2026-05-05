@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Role } from '../models/role';
 import { RoleModulo, MODULOS_SISTEMA } from '../models/roleModulo';
+import { User } from '../models/user';
 import { validateAdmin } from './archivo';
 
 // Inicializa módulos para un rol recién creado (todos deshabilitados por defecto)
@@ -144,6 +145,24 @@ export const validateJWT = (req: any, res: Response, next: any): any => {
     next();
   } catch {
     return res.status(401).json({ msg: 'Token inválido' });
+  }
+};
+
+// GET /api/roles/:id/usuarios — lista usuarios que tienen un rol específico
+export const getUsuariosRol = async (req: Request, res: Response): Promise<any> => {
+  const { id } = req.params;
+  try {
+    const role = await Role.findByPk(id);
+    if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
+
+    const usuarios = await User.findAll({
+      where: { Rid: id },
+      attributes: ['Uid', 'name', 'lastName', 'email', 'cargo', 'status'],
+      order: [['name', 'ASC']],
+    });
+    return res.json(usuarios);
+  } catch (err) {
+    return res.status(500).json({ msg: 'Error al obtener usuarios del rol' });
   }
 };
 
