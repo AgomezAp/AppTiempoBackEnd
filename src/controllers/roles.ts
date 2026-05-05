@@ -150,7 +150,7 @@ export const validateJWT = (req: any, res: Response, next: any): any => {
 
 // GET /api/roles/:id/usuarios — lista usuarios que tienen un rol específico
 export const getUsuariosRol = async (req: Request, res: Response): Promise<any> => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   try {
     const role = await Role.findByPk(id);
     if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
