@@ -178,21 +178,22 @@ export const getArchivo = async (req: Request, res: Response): Promise<any> => {
 // Crear un nuevo archivo (solo admin)
 export const createArchivo = async (req: any, res: Response): Promise<any> => {
   try {
-    const { nombre, descripcion, tipo, categoria } = req.body;
-    
-    if (!req.file) {
+    const { nombre, descripcion, tipo, categoria, link } = req.body;
+
+    if (!req.file && !link?.trim()) {
       return res.status(400).json({
-        msg: "No se ha subido ningún archivo",
+        msg: "Debes adjuntar un archivo o ingresar un link",
       });
     }
 
-    const url = `/uploads/${req.file.filename}`;
+    const url = req.file ? `/uploads/${req.file.filename}` : link.trim();
+    const tipoFinal = req.file ? tipo : (tipo || 'link');
 
     const nuevoArchivo = await Archivo.create({
       nombre,
       descripcion,
       url,
-      tipo,
+      tipo: tipoFinal,
       categoria,
       fechaSubida: new Date(),
       estado: 1,
@@ -214,7 +215,7 @@ export const createArchivo = async (req: any, res: Response): Promise<any> => {
 // Actualizar un archivo (solo admin)
 export const updateArchivo = async (req: any, res: Response): Promise<any> => {
   const { id } = req.params;
-  const { nombre, descripcion, tipo, categoria } = req.body;
+  const { nombre, descripcion, tipo, categoria, link } = req.body;
 
   try {
     const archivo = await Archivo.findByPk(parseId(id));
@@ -227,18 +228,29 @@ export const updateArchivo = async (req: any, res: Response): Promise<any> => {
 
     let url = archivo.url;
 
-    // Si se subió un nuevo archivo, eliminar el anterior y actualizar la URL
     if (req.file) {
-      const oldFilePath = path.join(__dirname, "../../public", archivo.url);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
+      // Nuevo archivo físico: eliminar el anterior si era local
+      if (archivo.url && !archivo.url.startsWith('http')) {
+        const oldFilePath = path.join(__dirname, "../../public", archivo.url);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
       }
       url = `/uploads/${req.file.filename}`;
+    } else if (link?.trim()) {
+      // Nuevo link: si había un archivo físico anterior, eliminarlo
+      if (archivo.url && !archivo.url.startsWith('http')) {
+        const oldFilePath = path.join(__dirname, "../../public", archivo.url);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      url = link.trim();
     }
 
     await archivo.update({
       nombre: nombre || archivo.nombre,
-      descripcion: descripcion || archivo.descripcion,
+      descripcion: descripcion !== undefined ? descripcion : archivo.descripcion,
       url,
       tipo: tipo || archivo.tipo,
       categoria: categoria || archivo.categoria,
@@ -301,10 +313,12 @@ export const deleteArchivoFisico = async (
       });
     }
 
-    // Eliminar archivo físico
-    const filePath = path.join(__dirname, "../../public", archivo.url);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Eliminar archivo físico si no es un link externo
+    if (archivo.url && !archivo.url.startsWith('http')) {
+      const filePath = path.join(__dirname, "../../public", archivo.url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
 
     // Eliminar registro de la base de datos

@@ -50,6 +50,10 @@ Permiso.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    fechaFin: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     tipo: {
       type: DataTypes.STRING,
       allowNull: false,

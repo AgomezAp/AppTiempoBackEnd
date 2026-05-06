@@ -11,6 +11,7 @@ export const HorarioUsuario = sequelize.define(
         jornadaMinutos: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 510 }, // 8:30 = 510 min de trabajo
         almuerzoMinutos: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 60 }, // 1 hora almuerzo
         activo: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        horaEntrada: { type: DataTypes.STRING(5), allowNull: true, defaultValue: '07:30' }, // Hora de entrada permitida HH:mm
     },
     {
         timestamps: false,
@@ -84,6 +85,7 @@ export async function generarHorariosEstandar(uid: number): Promise<void> {
         diaSemana: parseInt(dia, 10),
         jornadaMinutos: config.jornadaMinutos,
         almuerzoMinutos: config.almuerzoMinutos,
+        horaEntrada: '07:30',
         activo: true,
     }));
 

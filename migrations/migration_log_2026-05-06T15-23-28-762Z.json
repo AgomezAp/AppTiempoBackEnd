@@ -1,0 +1,18 @@
+{
+  "fechaEjecucion": "2026-05-06T15:23:28.763Z",
+  "resumen": {
+    "totalInventario": 0,
+    "mapeados": 0,
+    "sinMapear": 0,
+    "errores": 0
+  },
+  "mapeados": [],
+  "sinMapear": [],
+  "errores": [
+    {
+      "tipo": "critico",
+      "error": "password authentication failed for user \"alejandroap\"",
+      "stack": "SequelizeConnectionError: password authentication failed for user \"alejandroap\"\n    at Client._connectionCallback (C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\sequelize\\lib\\dialects\\postgres\\connection-manager.js:145:24)\n    at Client._handleErrorWhileConnecting (C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\pg\\lib\\client.js:326:19)\n    at Client._handleErrorMessage (C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\pg\\lib\\client.js:346:19)\n    at Connection.emit (node:events:519:28)\n    at C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\pg\\lib\\connection.js:116:12\n    at Parser.parse (C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\pg-protocol\\dist\\parser.js:36:17)\n    at TLSSocket.<anonymous> (C:\\Users\\DESARROLLO\\Documents\\Codigos\\AppTiempoBackEnd\\node_modules\\pg-protocol\\dist\\index.js:11:42)\n    at TLSSocket.emit (node:events:519:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)"
+    }
+  ]
+}

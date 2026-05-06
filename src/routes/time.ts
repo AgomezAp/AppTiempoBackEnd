@@ -27,7 +27,8 @@ import {
     getDetalleExtras,
     getUploadHistorial,
     revertUpload,
-    recalcularSumatoria
+    recalcularSumatoria,
+    getLlegadasTarde
  } from '../controllers/time';
 import validateToken  from './validateToken';
 import multer from 'multer';
@@ -89,4 +90,6 @@ router.get("/api/horario/uploadHistorial", getUploadHistorial)
 router.post("/api/horario/revertirUpload/:id", revertUpload)
 //Recalcular Sumatoria desde registros de asistencia (fallback de corrección)
 router.post("/api/horario/recalcularSumatoria", recalcularSumatoria)
+//Llegadas tarde con cruce de permisos
+router.get("/api/horario/llegadas-tarde", getLlegadasTarde)
 export default router

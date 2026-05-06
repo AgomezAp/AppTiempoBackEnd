@@ -332,6 +332,70 @@ DocumentoExpediente.init(
     }
 );
 
+// ---- LLAMADOS DE ATENCIÓN ----
+interface LlamadoAtencionAtributos {
+    id: number;
+    Uid: number;
+    tipo: 'verbal' | 'escrito' | 'suspension' | 'otro';
+    fecha: Date;
+    descripcion: string;
+    soporte_url?: string;
+    admin_nombre?: string;
+    reconocido?: boolean;
+    estado?: 'activo' | 'archivado';
+    created_at?: Date;
+}
+
+export class LlamadoAtencion extends Model<LlamadoAtencionAtributos, Optional<LlamadoAtencionAtributos, 'id'>>
+    implements LlamadoAtencionAtributos {
+    public id!: number;
+    public Uid!: number;
+    public tipo!: 'verbal' | 'escrito' | 'suspension' | 'otro';
+    public fecha!: Date;
+    public descripcion!: string;
+    public soporte_url?: string;
+    public admin_nombre?: string;
+    public reconocido?: boolean;
+    public estado?: 'activo' | 'archivado';
+    public readonly created_at!: Date;
+}
+
+LlamadoAtencion.init(
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        Uid: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'users', key: 'Uid' }
+        },
+        tipo: {
+            type: DataTypes.ENUM('verbal', 'escrito', 'suspension', 'otro'),
+            allowNull: false,
+            comment: 'verbal | escrito | suspension | otro'
+        },
+        fecha: { type: DataTypes.DATEONLY, allowNull: false },
+        descripcion: { type: DataTypes.TEXT, allowNull: false },
+        soporte_url: { type: DataTypes.STRING(500) },
+        admin_nombre: { type: DataTypes.STRING(200) },
+        reconocido: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            comment: 'TRUE si el colaborador reconoció el llamado'
+        },
+        estado: {
+            type: DataTypes.ENUM('activo', 'archivado'),
+            defaultValue: 'activo'
+        }
+    },
+    {
+        sequelize,
+        tableName: 'llamados_atencion',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: false
+    }
+);
+
 // ---- NOTAS EXPEDIENTE ----
 interface NotaExpedienteAtributos {
     id: number;

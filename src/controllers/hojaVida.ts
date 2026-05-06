@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { Op } from 'sequelize';
+import { Op, fn, col as sqCol, where as makeWhere } from 'sequelize';
 import { User } from '../models/user';
-import { ExperienciaLaboral, FormacionAcademica, Habilidad, Referencia, GrupoFamiliar, DocumentoExpediente, NotaExpediente } from '../models/hojaVida';
+import { Role } from '../models/role';
+import { ExperienciaLaboral, FormacionAcademica, Habilidad, Referencia, GrupoFamiliar, DocumentoExpediente, NotaExpediente, LlamadoAtencion } from '../models/hojaVida';
 import { Permiso } from '../models/permisos';
 import { Novedad } from '../models/time';
 import { ActaEntrega, DetalleActa, Dispositivo } from '../models/inventario/dispositivo';
@@ -12,6 +13,111 @@ import { ActaConsumible, ActaMobiliario, TipoInventario, DetalleActaConsumible }
 // ============================================================
 // HOJA DE VIDA - Controller
 // ============================================================
+
+/**
+ * Normaliza un nombre para comparación: quita tildes, pasa a minúsculas, recorta espacios
+ */
+const normalizarNombre = (str: string): string =>
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// ============================================================
+// VISTA CARPETAS — Admin / RRHH
+// Lista todos los colaboradores activos con conteo de registros
+// ============================================================
+
+/**
+ * GET /api/hoja-vida/usuarios
+ * Solo accesible para Admin / Tecnologia / RRHH
+ */
+export const listarUsuariosExpediente = async (req: Request, res: Response) => {
+    try {
+        const usuarios = await User.findAll({
+            where: { status: 1 },
+            attributes: ['Uid', 'name', 'lastName', 'email', 'cargo', 'empresa', 'documentoIdentificacion', 'fechaIngreso', 'celular'],
+            include: [{ model: Role, as: 'role', attributes: ['Rname'] }],
+            order: [['name', 'ASC'], ['lastName', 'ASC']]
+        });
+
+        // Conteo de llamados por usuario en una sola consulta
+        // Se envuelve en try/catch por si la tabla aún no existe en la DB
+        const countMap: Record<number, number> = {};
+        try {
+            const llamadosCounts = await LlamadoAtencion.findAll({
+                attributes: ['Uid'],
+                where: { estado: 'activo' }
+            });
+            for (const l of llamadosCounts) {
+                const uid = (l as any).Uid;
+                countMap[uid] = (countMap[uid] || 0) + 1;
+            }
+        } catch (_) {
+            // La tabla llamados_atencion aún no existe — se omite el conteo
+        }
+
+        const resultado = usuarios.map((u: any) => {
+            const obj = u.toJSON();
+            return {
+                ...obj,
+                llamadosActivos: countMap[obj.Uid] || 0
+            };
+        });
+
+        // Crear carpetas de expediente para todos los colaboradores que no la tengan
+        // Se ejecuta en background sin bloquear la respuesta
+        setImmediate(() => {
+            for (const u of usuarios) {
+                const uid = (u as any).Uid;
+                const carpeta = path.join('public', 'uploads', 'expediente', String(uid));
+                if (!fs.existsSync(carpeta)) {
+                    try { fs.mkdirSync(carpeta, { recursive: true }); } catch (_) {}
+                }
+            }
+        });
+
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error al listar usuarios expediente:', error);
+        res.status(500).json({ msg: 'Error al listar usuarios' });
+    }
+};
+
+/**
+ * POST /api/hoja-vida/inicializar-carpetas
+ * Crea las carpetas de expediente para TODOS los colaboradores activos de forma síncrona.
+ * Solo Admin / RRHH.
+ */
+export const inicializarCarpetasExpediente = async (req: Request, res: Response) => {
+    try {
+        const usuarios = await User.findAll({
+            where: { status: 1 },
+            attributes: ['Uid', 'name', 'lastName']
+        });
+
+        let creadas = 0;
+        let existentes = 0;
+
+        for (const u of usuarios) {
+            const uid = (u as any).Uid;
+            const carpeta = path.join('public', 'uploads', 'expediente', String(uid));
+            if (!fs.existsSync(carpeta)) {
+                fs.mkdirSync(carpeta, { recursive: true });
+                creadas++;
+            } else {
+                existentes++;
+            }
+        }
+
+        res.json({
+            msg: `Inicialización completa: ${creadas} carpeta(s) creada(s), ${existentes} ya existían.`,
+            creadas,
+            existentes,
+            total: usuarios.length
+        });
+    } catch (error) {
+        console.error('Error al inicializar carpetas:', error);
+        res.status(500).json({ msg: 'Error al inicializar carpetas de expediente' });
+    }
+};
 
 /**
  * GET /api/hoja-vida/:uid
@@ -27,6 +133,12 @@ export const obtenerHojaVidaCompleta = async (req: Request, res: Response) => {
             attributes: { exclude: ['password'] }
         });
         if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
+
+        // Auto-crear carpeta física de expediente si no existe
+        const carpetaExpediente = path.join('public', 'uploads', 'expediente', uid as string);
+        if (!fs.existsSync(carpetaExpediente)) {
+            fs.mkdirSync(carpetaExpediente, { recursive: true });
+        }
 
         // Obtener todos los componentes de la hoja de vida en paralelo
         const [experiencias, formaciones, habilidades, referencias, grupoFamiliar] = await Promise.all([
@@ -408,28 +520,37 @@ export const obtenerActasInventarioExpediente = async (req: Request, res: Respon
         });
         if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
 
-        const col = colaborador.toJSON() as any;
-        const cedula = col.documentoIdentificacion;
-        const nombre = `${col.name} ${col.lastName}`.toLowerCase();
+        const colData = colaborador.toJSON() as any;
+        const cedula = colData.documentoIdentificacion?.trim() || '';
 
-        // Filtro: por cédula exacta o por nombre aproximado como fallback
-        const where: any = cedula
+        // Nombre completo normalizado (sin tildes, minúsculas) para búsqueda insensible a acentos
+        // Las actas se guardan a veces sin tildes ("Gomez" vs "Gómez") — usamos unaccent() en PostgreSQL
+        const primerNombre = (colData.name || '').trim();
+        const primerApellido = ((colData.lastName || '').split(' ')[0]).trim();
+        const nombreApellido = normalizarNombre(`${primerNombre} ${primerApellido}`.trim());
+
+        // Con cédula: búsqueda exacta por documento (más fiable)
+        // Sin cédula: unaccent(lower(nombreReceptor)) LIKE '%nombre apellido%' para tolerar variaciones de acentos
+        const whereReceptor: any = cedula
             ? { cedulaReceptor: cedula }
-            : { nombreReceptor: { [Op.iLike]: `%${nombre}%` } };
+            : makeWhere(
+                fn('unaccent', fn('lower', sqCol('nombreReceptor'))),
+                { [Op.like]: `%${nombreApellido}%` }
+              );
 
         const [actasDispositivos, actasConsumibles, actasMobiliario] = await Promise.all([
             ActaEntrega.findAll({
-                where,
+                where: whereReceptor,
                 include: [{ model: DetalleActa, as: 'detalles', include: [{ model: Dispositivo, as: 'dispositivo', attributes: ['nombre', 'categoria', 'marca', 'modelo', 'serial'] }] }],
                 order: [['fechaEntrega', 'DESC']]
             }),
             ActaConsumible.findAll({
-                where,
+                where: whereReceptor,
                 include: [{ model: TipoInventario, as: 'tipoInventario', attributes: ['nombre', 'codigo'] }],
                 order: [['fechaEntrega', 'DESC']]
             }),
             ActaMobiliario.findAll({
-                where,
+                where: whereReceptor,
                 order: [['createdAt', 'DESC']]
             })
         ]);
@@ -437,7 +558,11 @@ export const obtenerActasInventarioExpediente = async (req: Request, res: Respon
         res.json({
             dispositivos: actasDispositivos,
             consumibles: actasConsumibles,
-            mobiliario: actasMobiliario
+            mobiliario: actasMobiliario,
+            _meta: {
+                cedula,
+                nombreBusqueda: nombreApellido
+            }
         });
     } catch (error) {
         console.error('Error al obtener actas de inventario:', error);
@@ -558,5 +683,212 @@ export const eliminarNotaExpediente = async (req: Request, res: Response) => {
         res.json({ msg: 'Nota eliminada' });
     } catch (error) {
         res.status(500).json({ msg: 'Error al eliminar la nota' });
+    }
+};
+
+// ============================================================
+// LLAMADOS DE ATENCIÓN
+// ============================================================
+
+export const listarLlamados = async (req: Request, res: Response) => {
+    try {
+        const llamados = await LlamadoAtencion.findAll({
+            where: { Uid: req.params.uid },
+            order: [['fecha', 'DESC']]
+        });
+        res.json(llamados);
+    } catch (error) {
+        res.status(500).json({ msg: 'Error al obtener los llamados de atención' });
+    }
+};
+
+export const agregarLlamado = async (req: Request, res: Response) => {
+    try {
+        const { tipo, fecha, descripcion, reconocido } = req.body;
+        if (!tipo || !fecha || !descripcion?.trim())
+            return res.status(400).json({ msg: 'tipo, fecha y descripcion son requeridos' });
+
+        const file = (req as any).file;
+        const soporte_url = file ? file.path.replace(/\\/g, '/') : undefined;
+
+        const tokenPayload = (req as any);
+        const adminNombre = tokenPayload.userRole || 'Admin';
+
+        const llamado = await LlamadoAtencion.create({
+            Uid: parseInt(req.params.uid as string),
+            tipo,
+            fecha,
+            descripcion: descripcion.trim(),
+            soporte_url,
+            admin_nombre: adminNombre,
+            reconocido: reconocido === true || reconocido === 'true',
+            estado: 'activo'
+        });
+
+        res.status(201).json({ msg: 'Llamado de atención registrado', llamado });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Error al registrar el llamado de atención' });
+    }
+};
+
+export const editarLlamado = async (req: Request, res: Response) => {
+    try {
+        const llamado = await LlamadoAtencion.findOne({
+            where: { id: req.params.llamadoId, Uid: req.params.uid }
+        });
+        if (!llamado) return res.status(404).json({ msg: 'Llamado no encontrado' });
+
+        const file = (req as any).file;
+        const updates: any = { ...req.body };
+        if (file) {
+            // Eliminar soporte anterior si existía
+            const rutaAnterior = (llamado as any).soporte_url;
+            if (rutaAnterior && fs.existsSync(rutaAnterior)) fs.unlinkSync(rutaAnterior);
+            updates.soporte_url = file.path.replace(/\\/g, '/');
+        }
+
+        await llamado.update(updates);
+        res.json({ msg: 'Llamado actualizado', llamado });
+    } catch (error) {
+        res.status(500).json({ msg: 'Error al actualizar el llamado de atención' });
+    }
+};
+
+export const eliminarLlamado = async (req: Request, res: Response) => {
+    try {
+        const llamado = await LlamadoAtencion.findOne({
+            where: { id: req.params.llamadoId, Uid: req.params.uid }
+        });
+        if (!llamado) return res.status(404).json({ msg: 'Llamado no encontrado' });
+
+        const ruta = (llamado as any).soporte_url;
+        if (ruta && fs.existsSync(ruta)) fs.unlinkSync(ruta);
+
+        await llamado.destroy();
+        res.json({ msg: 'Llamado de atención eliminado' });
+    } catch (error) {
+        res.status(500).json({ msg: 'Error al eliminar el llamado de atención' });
+    }
+};
+
+/**
+ * GET /api/hoja-vida/:uid/llamados/:llamadoId/pdf
+ * Genera PDF del llamado de atención — carta formal personalizable
+ */
+export const generarPdfLlamado = async (req: Request, res: Response) => {
+    try {
+        const colaborador = await User.findByPk(req.params.uid as string, {
+            attributes: { exclude: ['password'] }
+        });
+        if (!colaborador) return res.status(404).json({ msg: 'Colaborador no encontrado' });
+
+        const llamado = await LlamadoAtencion.findOne({
+            where: { id: req.params.llamadoId, Uid: req.params.uid }
+        });
+        if (!llamado) return res.status(404).json({ msg: 'Llamado no encontrado' });
+
+        const col = colaborador.toJSON() as any;
+        const ll = llamado.toJSON() as any;
+
+        const tiposLabel: Record<string, string> = {
+            verbal: 'VERBAL',
+            escrito: 'ESCRITO',
+            suspension: 'SUSPENSIÓN SIN GOCE DE SUELDO',
+            otro: 'OTRO'
+        };
+
+        const fecha = new Date(ll.fecha);
+        const fechaFormato = fecha.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        const pdfmake = await import('pdfmake/build/pdfmake');
+        const pdfFonts = await import('pdfmake/build/vfs_fonts');
+        (pdfmake as any).vfs = (pdfFonts as any).pdfMake?.vfs;
+
+        const docDefinition: any = {
+            pageMargins: [60, 60, 60, 80],
+            defaultStyle: { font: 'Roboto', fontSize: 11, lineHeight: 1.5 },
+            content: [
+                // Encabezado
+                { text: 'ANDRÉS PUBLICIDAD', style: 'empresa', margin: [0, 0, 0, 2] },
+                { text: 'LLAMADO DE ATENCIÓN', style: 'titulo', margin: [0, 0, 0, 20] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 475, y2: 0, lineWidth: 2, lineColor: '#1a3c6e' }], margin: [0, 0, 0, 20] },
+
+                // Datos del colaborador
+                { text: 'DATOS DEL COLABORADOR', style: 'seccion', margin: [0, 0, 0, 8] },
+                {
+                    table: {
+                        widths: ['40%', '60%'],
+                        body: [
+                            [{ text: 'Nombre:', bold: true }, `${col.name} ${col.lastName}`],
+                            [{ text: 'Documento:', bold: true }, col.documentoIdentificacion || ''],
+                            [{ text: 'Cargo:', bold: true }, col.cargo || ''],
+                            [{ text: 'Empresa:', bold: true }, col.empresa || ''],
+                            [{ text: 'Fecha del llamado:', bold: true }, fechaFormato],
+                            [{ text: 'Tipo de llamado:', bold: true }, { text: tiposLabel[ll.tipo] || ll.tipo, bold: true, color: '#c0392b' }]
+                        ]
+                    },
+                    layout: 'lightHorizontalLines',
+                    margin: [0, 0, 0, 20]
+                },
+
+                // Descripción / hechos
+                { text: 'DESCRIPCIÓN DE LOS HECHOS', style: 'seccion', margin: [0, 0, 0, 8] },
+                {
+                    text: ll.descripcion,
+                    margin: [10, 0, 10, 20],
+                    alignment: 'justify'
+                },
+
+                // Compromisos / pie legal
+                { text: `De conformidad con lo establecido en el Reglamento Interno de Trabajo y el Código Sustantivo del Trabajo, se hace entrega del presente llamado de atención de tipo ${tiposLabel[ll.tipo] || ll.tipo} al colaborador ${col.name} ${col.lastName}.`, alignment: 'justify', margin: [0, 0, 0, 30] },
+
+                // Firmas
+                {
+                    columns: [
+                        {
+                            stack: [
+                                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0 }] },
+                                { text: `${col.name} ${col.lastName}`, margin: [0, 4, 0, 0] },
+                                { text: col.cargo || 'Colaborador', fontSize: 9, color: '#555' },
+                                { text: `C.C. ${col.documentoIdentificacion || ''}`, fontSize: 9, color: '#555' }
+                            ],
+                            alignment: 'center'
+                        },
+                        {
+                            stack: [
+                                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0 }] },
+                                { text: ll.admin_nombre || 'Representante RRHH', margin: [0, 4, 0, 0] },
+                                { text: 'Recursos Humanos', fontSize: 9, color: '#555' },
+                                { text: 'Andrés Publicidad', fontSize: 9, color: '#555' }
+                            ],
+                            alignment: 'center'
+                        }
+                    ],
+                    columnGap: 40,
+                    margin: [0, 20, 0, 0]
+                },
+
+                // Pie de reconocimiento
+                ll.reconocido
+                    ? { text: '✓ El colaborador ha reconocido este llamado de atención.', color: '#27ae60', margin: [0, 20, 0, 0], fontSize: 10 }
+                    : { text: '⚠ Pendiente de reconocimiento por parte del colaborador.', color: '#e67e22', margin: [0, 20, 0, 0], fontSize: 10 }
+            ],
+            styles: {
+                empresa: { fontSize: 16, bold: true, color: '#1a3c6e', alignment: 'center' },
+                titulo: { fontSize: 14, bold: true, color: '#c0392b', alignment: 'center' },
+                seccion: { fontSize: 11, bold: true, color: '#1a3c6e', decoration: 'underline' }
+            }
+        };
+
+        const pdfDoc = (pdfmake as any).createPdf(docDefinition);
+        pdfDoc.getBuffer((buffer: Buffer) => {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=llamado_atencion_${req.params.llamadoId}_${col.documentoIdentificacion || req.params.uid}.pdf`);
+            res.send(buffer);
+        });
+    } catch (error) {
+        console.error('Error al generar PDF del llamado:', error);
+        res.status(500).json({ msg: 'Error al generar el PDF del llamado de atención' });
     }
 };

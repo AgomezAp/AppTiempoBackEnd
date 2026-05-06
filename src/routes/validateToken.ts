@@ -45,4 +45,14 @@ export const validateAdmin = (req: Request, res: Response, next: NextFunction) =
     }
 };
 
+// Permite Admin, Tecnologia y RRHH
+export const validateRRHH = (req: Request, res: Response, next: NextFunction) => {
+    const role = (req as any).userRole;
+    if (role === 'Admin' || role === 'Tecnologia' || role === 'RRHH') {
+        next();
+    } else {
+        res.status(403).json({ msg: 'Acceso restringido: se requiere rol Admin o RRHH' });
+    }
+};
+
 export default validateToken;

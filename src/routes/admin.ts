@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getAlerts, triggerGenerateAlerts, deleteAllAlerts } from '../controllers/adminAlerts';
-import { getAusentismoStats, getAusentismoSummary, getPermisosTypes, togglePermisoCancelado } from '../controllers/ausentismoStats';
+import { getAusentismoStats, getAusentismoSummary, getPermisosTypes, togglePermisoCancelado, getIncapacidades } from '../controllers/ausentismoStats';
 import { validateAdmin } from '../controllers/archivo';
 
 const router = Router();
@@ -31,5 +31,8 @@ router.get('/ausentismo/stats', validateAdmin, getAusentismoStats);
 
 // Get summary statistics for KPI cards
 router.get('/ausentismo/summary', validateAdmin, getAusentismoSummary);
+
+// Get incapacidades summary by user
+router.get('/ausentismo/incapacidades', validateAdmin, getIncapacidades);
 
 export default router;

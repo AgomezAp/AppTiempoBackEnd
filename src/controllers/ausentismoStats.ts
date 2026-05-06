@@ -260,6 +260,96 @@ export const getAusentismoSummary = async (req: Request, res: Response): Promise
     res.status(500).json({ error: error.message || error });
   }
 };
-  
 
+
+/**
+ * GET /api/admin/ausentismo/incapacidades
+ * Resumen de incapacidades médicas y laborales por colaborador.
+ * Requiere que el campo fechaFin esté registrado en el permiso para calcular días.
+ */
+export const getIncapacidades = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { from, to } = req.query;
+
+    const where: any = {
+      tipo: { [Op.in]: ['Incapacidad médica', 'Incapacidad laboral'] },
+    };
+    if (from && to) {
+      where.fecha = {
+        [Op.between]: [new Date(String(from) + 'T00:00:00'), new Date(String(to) + 'T23:59:59')],
+      };
+    }
+
+    const permisos = await Permiso.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['Uid', 'name', 'lastName', 'cargo', 'empresa'],
+        } as any,
+      ],
+      order: [['fecha', 'DESC']],
+    });
+
+    // Agrupar por usuario
+    const byUserMap: Record<number, any> = {};
+    permisos.forEach((p: any) => {
+      const uid = Number(p.Uid);
+      const user = p.user;
+
+      if (!byUserMap[uid]) {
+        byUserMap[uid] = {
+          Uid: uid,
+          nombre: user ? `${user.name} ${user.lastName}`.trim() : 'N/A',
+          cargo: user?.cargo || 'N/A',
+          empresa: user?.empresa || 'N/A',
+          cantidad: 0,
+          totalDias: 0,
+          incapacidades: [],
+        };
+      }
+
+      // Calcular días: fechaFin - fecha + 1 (inclusive)
+      let dias = 0;
+      if (p.fecha && p.fechaFin) {
+        const inicio = new Date(p.fecha);
+        const fin = new Date(p.fechaFin);
+        dias = Math.max(1, Math.round((fin.getTime() - inicio.getTime()) / 86400000) + 1);
+      }
+
+      byUserMap[uid].cantidad++;
+      byUserMap[uid].totalDias += dias;
+      byUserMap[uid].incapacidades.push({
+        id: p.id,
+        tipo: p.tipo,
+        fecha: p.fecha ? new Date(p.fecha).toISOString().substring(0, 10) : null,
+        fechaFin: p.fechaFin ? new Date(p.fechaFin).toISOString().substring(0, 10) : null,
+        dias,
+        observaciones: p.observaciones || null,
+        cancelado: p.cancelado || false,
+      });
+    });
+
+    const result = Object.values(byUserMap)
+      .filter((u: any) => u.cantidad > 0)
+      .sort((a: any, b: any) => b.totalDias - a.totalDias);
+
+    const totalIncapacidades = result.reduce((s: number, u: any) => s + u.cantidad, 0);
+    const totalDias = result.reduce((s: number, u: any) => s + u.totalDias, 0);
+
+    res.status(200).json({
+      success: true,
+      summary: {
+        totalIncapacidades,
+        totalDias,
+        empleadosAfectados: result.length,
+      },
+      byUser: result,
+    });
+  } catch (error: any) {
+    console.error('Error al obtener incapacidades:', error);
+    res.status(500).json({ error: error.message || error });
+  }
+};
 

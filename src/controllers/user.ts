@@ -214,7 +214,21 @@ export const getListUser = async (
 
 export const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;
-  const { name, lastName, email, password, Rid, Aid, salario, empresa, documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular } = req.body;
+  const {
+    name, lastName, email, password, Rid, Aid, salario, empresa,
+    documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular,
+    // Campos hoja de vida personal
+    segundo_nombre, segundo_apellido, tipo_documento,
+    genero, estado_civil, lugar_nacimiento, fecha_nacimiento,
+    direccion, ciudad, barrio, telefono_fijo,
+    contacto_emergencia_nombre, contacto_emergencia_telefono, contacto_emergencia_parentesco,
+    // Salud y tallas
+    rh, talla_camisa, talla_pantalon, talla_zapatos,
+    // Seguridad social
+    eps, arl, caja_compensacion,
+    // Datos bancarios
+    banco, tipo_cuenta_bancaria, numero_cuenta_bancaria
+  } = req.body;
   try {
     const user = await User.findByPk(parseId(Uid));
 
@@ -252,6 +266,34 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
         user.fechaIngreso = parsedFecha;
       }
     }
+    // Campos hoja de vida personal
+    if (segundo_nombre !== undefined) user.segundo_nombre = segundo_nombre || null;
+    if (segundo_apellido !== undefined) user.segundo_apellido = segundo_apellido || null;
+    if (tipo_documento !== undefined) user.tipo_documento = tipo_documento || null;
+    if (genero !== undefined) user.genero = genero || null;
+    if (estado_civil !== undefined) user.estado_civil = estado_civil || null;
+    if (lugar_nacimiento !== undefined) user.lugar_nacimiento = lugar_nacimiento || null;
+    if (fecha_nacimiento !== undefined && fecha_nacimiento !== '') user.fecha_nacimiento = fecha_nacimiento || null;
+    if (direccion !== undefined) user.direccion = direccion || null;
+    if (ciudad !== undefined) user.ciudad = ciudad || null;
+    if (barrio !== undefined) user.barrio = barrio || null;
+    if (telefono_fijo !== undefined) user.telefono_fijo = telefono_fijo || null;
+    if (contacto_emergencia_nombre !== undefined) user.contacto_emergencia_nombre = contacto_emergencia_nombre || null;
+    if (contacto_emergencia_telefono !== undefined) user.contacto_emergencia_telefono = contacto_emergencia_telefono || null;
+    if (contacto_emergencia_parentesco !== undefined) user.contacto_emergencia_parentesco = contacto_emergencia_parentesco || null;
+    // Salud y tallas
+    if (rh !== undefined) user.rh = rh || null;
+    if (talla_camisa !== undefined) user.talla_camisa = talla_camisa || null;
+    if (talla_pantalon !== undefined) user.talla_pantalon = talla_pantalon || null;
+    if (talla_zapatos !== undefined) user.talla_zapatos = talla_zapatos || null;
+    // Seguridad social
+    if (eps !== undefined) user.eps = eps || null;
+    if (arl !== undefined) user.arl = arl || null;
+    if (caja_compensacion !== undefined) user.caja_compensacion = caja_compensacion || null;
+    // Datos bancarios
+    if (banco !== undefined) user.banco = banco || null;
+    if (tipo_cuenta_bancaria !== undefined) user.tipo_cuenta_bancaria = tipo_cuenta_bancaria || null;
+    if (numero_cuenta_bancaria !== undefined) user.numero_cuenta_bancaria = numero_cuenta_bancaria || null;
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);

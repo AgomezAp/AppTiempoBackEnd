@@ -11,9 +11,11 @@ import { Registro, Sumatoria, Novedad, NovedadHistorico, HistoricoHorasExtras} f
 import { UploadHistorial } from '../models/uploadHistorial';
 import { getJornadaUsuario, HorarioUsuario } from '../models/horarioUsuario';
 import { parseId } from '../utils/parseId';
+import { esFestivoColombiano } from '../utils/festivos';
 import multer from 'multer';
 import dayjs from 'dayjs';
 import { Op } from 'sequelize';
+import { Permiso } from '../models/permisos';
 
 declare global {
     namespace Express {
@@ -1282,5 +1284,139 @@ export const revertUpload = async (req: Request, res: Response): Promise<any> =>
     } catch (error) {
         console.error('Error al revertir subida:', error);
         res.status(500).json({ error: 'Error al revertir la subida' });
+    }
+};
+
+// GET /api/horario/llegadas-tarde?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+// Retorna dos listas:
+//   conFormulario: llegadas tarde + tienen permiso 'Llegada tarde por factores externos'
+//   sinFormulario: llegadas tarde + SIN ningún tipo de permiso ese día
+// Excluye: domingos, festivos colombianos, y cualquier persona con cualquier otro tipo de permiso
+// (cita médica, incapacidad, etc.) → tienen justificación válida, no cuentan como tardanza.
+// Respeta la hora de entrada configurada en HorarioUsuario (default 07:30).
+export const getLlegadasTarde = async (req: Request, res: Response): Promise<any> => {
+    const { desde, hasta } = req.query as { desde?: string; hasta?: string };
+    try {
+        const whereCond: any = { Entrada: { [Op.ne]: null } };
+        if (desde && hasta) {
+            whereCond.Fecha = { [Op.between]: [desde, hasta] };
+        }
+
+        const registros = await Registro.findAll({
+            where: whereCond,
+            order: [['Fecha', 'DESC'], ['Name', 'ASC']]
+        });
+
+        // Convertir a hora Bogotá y descartar domingos y festivos
+        const registrosMapeados = registros
+            .map((r: any) => {
+                const rJson = r.toJSON();
+                const entradaLocal = dayjs.utc(rJson.Entrada).tz('America/Bogota');
+                const fechaStr = dayjs.utc(rJson.Fecha).format('YYYY-MM-DD');
+                return {
+                    ...rJson,
+                    Entrada: entradaLocal.format('HH:mm'),
+                    Fecha: fechaStr,
+                    _entradaMin: entradaLocal.hour() * 60 + entradaLocal.minute(),
+                    _fechaStr: fechaStr,
+                    _diaSemana: entradaLocal.day(), // 0=Dom, 1=Lun..6=Sáb
+                };
+            })
+            .filter((r: any) => r._diaSemana !== 0 && !esFestivoColombiano(r._fechaStr));
+
+        if (registrosMapeados.length === 0) {
+            return res.status(200).json({ conFormulario: [], sinFormulario: [] });
+        }
+
+        // Cargar horaEntrada configurada por usuario (solo activos)
+        const uids = [...new Set(registrosMapeados.map((r: any) => Number(r.Hid)))];
+        const horarios = await HorarioUsuario.findAll({
+            where: { Uid: { [Op.in]: uids }, activo: true },
+            attributes: ['Uid', 'diaSemana', 'horaEntrada'],
+        });
+
+        // Mapa: uid → diaSemana → límite en minutos
+        const horarioMap = new Map<number, Map<number, number>>();
+        horarios.forEach((h: any) => {
+            const uid = Number(h.Uid);
+            const dia = Number(h.diaSemana);
+            const raw: string = h.horaEntrada || '07:30';
+            const [hh, mm] = raw.split(':').map(Number);
+            if (!horarioMap.has(uid)) horarioMap.set(uid, new Map());
+            horarioMap.get(uid)!.set(dia, hh * 60 + mm);
+        });
+
+        const getLimite = (uid: number, diaSemana: number): number => {
+            const userMap = horarioMap.get(uid);
+            if (userMap && userMap.has(diaSemana)) return userMap.get(diaSemana)!;
+            return 7 * 60 + 30; // 07:30 por defecto
+        };
+
+        // Filtrar los que realmente llegan tarde según su horario personal
+        const llegadas = registrosMapeados
+            .map((r: any) => ({ ...r, _limiteMin: getLimite(Number(r.Hid), r._diaSemana) }))
+            .filter((r: any) => r._entradaMin > r._limiteMin);
+
+        if (llegadas.length === 0) {
+            return res.status(200).json({ conFormulario: [], sinFormulario: [] });
+        }
+
+        // Traer TODOS los permisos no cancelados en el rango (cualquier tipo)
+        const filtroPermiso: any = {
+            [Op.or]: [{ cancelado: false }, { cancelado: null }]
+        };
+        if (desde && hasta) {
+            filtroPermiso.fecha = { [Op.between]: [desde, hasta] };
+        }
+        const permisos = await Permiso.findAll({
+            where: filtroPermiso,
+            attributes: ['id', 'Uid', 'fecha', 'tipo', 'observaciones', 'cancelado']
+        });
+
+        const conFormulario: any[] = [];
+        const sinFormulario: any[] = [];
+        const conPermiso: any[] = [];
+
+        for (const r of llegadas) {
+            const uid = Number(r.Hid);
+
+            const permisosDelDia = permisos.filter((p: any) =>
+                Number(p.Uid) === uid &&
+                dayjs(p.fecha).format('YYYY-MM-DD') === r._fechaStr
+            );
+
+            const permisoLlegada = permisosDelDia.find((p: any) =>
+                p.tipo === 'Llegada tarde por factores externos'
+            );
+
+            // Permisos que justifican la tardanza (cualquier tipo excepto el formulario de llegada tarde)
+            const otrosPermisos = permisosDelDia.filter((p: any) =>
+                p.tipo !== 'Llegada tarde por factores externos'
+            );
+
+            const { _entradaMin, _fechaStr, _diaSemana, _limiteMin, ...rest } = r;
+            const item = {
+                ...rest,
+                minutosTarde: _entradaMin - _limiteMin,
+                permiso: permisoLlegada ? (permisoLlegada as any).toJSON() : null,
+                otrosPermisos: otrosPermisos.map((p: any) => (p as any).toJSON())
+            };
+
+            if (otrosPermisos.length > 0) {
+                // Tiene cita médica, autorización u otro permiso → justificado, solo informativo
+                conPermiso.push(item);
+            } else if (permisoLlegada) {
+                // Solo tiene el formulario de llegada tarde → registrado formalmente
+                conFormulario.push(item);
+            } else {
+                // Sin ningún permiso → tardanza sin justificación
+                sinFormulario.push(item);
+            }
+        }
+
+        res.status(200).json({ conFormulario, sinFormulario, conPermiso });
+    } catch (error) {
+        console.error('Error al obtener llegadas tarde:', error);
+        res.status(500).json({ error: 'Error al obtener llegadas tarde' });
     }
 };
