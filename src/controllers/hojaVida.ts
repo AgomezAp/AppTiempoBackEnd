@@ -529,14 +529,15 @@ export const obtenerActasInventarioExpediente = async (req: Request, res: Respon
         const primerApellido = ((colData.lastName || '').split(' ')[0]).trim();
         const nombreApellido = normalizarNombre(`${primerNombre} ${primerApellido}`.trim());
 
-        // Con cédula: búsqueda exacta por documento (más fiable)
-        // Sin cédula: unaccent(lower(nombreReceptor)) LIKE '%nombre apellido%' para tolerar variaciones de acentos
+        // Búsqueda por cédula OR por nombre (unaccent).
+        // Las actas tienen cedulaReceptor NULL, por eso nunca se puede depender solo de la cédula.
+        const nameWhere = makeWhere(
+            fn('unaccent', fn('lower', sqCol('nombreReceptor'))),
+            { [Op.like]: `%${nombreApellido}%` }
+        );
         const whereReceptor: any = cedula
-            ? { cedulaReceptor: cedula }
-            : makeWhere(
-                fn('unaccent', fn('lower', sqCol('nombreReceptor'))),
-                { [Op.like]: `%${nombreApellido}%` }
-              );
+            ? { [Op.or]: [{ cedulaReceptor: cedula }, nameWhere] }
+            : nameWhere;
 
         const [actasDispositivos, actasConsumibles, actasMobiliario] = await Promise.all([
             ActaEntrega.findAll({
