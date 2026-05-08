@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getAlerts, triggerGenerateAlerts, deleteAllAlerts } from '../controllers/adminAlerts';
-import { getAusentismoStats, getAusentismoSummary, getPermisosTypes, togglePermisoCancelado, getIncapacidades } from '../controllers/ausentismoStats';
+import { getAusentismoStats, getAusentismoSummary, getPermisosTypes, togglePermisoCancelado, getIncapacidades, consolidarIncapacidades } from '../controllers/ausentismoStats';
 import { validateAdmin } from '../controllers/archivo';
 
 const router = Router();
@@ -34,5 +34,8 @@ router.get('/ausentismo/summary', validateAdmin, getAusentismoSummary);
 
 // Get incapacidades summary by user
 router.get('/ausentismo/incapacidades', validateAdmin, getIncapacidades);
+
+// Consolidar incapacidades históricas (1 registro/día → 1 episodio con fechaFin)
+router.post('/ausentismo/incapacidades/consolidar', validateAdmin, consolidarIncapacidades);
 
 export default router;

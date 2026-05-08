@@ -7,6 +7,7 @@ import multer from 'multer';
 
 import { Permiso } from '../models/permisos';
 import { User } from '../models/user';
+import { Area } from '../models/area';
 import { sendMail } from '../utils/mailer';
 import { appendPermisoToSheet } from '../utils/googleSheets';
 
@@ -36,7 +37,9 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     }
 
     // Verificar si el usuario existe
-    const user = await User.findByPk(parseId(Uid));
+    const user = await User.findByPk(parseId(Uid), {
+      include: [{ model: Area, as: 'area' }],
+    });
     if (!user) {
       return res.status(400).json({
         msg: `El usuario con ID ${Uid} no existe`,
@@ -46,6 +49,20 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
     try {
       // Determinar si es un permiso de rango (varios días)
       const esPermisoRango = fechaFin && fechaFin !== fecha;
+
+      // Validar días mínimos de vacaciones según área
+      if (tipo.trim().toLowerCase() === 'vacaciones' && esPermisoRango) {
+        const diasSolicitados = parseInt(diasLaborales, 10) || 0;
+        const areaNombre: string = (user as any).area?.Aname?.toLowerCase() || '';
+        const esGestionAdministrativa = areaNombre.includes('gestión administrativa') || areaNombre.includes('gestion administrativa');
+
+        if (esGestionAdministrativa && diasSolicitados < 3) {
+          return res.status(400).json({ msg: 'Para Gestión Administrativa, el mínimo de días laborales de vacaciones es 3' });
+        }
+        if (!esGestionAdministrativa && diasSolicitados < 6) {
+          return res.status(400).json({ msg: 'El mínimo de días laborales de vacaciones es 6. Solo Gestión Administrativa puede solicitar menos días.' });
+        }
+      }
       const fechaInicioDate = new Date(fecha + 'T12:00:00');
       const fechaFinDate = esPermisoRango ? new Date(fechaFin + 'T12:00:00') : fechaInicioDate;
       
