@@ -187,9 +187,11 @@ export const ajustarStock = async (req: Request, res: Response): Promise<void> =
 
 export const obtenerAlertasStock = async (req: Request, res: Response) => {
   try {
-    const { tipoInventarioCodigo } = req.query;
+    const { tipoInventarioCodigo, tipoInventarioId } = req.query;
     let where: any = { activo: true };
-    if (tipoInventarioCodigo) {
+    if (tipoInventarioId) {
+      where.tipoInventarioId = Number(tipoInventarioId);
+    } else if (tipoInventarioCodigo) {
       const tipo = await TipoInventario.findOne({ where: { codigo: tipoInventarioCodigo, activo: true } });
       if (tipo) where.tipoInventarioId = tipo.id;
     }
@@ -206,9 +208,11 @@ export const obtenerAlertasStock = async (req: Request, res: Response) => {
 
 export const obtenerEstadisticasConsumibles = async (req: Request, res: Response) => {
   try {
-    const { tipoInventarioCodigo } = req.query;
+    const { tipoInventarioCodigo, tipoInventarioId } = req.query;
     let where: any = { activo: true };
-    if (tipoInventarioCodigo) {
+    if (tipoInventarioId) {
+      where.tipoInventarioId = Number(tipoInventarioId);
+    } else if (tipoInventarioCodigo) {
       const tipo = await TipoInventario.findOne({ where: { codigo: tipoInventarioCodigo, activo: true } });
       if (tipo) where.tipoInventarioId = tipo.id;
     }
