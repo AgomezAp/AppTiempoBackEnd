@@ -89,7 +89,8 @@ export async function enviarCorreoFirmaConsumible(
         tipoInventarioCodigo === 'papeleria' ? 'Papelería' :
         tipoInventarioCodigo === 'botiquin' ? 'Botiquín' :
         tipoInventarioCodigo === 'dotacion' ? 'Dotación' :
-        tipoInventarioCodigo === 'desechables' ? 'Desechables' : tipoInventarioCodigo;
+        tipoInventarioCodigo === 'desechables' ? 'Desechables' :
+        tipoInventarioCodigo === 'herramientas' ? 'Herramientas' : tipoInventarioCodigo;
     const asunto = esReenvio
         ? `Recordatorio - Firma requerida: Acta ${numeroActa} - ${tipoLabel}`
         : `Firma requerida: Acta ${numeroActa} - ${tipoLabel}`;
