@@ -135,14 +135,22 @@ export const agregarStock = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+const TIPOS_INVENTARIO_RESTRINGIDOS = ['botiquin', 'aseo', 'papeleria', 'desechables', 'dotacion', 'herramientas'];
+
 export const retirarStock = async (req: Request, res: Response): Promise<void> => {
   const t = await sequelizeInventario.transaction();
   try {
     const { id } = req.params;
     const { cantidad, motivo, descripcion, actaEntregaId, Uid } = req.body;
     if (!cantidad || cantidad <= 0) { await t.rollback(); res.status(400).json({ msg: 'La cantidad debe ser mayor a 0' }); return; }
-    const consumible = await Consumible.findByPk(Number(id), { transaction: t });
+    const consumible = await Consumible.findByPk(Number(id), { transaction: t, include: [{ model: TipoInventario, as: 'tipoInventario' }] });
     if (!consumible) { await t.rollback(); res.status(404).json({ msg: 'Consumible no encontrado' }); return; }
+    const tipoInventario = (consumible as any).tipoInventario as TipoInventario | null;
+    if (tipoInventario && TIPOS_INVENTARIO_RESTRINGIDOS.includes(tipoInventario.codigo)) {
+      await t.rollback();
+      res.status(403).json({ msg: `El inventario de ${tipoInventario.nombre} no permite retiro directo de stock. Use actas de entrega para registrar salidas.` });
+      return;
+    }
     if (consumible.stockActual < cantidad) { await t.rollback(); res.status(400).json({ msg: `Stock insuficiente. Disponible: ${consumible.stockActual}` }); return; }
     const stockAnterior = consumible.stockActual;
     const stockNuevo = stockAnterior - cantidad;
@@ -166,8 +174,14 @@ export const ajustarStock = async (req: Request, res: Response): Promise<void> =
     const { id } = req.params;
     const { nuevoStock, motivo, descripcion, Uid } = req.body;
     if (nuevoStock === undefined || nuevoStock < 0) { await t.rollback(); res.status(400).json({ msg: 'El nuevo stock debe ser >= 0' }); return; }
-    const consumible = await Consumible.findByPk(Number(id), { transaction: t });
+    const consumible = await Consumible.findByPk(Number(id), { transaction: t, include: [{ model: TipoInventario, as: 'tipoInventario' }] });
     if (!consumible) { await t.rollback(); res.status(404).json({ msg: 'Consumible no encontrado' }); return; }
+    const tipoInventario = (consumible as any).tipoInventario as TipoInventario | null;
+    if (tipoInventario && TIPOS_INVENTARIO_RESTRINGIDOS.includes(tipoInventario.codigo)) {
+      await t.rollback();
+      res.status(403).json({ msg: `El inventario de ${tipoInventario.nombre} no permite ajuste directo de stock. Use actas de entrega para registrar salidas.` });
+      return;
+    }
     const stockAnterior = consumible.stockActual;
     await consumible.update({ stockActual: nuevoStock }, { transaction: t });
     await MovimientoConsumible.create({
