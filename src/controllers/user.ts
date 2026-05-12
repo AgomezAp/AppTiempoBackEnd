@@ -88,7 +88,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ msg: "Formato de email inválido" });
     }
 
-    if (typeof password !== 'string' || password.length < 6) {
+    if (typeof password !== 'string' || password.length < 4) {
       logger.warn({ event: 'LOGIN_SHORT_PASSWORD', ip });
       return res.status(400).json({ msg: "Contraseña inválida" });
     }
