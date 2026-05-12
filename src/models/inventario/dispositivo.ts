@@ -325,7 +325,7 @@ MovimientoDispositivo.init(
 // ASOCIACIONES
 // ============================================================
 ActaEntrega.hasMany(DetalleActa, { foreignKey: 'actaId', as: 'detalles' });
-DetalleActa.belongsTo(ActaEntrega, { foreignKey: 'actaId' });
+DetalleActa.belongsTo(ActaEntrega, { foreignKey: 'actaId', as: 'acta' });
 
 DetalleActa.belongsTo(Dispositivo, { foreignKey: 'dispositivoId', as: 'dispositivo' });
 Dispositivo.hasMany(DetalleActa, { foreignKey: 'dispositivoId' });
