@@ -7,3 +7,4 @@ package-lock.json
 MIGRACION_PRODUCCION.sql
 NUEVAS_FUNCIONALIDADES.md
 TESTING.md
+migrations/run-009.js
