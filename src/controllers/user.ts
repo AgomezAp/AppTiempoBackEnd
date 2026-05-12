@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
+import logger from "../utils/logger";
 
 import { Area } from "../models/area";
 import { Role } from "../models/role";
@@ -70,14 +71,26 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
 // Login con validación de rol
 export const login = async (req: Request, res: Response): Promise<any> => {
+  const ip = req.ip || req.socket?.remoteAddress || 'desconocida';
+
   try {
     const { password, email } = req.body;
 
-    // Validar que se envíen email y password
+    // Validar presencia y formato básico de campos
     if (!email || !password) {
-      return res.status(400).json({
-        msg: "Email y contraseña son requeridos",
-      });
+      logger.warn({ event: 'LOGIN_MISSING_FIELDS', ip });
+      return res.status(400).json({ msg: "Email y contraseña son requeridos" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      logger.warn({ event: 'LOGIN_INVALID_EMAIL_FORMAT', ip, email });
+      return res.status(400).json({ msg: "Formato de email inválido" });
+    }
+
+    if (typeof password !== 'string' || password.length < 6) {
+      logger.warn({ event: 'LOGIN_SHORT_PASSWORD', ip });
+      return res.status(400).json({ msg: "Contraseña inválida" });
     }
 
     // Buscar usuario por email
@@ -86,21 +99,26 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       include: [
         { model: Role, as: "role" },
         { model: Area, as: "area" },
-      ], // Incluir rol en la consulta
+      ],
     });
 
     if (!user) {
-      return res.status(400).json({
-        msg: `Usuario no existe con el correo ${email}`,
-      });
+      logger.warn({ event: 'LOGIN_USER_NOT_FOUND', ip, email });
+      // Respuesta genérica para no confirmar si el email existe
+      return res.status(401).json({ msg: "Credenciales incorrectas" });
     }
 
     // Verificar contraseña
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({
-        msg: "Contraseña incorrecta",
-      });
+      logger.warn({ event: 'LOGIN_WRONG_PASSWORD', ip, email, userId: user.Uid });
+      return res.status(401).json({ msg: "Credenciales incorrectas" });
+    }
+
+    // Verificar que el usuario esté activo
+    if (user.status !== 1) {
+      logger.warn({ event: 'LOGIN_INACTIVE_USER', ip, email, userId: user.Uid });
+      return res.status(403).json({ msg: "Cuenta inactiva. Contacte al administrador." });
     }
 
     // Obtener módulos habilitados para el rol
@@ -110,25 +128,25 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         where: { Rid: user.role.Rid, habilitado: true }
       });
       modulos.forEach((m: any) => modulosHabilitados.push(m.modulo));
-    } catch (_) { /* Si no hay módulos no bloquear el login */ }
+    } catch (_) { /* Si no hay módulos configurados no bloquear el login */ }
 
-    // Crear token con datos del usuario y su rol
+    // Crear token (SECRET_KEY validado al arrancar el servidor)
     const token = jwt.sign(
       {
         userId: user.Uid,
         email: user.email,
-        role: user.role.Rname, // Agregar nombre del rol al token
+        role: user.role.Rname,
         area: user.area.Aname,
         Aid: user.Aid,
         name: user.name,
         lastname: user.lastName,
         correolider: user.area.correolider,
       },
-      process.env.SECRET_KEY || "ptrYxZyMticytOs8eqKW17niMy8RR1JS",
-      {
-        expiresIn: "120m",
-      }
+      process.env.SECRET_KEY!,
+      { expiresIn: "120m" }
     );
+
+    logger.info({ event: 'LOGIN_SUCCESS', ip, email, userId: user.Uid, role: user.role.Rname });
 
     res.json({
       msg: "Inicio de sesión exitoso",
@@ -144,11 +162,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       modulos: modulosHabilitados,
     });
   } catch (error: any) {
-    console.error('ERROR EN LOGIN:', error);
-    return res.status(500).json({
-      msg: "Error en el servidor al intentar iniciar sesión",
-      error: error.message || error,
-    });
+    logger.error({ event: 'LOGIN_SERVER_ERROR', ip, message: error.message });
+    return res.status(500).json({ msg: "Error interno del servidor" });
   }
 };
 export const resetPassword = async (
@@ -459,41 +474,15 @@ export const deleteUserById = async (
       throw transactionError;
     }
   } catch (error: any) {
-    console.error("❌ ERROR:", error);
-    console.error("Detalles del error:", error.message);
-    console.error("Stack trace:", error.stack);
+    logger.error({ event: 'DELETE_USER_ERROR', Uid, message: error.message, name: error.name });
 
-    // Verificar si es un error de clave foránea
     if (error.name === "SequelizeForeignKeyConstraintError") {
-      console.error("🔗 Error de clave foránea detectado");
       return res.status(400).json({
         msg: "No se puede eliminar el usuario porque tiene registros relacionados",
-        error: "Foreign key constraint",
       });
     }
 
-    // Error de conexión a la base de datos
-    if (error.name === "ConnectionError") {
-      console.error("🔌 Error de conexión a la base de datos");
-      return res.status(500).json({
-        msg: "Error de conexión a la base de datos",
-        error: "Database connection error",
-      });
-    }
-
-    // Error de columna no existente
-    if (error.name === "SequelizeDatabaseError" && error.message.includes("does not exist")) {
-      console.error("🗂️ Error de columna no existente");
-      return res.status(500).json({
-        msg: "Error en la estructura de la base de datos",
-        error: "Column does not exist",
-      });
-    }
-
-    res.status(500).json({
-      msg: "Error al eliminar el usuario",
-      error: error.message,
-    });
+    res.status(500).json({ msg: "Error interno del servidor al eliminar el usuario" });
   }
 };
 

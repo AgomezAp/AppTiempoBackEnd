@@ -4,10 +4,12 @@ import {
   Response,
 } from 'express';
 import jwt from 'jsonwebtoken';
+import logger from '../utils/logger';
 
-export const validateToken = (req: Request, res: Response, next:NextFunction)=>{
+export const validateToken = (req: Request, res: Response, next: NextFunction): void => {
     const headersToken = req.headers['authorization'];
     const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
+    const ip = req.ip || req.socket?.remoteAddress || 'desconocida';
 
     let token: string | undefined;
 
@@ -18,21 +20,25 @@ export const validateToken = (req: Request, res: Response, next:NextFunction)=>{
     }
 
     if (!token) {
-        res.status(401).json({
-            msg:`Acceso denegado`
-        });
+        logger.warn({ event: 'ACCESS_NO_TOKEN', ip, url: req.originalUrl, method: req.method });
+        res.status(401).json({ msg: 'Acceso denegado' });
         return;
     }
 
-    try{
-        const decoded = jwt.verify(token,process.env.SECRET_KEY||'ptrYxZyMticytOs8eqKW17niMy8RR1JS') as any;
+    try {
+        const decoded = jwt.verify(token, process.env.SECRET_KEY!) as any;
         (req as any).userId = decoded.userId;
         (req as any).userRole = decoded.role;
         next();
-    }catch (error){
-        res.status(401).json({
-            msg:`La sesión ha terminado`
+    } catch (error: any) {
+        const isExpired = error.name === 'TokenExpiredError';
+        logger.warn({
+            event: isExpired ? 'ACCESS_TOKEN_EXPIRED' : 'ACCESS_TOKEN_INVALID',
+            ip,
+            url: req.originalUrl,
+            method: req.method,
         });
+        res.status(401).json({ msg: 'La sesión ha terminado' });
     }
 }
 

@@ -1,6 +1,7 @@
 .env
 node_modules/
 dist/
+logs/
 GUIA_MIGRACION_PRODUCCION.md
 package-lock.json
 MIGRACION_PRODUCCION.sql

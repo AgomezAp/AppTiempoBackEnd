@@ -1,5 +1,7 @@
 import { Permiso } from '../models/permisos';
 import type { Novedad } from '../models/time';
+import { convertirHora, convertirMinuto } from '../utils/timeConvert';
+export { convertirHora, convertirMinuto };
 export function permisoToNovedad(permisos: Permiso[], novedad: Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada: string, HoraSalida: string, description: string, horas: string, aceptacion: boolean|null}>): Array<{id: number, Nid: number, Name: string, type: string, Fecha: Date, HoraEntrada?: string|null, HoraSalida?: string|null, description: string, horas: string, aceptacion: boolean|null}> {
     const transicion = permisos.map(permiso => permiso.toJSON());
     const idsNovedades = new Set(novedad.map(nv => nv.id));
@@ -115,22 +117,3 @@ export function defineDescuento(tipo: string, entrada?: string, salida?: string)
 }
 
 
-export function convertirHora(hora: string | undefined): number {
-    var sum: number = 0;
-    if (!hora) {
-        return 0;
-    }
-    const negativo = hora.startsWith('-')
-    let [hh, mm] = hora.replace('-','').split(':').map(Number);
-    sum = (hh * 60) + mm
-    return negativo ? -sum : sum;
-}
-
-export function convertirMinuto(hora: number): string {
-    const absHora = Math.abs(hora);
-    const hh = Math.floor(absHora / 60);
-    const mm = absHora % 60;
-    const formataoHora = (num: number) => num.toString().padStart(2, '0');
-    const signo = hora < 0 ? '-' : '';
-    return `${signo}${formataoHora(hh)}:${formataoHora(mm)}`;
-}

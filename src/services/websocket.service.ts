@@ -8,10 +8,20 @@ let _io: SocketIOServer | null = null;
  * Llamar desde server.ts/index.ts al arrancar.
  */
 export function initIO(httpServer: HTTPServer): SocketIOServer {
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map(o => o.trim())
+        .filter(Boolean);
+
     _io = new SocketIOServer(httpServer, {
         cors: {
-            origin: '*',
-            methods: ['GET', 'POST']
+            origin: (origin, callback) => {
+                if (!origin) return callback(null, true);
+                if (allowedOrigins.includes(origin)) return callback(null, true);
+                callback(new Error(`Socket.IO: origen no permitido: ${origin}`));
+            },
+            methods: ['GET', 'POST'],
+            credentials: true,
         }
     });
 

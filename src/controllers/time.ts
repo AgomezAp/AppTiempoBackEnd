@@ -16,6 +16,8 @@ import multer from 'multer';
 import dayjs from 'dayjs';
 import { Op } from 'sequelize';
 import { Permiso } from '../models/permisos';
+import sequelize from '../database/connection';
+import logger from '../utils/logger';
 
 declare global {
     namespace Express {
@@ -166,7 +168,7 @@ export const handleUploadAndConvert = async (req: Request, res: Response): Promi
                 uploadId
             });
         } catch (error) {
-            console.error('Error al procesar el archivo:', error);
+            logger.error('Error al procesar el archivo:', error);
             return res.status(500).json({  'Error al procesar el archivo':error });
         }
     });
@@ -205,7 +207,7 @@ export const getHorario = async (req: Request, res: Response): Promise<any> => {
         });
         res.json(datosConvertidos);
     } catch (error) {
-        console.error('Error al obtener los registros:', error);
+        logger.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
         
     }
@@ -220,7 +222,7 @@ export const getExtra = async (req: Request, res: Response): Promise<any> => {
 
         res.json(listaextra);
     } catch (error) {
-        console.error('Error al obtener los registros:', error);
+        logger.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
         
     }
@@ -238,43 +240,43 @@ export const getExtraById = async (req: Request, res: Response): Promise<any> =>
         }
         res.status(200).json(listaextra);
     } catch (error) {
-        console.error('Error al obtener los registros:', error);
+        logger.error('Error al obtener los registros:', error);
         res.status(500).json({ error: 'Error al obtener los registros' });
     }
 }
 export const getHorarioById = async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
+    const page = parseInt(req.query.page as string, 10) || 0;
+    const limit = parseInt(req.query.limit as string, 10) || 0;
 
     const convertirAHorarioLocal = (fechaUTC: string | null) => {
-        if (!fechaUTC) return null; // Manejar fechas nulas o no definidas
+        if (!fechaUTC) return null;
         return dayjs.utc(fechaUTC).tz('America/Bogota').format('YYYY-MM-DD HH:mm:ss');
     };
 
     try {
-        const registro = await Registro.findAll({
-            where: { Hid: id },
-        });
-        if (!registro) {
-            return res.status(404).json({
-                message: `Empleado con ID ${id} no encontrado`,
-            });
+        const queryOpts: any = { where: { Hid: id }, order: [['Fecha', 'DESC']] };
+        if (limit > 0) {
+            queryOpts.limit = limit;
+            queryOpts.offset = page > 0 ? (page - 1) * limit : 0;
         }
-        const registrosConvertidos = registro.map(registro => {
+        const { rows: registros, count: total } = await Registro.findAndCountAll(queryOpts);
+        if (!registros.length) {
+            return res.status(404).json({ message: `Empleado con ID ${id} no encontrado` });
+        }
+        const registrosConvertidos = registros.map(registro => {
             const registroJSON = registro.toJSON();
             return {
                 ...registroJSON,
                 Entrada: dayjs.utc(convertirAHorarioLocal(registroJSON.Entrada)).format('HH:mm:ss'),
                 Salida: dayjs.utc(convertirAHorarioLocal(registroJSON.Salida)).format('HH:mm:ss'),
-                Fecha: dayjs.utc(registroJSON.Fecha).format('YYYY-MM-DD'), // Si quieres manejar solo la fecha
+                Fecha: dayjs.utc(registroJSON.Fecha).format('YYYY-MM-DD'),
             };
         });
-        res.status(200).json(registrosConvertidos);
+        res.status(200).json(limit > 0 ? { data: registrosConvertidos, total, page, limit } : registrosConvertidos);
     } catch (error: any) {
-        console.error('Error al obtener empleado por ID:', error);
-        res.status(500).json({
-            message: `Error al obtener empleado con ID ${id}`,
-            error: error.message || error,
-        });
+        logger.error('Error al obtener empleado por ID:', error);
+        res.status(500).json({ message: `Error al obtener empleado con ID ${id}`, error: error.message || error });
     }
 };
 export const getHorarioByIdFecha = async (req: Request, res: Response): Promise<any> => {
@@ -302,7 +304,7 @@ export const getHorarioByIdFecha = async (req: Request, res: Response): Promise<
         }
         res.status(200).json(registrosConvertidos);
     } catch (error: any) {
-        console.error('Error al obtener empleado por ID y Fecha:', error);
+        logger.error('Error al obtener empleado por ID y Fecha:', error);
         res.status(500).json({
             message: `Error al obtener empleado con ID ${id} en la fecha ${fecha}`,
             error: error.message || error,
@@ -336,7 +338,7 @@ export const getHorarioByFecha = async (req: Request, res: Response): Promise<an
         });
         res.status(200).json(registrosConvertidos);
     } catch (error: any) {
-        console.error('Error al obtener registros1 por Fecha:', error);
+        logger.error('Error al obtener registros1 por Fecha:', error);
         res.status(500).json({
             message: `Error al obtener registros en la fecha ${fecha}`,
             error: error.message || error,
@@ -347,86 +349,70 @@ export const updateSalidaById = async (req: Request, res: Response): Promise<any
     const { id, fecha, salida } = req.body;
     try {
         if (!id || !fecha || !salida) {
-            return res.status(400).json({
-                message: 'ID, fecha y hora de salida son requeridos',
-            });
+            return res.status(400).json({ message: 'ID, fecha y hora de salida son requeridos' });
         }
 
         const salidacompleta = `${fecha} ${salida}`;
         const fechaformateada = dayjs.tz(fecha, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss.SSS utc');
         const salidaformateada = dayjs.tz(salidacompleta, 'America/Bogota').format('YYYY-MM-DD HH:mm:ss');
-        // Buscar el registro por ID y Fecha
-        const registro = await Registro.findOne({
-            where: {
-                Hid: id,
-                Fecha: fechaformateada,
-                }
-        });
+
+        const registro = await Registro.findOne({ where: { Hid: id, Fecha: fechaformateada } });
         if (!registro) {
-            return res.status(404).json({
-                message: `Empleado con ID ${id} no encontrado para la fecha ${fecha}`,
-            });
+            return res.status(404).json({ message: `Empleado con ID ${id} no encontrado para la fecha ${fecha}` });
         }
-        // Actualizar el campo Salida
-        await Registro.update(
-            { Salida: salidaformateada},
-            {
-                where: {
-                    Hid: id,
-                    Fecha: fechaformateada,
-                },
-            }
-        );
-        const extra = registro.getDataValue('Extra');
-        var entradaactual = dayjs(registro.getDataValue('Entrada'));
-        var salidaactual = dayjs(salidaformateada);
-        salidaactual = salidaactual.minute() >= 30 
-            ? salidaactual.minute(30).second(0) 
+
+        const entradaRaw = registro.getDataValue('Entrada');
+        if (!entradaRaw) {
+            return res.status(422).json({ message: 'El registro no tiene hora de entrada registrada' });
+        }
+
+        const extraAnterior = registro.getDataValue('Extra') ?? '0:00';
+        let entradaactual = dayjs.tz(entradaRaw, 'America/Bogota');
+        let salidaactual = dayjs.tz(salidaformateada, 'America/Bogota');
+        salidaactual = salidaactual.minute() >= 30
+            ? salidaactual.minute(30).second(0)
             : salidaactual.minute(0).second(0);
-        entradaactual = entradaactual.minute() > 30 
-            ? entradaactual.add(1, 'hour').minute(0).second(0) 
-            : entradaactual.minute() > 0 
+        entradaactual = entradaactual.minute() > 30
+            ? entradaactual.add(1, 'hour').minute(0).second(0)
+            : entradaactual.minute() > 0
             ? entradaactual.minute(30).second(0)
             : entradaactual;
+
         const diaSemana = dayjs.tz(fecha, 'America/Bogota').day();
         const jornada = await getJornadaUsuario(id, diaSemana);
         const horasRestar = Math.floor(jornada.totalRestar / 60);
         const minutosRestar = jornada.totalRestar % 60;
-        const extraactual = diferenciaUpdate(entradaactual, salidaactual, horasRestar, minutosRestar);
-        const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0))
-        const extraactualformato = formatoHora(extraactual);
-        // Aplicar mismo filtro de tolerancia que en carga XML (0-30 min → 0:00)
-        const extraFinalSalida = (convertirHora(extraactualformato) >= 0 && convertirHora(extraactualformato) <= 30) ? '0:00' : extraactualformato;
-        await Registro.update(
-            {
-                Extra: extraFinalSalida,
-                Total: totalActual
-            },
-            {
-                where: {
-                    Hid: id,
-                    Fecha: fechaformateada,
-                },
-            }
-        );
-        const sum = convertirMinuto(convertirHora(extraFinalSalida) - convertirHora(extra));
-        const sumatoria = await Sumatoria.findOne({ where: { Sid: id } });
-        if (!sumatoria) {
-            await Sumatoria.create({ Sid: id, Name: registro.getDataValue('Name'), Acumulado: sum });
-        } else {
-            await Sumatoria.update(
-                { Acumulado: convertirMinuto(convertirHora(sumatoria.getDataValue('Acumulado')) + convertirHora(sum)) },
-                { where: { Sid: id } }
+        const totalActual = formatoHora(diferenciaUpdate(entradaactual, salidaactual, 0, 0));
+        const extraactualformato = formatoHora(diferenciaUpdate(entradaactual, salidaactual, horasRestar, minutosRestar));
+        // Aplicar mismo filtro de tolerancia que en carga XML (0–30 min → 0:00)
+        const extraFinalSalida = (convertirHora(extraactualformato) >= 0 && convertirHora(extraactualformato) <= 30)
+            ? '0:00'
+            : extraactualformato;
+        const deltaMin = convertirHora(extraFinalSalida) - convertirHora(extraAnterior);
+
+        await sequelize.transaction(async (t) => {
+            await Registro.update(
+                { Salida: salidaformateada, Extra: extraFinalSalida, Total: totalActual },
+                { where: { Hid: id, Fecha: fechaformateada }, transaction: t }
             );
-        }
-        res.status(200).json({
-            message: `Hora de salida del empleado con ID ${id} actualizada correctamente`,
+            const sumatoria = await Sumatoria.findOne({ where: { Sid: id }, transaction: t });
+            if (!sumatoria) {
+                await Sumatoria.create(
+                    { Sid: id, Name: registro.getDataValue('Name'), Acumulado: convertirMinuto(deltaMin) },
+                    { transaction: t }
+                );
+            } else {
+                const acumuladoActual = convertirHora(sumatoria.getDataValue('Acumulado') ?? '0:00');
+                await Sumatoria.update(
+                    { Acumulado: convertirMinuto(acumuladoActual + deltaMin) },
+                    { where: { Sid: id }, transaction: t }
+                );
+            }
         });
+
+        res.status(200).json({ message: `Hora de salida del empleado con ID ${id} actualizada correctamente` });
     } catch (error: any) {
-        res.status(500).json({
-            error: 'Error al actualizar la hora de salida',
-            details: error.message,
-        });
+        res.status(500).json({ error: 'Error al actualizar la hora de salida', details: error.message });
     }
 };
 export const updateEntradaById = async (req: Request, res: Response): Promise<any> => {
@@ -562,10 +548,10 @@ export const agregarRegistro = async (req: Request, res: Response): Promise<any>
             message: `Registro agregado`,
         });
     } catch (err:any) {
-        console.error("error ", err);
+        logger.error("error ", err);
         res.status(500).json({
             error: "Problemas al agregar el registro",
-            mesagge: err.mesagge | err,
+            message: err.message || err,
         });    
     }
 };
@@ -611,7 +597,7 @@ export const informePersonalById = async (req: Request, res: Response): Promise<
         res.setHeader("Content-Disposition", "attachment; filename=informe_personal.pdf");
         res.send(pdfBuffer);
     } catch (error) {
-        console.error("Error al generar el informe", error);
+        logger.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe."})
     }
 };
@@ -649,7 +635,7 @@ export const informeNovedad = async (req: Request, res: Response): Promise<any> 
         
         res.send(pdfBuffer);
     } catch (error) {
-        console.error("Error al generar el informe", error);
+        logger.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe."})
     }
 }
@@ -778,7 +764,7 @@ export const nuevaNovedad = async (req: Request, res: Response): Promise<any> =>
         
         res.send(pdfBuffer);
     } catch (error) {
-        console.error("Error al generar el informe", error)
+        logger.error("Error al generar el informe", error)
         res.status(500).json({message: "Error interno al generar el informe"})
     }
 }
@@ -820,7 +806,7 @@ export const informePeligro = async (req: Request, res: Response): Promise<any> 
         res.setHeader("Content-Type", "application/pdf");
         res.send(pdfBuffer);
     } catch (error) {
-        console.error("Error al generar el informe", error);
+        logger.error("Error al generar el informe", error);
         res.status(500).json({ message: "Error interno al generar el informe."})
     }
 };
@@ -859,7 +845,7 @@ export const updateExtra = async (req: Request, res: Response): Promise<any> => 
             message: `Valor de extra actualizado correctamente para el ID ${id}`,
         });
     } catch (error: any) {
-        console.error('Error al actualizar el valor de extra:', error);
+        logger.error('Error al actualizar el valor de extra:', error);
         res.status(500).json({
             error: 'Error al actualizar el valor de extra',
             details: error.message,
@@ -901,7 +887,7 @@ export const addExtra = async (req: Request, res: Response): Promise<any> => {
             nuevoAcumulado,
         });
     } catch (error: any) {
-        console.error('Error al añadir tiempo al acumulado:', error);
+        logger.error('Error al añadir tiempo al acumulado:', error);
         res.status(500).json({
             error: 'Error al añadir tiempo al acumulado',
             details: error.message,
@@ -943,7 +929,7 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
         const rows: Node[] = select('//ns:Table/ns:Row', currentDoc as unknown as Node) as Node[];
         
         if (!rows || rows.length === 0) {
-          console.warn(`Archivo ${req.files[i].originalname} no contiene filas válidas`);
+          logger.warn(`Archivo ${req.files[i].originalname} no contiene filas válidas`);
           continue;
         }
   
@@ -952,7 +938,7 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
               const importedRow: Node = baseDoc.importNode(row as any, true);
               baseTable.appendChild(importedRow);
             } else {
-              console.warn(`Nodo ignorado: ${row.nodeName}`);
+              logger.warn(`Nodo ignorado: ${row.nodeName}`);
             }
           });
       }
@@ -970,7 +956,7 @@ export const concatenar = async (req: Request, res: Response): Promise<void> => 
       res.send(mergedXml);
   
     } catch (error: unknown) {
-      console.error('Error en concatenar:', error instanceof Error ? error.stack : error);
+      logger.error('Error en concatenar:', error instanceof Error ? error.stack : error);
       
       const errorResponse = {
         error: 'Error al procesar los archivos',
@@ -1005,7 +991,7 @@ export const deleteRegistroByHidAndFecha = async (req: Request, res: Response): 
   
       res.status(200).json({ message: `Registro con Hid ${Hid} y Fecha ${Fecha} eliminado con éxito` });
     } catch (error: any) {
-      console.error('Error al eliminar el registro:', error);
+      logger.error('Error al eliminar el registro:', error);
       res.status(500).json({
         error: 'Error al eliminar el registro',
         details: error.message,
@@ -1028,13 +1014,13 @@ export const restarTiempoSabado = async (): Promise<void> => {
 
             // Proteger contra valores corruptos o nulos en BD
             if (!acumuladoActual || !acumuladoActual.includes(':')) {
-                console.warn(`restarTiempoSabado: Acumulado inválido para Sid ${sid}: "${acumuladoActual}", omitiendo.`);
+                logger.warn(`restarTiempoSabado: Acumulado inválido para Sid ${sid}: "${acumuladoActual}", omitiendo.`);
                 continue;
             }
 
             const minutosAcumulados = convertTimeToMinutes(acumuladoActual);
             if (isNaN(minutosAcumulados)) {
-                console.warn(`restarTiempoSabado: convertTimeToMinutes devolvió NaN para "${acumuladoActual}" (Sid ${sid}), omitiendo.`);
+                logger.warn(`restarTiempoSabado: convertTimeToMinutes devolvió NaN para "${acumuladoActual}" (Sid ${sid}), omitiendo.`);
                 continue;
             }
 
@@ -1045,9 +1031,9 @@ export const restarTiempoSabado = async (): Promise<void> => {
             );
         }
 
-        console.log(`restarTiempoSabado: ${MINUTOS_SABADO_LABORAL} minutos restados a ${registros.length} usuarios.`);
+        logger.info(`restarTiempoSabado: ${MINUTOS_SABADO_LABORAL} minutos restados a ${registros.length} usuarios.`);
     } catch (error: any) {
-        console.error('Error al restar el tiempo:', error);
+        logger.error('Error al restar el tiempo:', error);
         throw error;
     }
 };
@@ -1106,9 +1092,9 @@ export const guardarSnapshotExtras = async (idAfectado?: number): Promise<void> 
                 });
             }
         }
-        console.log(`Snapshot de horas extras guardado: ${hoy}`);
+        logger.info(`Snapshot de horas extras guardado: ${hoy}`);
     } catch (error) {
-        console.error('Error al guardar snapshot de horas extras:', error);
+        logger.error('Error al guardar snapshot de horas extras:', error);
     }
 };
 
@@ -1123,7 +1109,7 @@ export const getHistoricoExtras = async (req: Request, res: Response): Promise<a
         });
         res.status(200).json(historico);
     } catch (error) {
-        console.error('Error al obtener historial de extras:', error);
+        logger.error('Error al obtener historial de extras:', error);
         res.status(500).json({ error: 'Error al obtener historial de horas extras' });
     }
 };
@@ -1138,7 +1124,7 @@ export const getHistoricoExtrasAll = async (req: Request, res: Response): Promis
         });
         res.status(200).json(historico);
     } catch (error) {
-        console.error('Error al obtener historial de extras por fecha:', error);
+        logger.error('Error al obtener historial de extras por fecha:', error);
         res.status(500).json({ error: 'Error al obtener historial de horas extras' });
     }
 };
@@ -1174,7 +1160,7 @@ export const getDetalleExtras = async (req: Request, res: Response): Promise<any
 
         res.status(200).json(conExtras);
     } catch (error) {
-        console.error('Error al obtener detalle de extras:', error);
+        logger.error('Error al obtener detalle de extras:', error);
         res.status(500).json({ error: 'Error al obtener detalle de horas extras' });
     }
 };
@@ -1213,7 +1199,7 @@ export const recalcularSumatoria = async (req: Request, res: Response): Promise<
             resultados
         });
     } catch (error: any) {
-        console.error('Error al recalcular sumatoria:', error);
+        logger.error('Error al recalcular sumatoria:', error);
         return res.status(500).json({ error: 'Error al recalcular sumatoria', details: error.message });
     }
 };
@@ -1226,7 +1212,7 @@ export const getUploadHistorial = async (req: Request, res: Response): Promise<a
         });
         res.status(200).json(historial);
     } catch (error) {
-        console.error('Error al obtener historial de subidas:', error);
+        logger.error('Error al obtener historial de subidas:', error);
         res.status(500).json({ error: 'Error al obtener historial de subidas' });
     }
 };
@@ -1282,7 +1268,7 @@ export const revertUpload = async (req: Request, res: Response): Promise<any> =>
             uploadId: id
         });
     } catch (error) {
-        console.error('Error al revertir subida:', error);
+        logger.error('Error al revertir subida:', error);
         res.status(500).json({ error: 'Error al revertir la subida' });
     }
 };
@@ -1416,7 +1402,7 @@ export const getLlegadasTarde = async (req: Request, res: Response): Promise<any
 
         res.status(200).json({ conFormulario, sinFormulario, conPermiso });
     } catch (error) {
-        console.error('Error al obtener llegadas tarde:', error);
+        logger.error('Error al obtener llegadas tarde:', error);
         res.status(500).json({ error: 'Error al obtener llegadas tarde' });
     }
 };

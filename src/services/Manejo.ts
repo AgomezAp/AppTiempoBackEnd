@@ -1,4 +1,7 @@
+import { convertTimeToMinutes, convertMinutesToTime } from '../utils/timeConvert';
+export { convertTimeToMinutes, convertMinutesToTime };
 import { parseStringPromise } from 'xml2js';
+import logger from '../utils/logger';
 import dayjs, { Dayjs } from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import utc from 'dayjs/plugin/utc';
@@ -35,7 +38,7 @@ export async function processXML(xmlContent: string): Promise<any> {
                     data.push(entry);
                 }
             } else {
-                console.warn(`Fila ${i} no tiene 5 celdas:`, cells[0].Data[0]._);
+                logger.warn(`Fila ${i} no tiene 5 celdas: ${cells[0].Data[0]._}`);
             }
         }
         const result_Data = await ordenarDatos(data);
@@ -297,28 +300,6 @@ function sumarExtra(data: Array<{ Hid: string; Name: string; Entrada: string; Sa
     return resultado;
 }
 
-export function convertTimeToMinutes(time: string): number {
-    if (!time || !time.includes(':')) return NaN;
-    const isNegative = time.startsWith('-');
-    const clean = time.replace('-', '');
-    const parts = clean.split(':');
-    const hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
-    if (isNaN(hours) || isNaN(minutes)) return NaN;
-    const total = hours * 60 + minutes;
-    return isNegative ? -total : total;
-}
-
-export function convertMinutesToTime(minutes: number): string {
-    let horas = 0;
-    if(minutes < 0){
-        horas = -Math.floor(Math.abs(minutes) / 60);
-    } else {
-        horas = Math.floor(minutes / 60);
-    }
-    const minutos = minutes % 60;
-    return formatoHora({ horas, minutos });
-}
 
 export function extraConvertMinutesToTime(minutes: number): string {
     const horas = Math.floor(Math.abs(minutes) / 60);

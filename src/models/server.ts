@@ -1,7 +1,13 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application } from 'express';
+import helmet from 'helmet';
 import http from 'http';
+import morgan from 'morgan';
+
+import { errorHandler } from '../middleware/errorHandler';
+import { globalLimiter } from '../middleware/rateLimiter';
+import logger, { morganStream } from '../utils/logger';
 
 import sequelize from '../database/connection';
 import '../database/connection-inventario'; // Inicializa y autentica la BD inventario al arrancar
@@ -68,18 +74,22 @@ class Server{
     private httpServer: http.Server;
 
     constructor(){
+        if (!process.env.SECRET_KEY) {
+            throw new Error('Variable de entorno SECRET_KEY es obligatoria. El servidor no puede arrancar sin ella.');
+        }
         this.app = express();
         this.port = process.env.PORT;
         this.httpServer = http.createServer(this.app);
         this.middlewares();
         this.router();
+        this.errorMiddleware();
         this.DBconnect();
         this.listen();
     }
     listen (){
         initIO(this.httpServer);
         this.httpServer.listen(this.port, () => {
-            console.log("Server running on port: " + this.port);
+            logger.info(`Servidor corriendo en puerto ${this.port}`);
         });
     }
     router(){
@@ -125,29 +135,43 @@ class Server{
         this.app.use('/api/inventario/analistas', RInvAnalista);
     }
     middlewares(){
-        // CORS debe ir ANTES de express.json() y cualquier otra cosa
-        this.app.use(cors({
-            origin: '*', // Permite todas las solicitudes de origen cruzado
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Métodos permitidos (incluir OPTIONS)
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-            credentials: true,
-            optionsSuccessStatus: 200 // Algunos navegadores antiguos (IE11, varios SmartTVs) tienen problemas con 204
+        const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(o => o.trim())
+            .filter(Boolean);
+
+        // 1. HTTP request logging con Morgan → Winston
+        this.app.use(morgan('combined', { stream: morganStream }));
+
+        // 2. Rate limiting global (300 req/15min por IP)
+        this.app.use(globalLimiter);
+
+        // 3. Headers de seguridad HTTP via helmet
+        // crossOriginResourcePolicy: 'cross-origin' permite al frontend cargar
+        // imágenes desde /uploads en dominio distinto (api.horariosap.com)
+        this.app.use(helmet({
+            crossOriginResourcePolicy: { policy: 'cross-origin' },
+            strictTransportSecurity: {
+                maxAge: 63072000, // 2 años en segundos
+                includeSubDomains: true,
+                preload: true,
+            },
         }));
 
-        // Middleware adicional para asegurar headers CORS en todas las respuestas
-        this.app.use((req: Request, res: Response, next: NextFunction) => {
-            res.header('Access-Control-Allow-Origin', '*');
-            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-            res.header('Access-Control-Allow-Credentials', 'true');
-
-            // Maneja las solicitudes OPTIONS (preflight)
-            if (req.method === 'OPTIONS') {
-                res.status(200).end();
-            } else {
-                next();
-            }
-        });
+        // 4. CORS restringido a los orígenes definidos en ALLOWED_ORIGINS (.env)
+        // CSRF no aplica: JWT viaja en Authorization header, no en cookies,
+        // por lo que el browser no lo envía automáticamente en ataques CSRF.
+        this.app.use(cors({
+            origin: (origin, callback) => {
+                if (!origin) return callback(null, true); // curl, Postman, apps móviles
+                if (allowedOrigins.includes(origin)) return callback(null, true);
+                callback(new Error(`Origen no permitido por CORS: ${origin}`));
+            },
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+            credentials: true,
+            optionsSuccessStatus: 200,
+        }));
 
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -156,6 +180,11 @@ class Server{
         this.app.use('/uploads', express.static('public/uploads'));
         this.app.use('/uploads', express.static('uploads'));
         this.app.use('/public', express.static('public'));
+    }
+
+    // Debe registrarse DESPUÉS de todas las rutas
+    errorMiddleware(){
+        this.app.use(errorHandler);
     }
     async DBconnect(){
         try{
