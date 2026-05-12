@@ -380,7 +380,7 @@ export const generarCertificadoLaboral = async (
       telefono: empresaData.telefono,
       email: empresaData.email,
       logo: empresaData.logo,
-      tipoContrato: "término indefinido",
+      tipoContrato: usuario.tipoContrato === 'termino-fijo' ? 'a término fijo' : 'a término indefinido',
     };
 
     res.status(200).json({
@@ -1750,7 +1750,7 @@ export const generarCertificadoTerminacion = async (
     const fechaIngreso = formatDateSimple(fechaIngresoRaw);
     
     const fechaSalidaQuery = req.query.fechaSalida as string || '';
-    const fechaSalida = fechaSalidaQuery ? formatDateSimple(new Date(fechaSalidaQuery)) : '';
+    const fechaSalida = fechaSalidaQuery ? formatDateSimple(new Date(fechaSalidaQuery + 'T12:00:00')) : '';
     
     const tipoTerminacion = req.query.tipoTerminacion as string || 'terminacion-unilateral-voluntaria';
     

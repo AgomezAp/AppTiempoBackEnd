@@ -216,7 +216,7 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { Uid } = req.params;
   const {
     name, lastName, email, password, Rid, Aid, salario, empresa,
-    documentoIdentificacion, cargo, fondoPension, fondoCesantias, fechaIngreso, celular,
+    documentoIdentificacion, cargo, tipoContrato, fondoPension, fondoCesantias, fechaIngreso, celular,
     // Campos hoja de vida personal
     segundo_nombre, segundo_apellido, tipo_documento,
     genero, estado_civil, lugar_nacimiento, fecha_nacimiento,
@@ -257,6 +257,7 @@ export const updateUser = async (req: Request, res: Response): Promise<any> => {
     user.empresa = empresa || user.empresa;
     user.documentoIdentificacion = documentoIdentificacion || user.documentoIdentificacion;
     user.cargo = cargo || user.cargo;
+    if (tipoContrato !== undefined && tipoContrato !== '') user.tipoContrato = tipoContrato;
     user.fondoPension = fondoPension || user.fondoPension;
     user.fondoCesantias = fondoCesantias || user.fondoCesantias;
     user.celular = celular !== undefined ? celular || null : user.celular;
