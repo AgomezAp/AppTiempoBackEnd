@@ -299,9 +299,10 @@ const empresasData: any = {
     lider: "Yessica De La Rosa",
     cargoLider: "Líder de Gestión Humana",
     direccion: "Pereira, Risaralda - Colombia",
-    telefono: "(+57) 324 234 1917",
+    telefono: "(+57) 300 392 1721",
     email: "andrespublicidad@andrespublicidadtg.com",
     logo: "Logo2.png",
+    watermark: "iso.png",
     headerColor: "#000000",
     accentColor: "#1a5490",
   },
@@ -313,9 +314,10 @@ const empresasData: any = {
     lider: "Yessica De La Rosa",
     cargoLider: "Líder de Gestión Humana",
     direccion: "Pereira, Risaralda - Colombia",
-    telefono: "(+57) 324 234 1917",
+    telefono: "(+57) 300 392 1721",
     email: "andres.tobonag87@gmail.com",
     logo: "Logo1.png",
+    watermark: "LogoAT.png",
     headerColor: "#000000",
     accentColor: "#333333",
   },
@@ -327,9 +329,10 @@ const empresasData: any = {
     lider: "Yessica De La Rosa",
     cargoLider: "Líder de Gestión Humana",
     direccion: "",
-    telefono: "Contacto: 3242341917",
-    email: "",
+    telefono: "(+57) 300 392 1721",
+    email: "maria.eva.agudelo@hotmail.com",
     logo: "Logo3.png",
+    watermark: "FAVICON.png",
     headerColor: "#C9A053",
     accentColor: "#C9A053",
   },
@@ -617,6 +620,226 @@ function calcularDiasLaborales(fechaInicio: Date, fechaFin: Date): number {
   return diasLaborales;
 }
 
+// ==========================================
+// HELPER: DIBUJAR MEMBRETE COMPLETO (fondo, stripe, watermark, logo)
+// Retorna la posición Y inferior del área de encabezado
+// ==========================================
+const drawLetterhead = async (
+  ctx: any,
+  width: number,
+  height: number,
+  empresaData: any,
+  empresa: string
+): Promise<number> => {
+  // 1. Fondo blanco
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Barra lateral izquierda vertical (AT y AP)
+  if (empresa === 'AP' || empresa === 'AT') {
+    const stripeW = 38;
+    ctx.fillStyle = empresa === 'AT' ? '#0d2a35' : '#111111';
+    ctx.fillRect(0, 0, stripeW, height);
+    if (empresa === 'AP') {
+      // Sección amarilla al fondo de la barra (estilo AndresPublicidad)
+      ctx.fillStyle = '#FFCC00';
+      ctx.fillRect(0, height - 260, stripeW, 260);
+    }
+  }
+
+  // 3. Decoraciones de encabezado para ME (trapecios dorados arriba)
+  if (empresa === 'ME') {
+    const color = empresaData.accentColor || '#C9A053';
+    const decorH = 62;
+    const decorW = 540;
+    ctx.fillStyle = color;
+    // Trapecio izquierdo
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(decorW, 0);
+    ctx.lineTo(decorW - 90, decorH);
+    ctx.lineTo(0, decorH);
+    ctx.closePath();
+    ctx.fill();
+    // Trapecio derecho (espejo)
+    ctx.beginPath();
+    ctx.moveTo(width, 0);
+    ctx.lineTo(width - decorW, 0);
+    ctx.lineTo(width - decorW + 90, decorH);
+    ctx.lineTo(width, decorH);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 4. Marca de agua centrada (muy transparente) — solo AP y ME
+  const watermarkFile = empresaData.watermark || empresaData.logo;
+  const watermarkPath = path.join(__dirname, '../../public', watermarkFile);
+  if (fs.existsSync(watermarkPath)) {
+    try {
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      const wm = await loadImage(watermarkPath);
+      const wmSize = empresa === 'AT' ? 2200 : 1800;
+      const wmH = (wm.height / wm.width) * wmSize;
+      const wmX = (width - wmSize) / 2;
+      const wmY = (height - wmH) / 2;
+      // Para AT: recortar para mostrar solo el símbolo (parte superior ~62%)
+      if (empresa === 'AT') {
+        ctx.beginPath();
+        ctx.rect(wmX, wmY, wmSize, wmH * 0.62);
+        ctx.clip();
+      }
+      ctx.drawImage(wm, wmX, wmY, wmSize, wmH);
+      ctx.restore();
+    } catch (err) {
+      console.error('Error watermark:', err);
+    }
+  }
+
+  // 5. Logo centrado en la parte superior
+  const logoPath = path.join(__dirname, '../../public', empresaData.logo);
+  let logoBottomY = 250;
+  if (fs.existsSync(logoPath)) {
+    try {
+      const logo = await loadImage(logoPath);
+      const logoWidth = empresa === 'ME' ? 550 : 500;
+      const logoH = (logo.height / logo.width) * logoWidth;
+      const logoY = empresa === 'ME' ? 120 : 100;
+      ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoH);
+      logoBottomY = logoY + logoH;
+    } catch (err) {
+      console.error('Error logo:', err);
+    }
+  }
+
+  return logoBottomY;
+};
+
+// ==========================================
+// HELPER: DIBUJAR BARRA DE PIE DE PÁGINA
+// ==========================================
+const drawFooterBar = async (
+  ctx: any,
+  width: number,
+  height: number,
+  empresaData: any,
+  empresa: string
+): Promise<void> => {
+  const footerH = 138;
+  const footerY = height - footerH;
+  let bgColor = '#111111'; // AP: negro
+  if (empresa === 'AT') bgColor = '#0d2a35';
+  if (empresa === 'ME') bgColor = empresaData.accentColor || '#C9A053';
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, footerY, width, footerH);
+
+  const textY = footerY + Math.round(footerH * 0.63);
+  const iconSize = 52;
+  const iconTextGap = 18;
+  const itemGap = 100;
+
+  // Ícono de ubicación (pin de mapa)
+  const drawPinIcon = (x: number, cy: number) => {
+    const r = iconSize * 0.38;
+    const cx2 = x + iconSize / 2;
+    const topY = cy - iconSize * 0.55;
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(cx2, topY + r, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx2 - r * 0.8, topY + r * 1.2);
+    ctx.lineTo(cx2 + r * 0.8, topY + r * 1.2);
+    ctx.lineTo(cx2, cy + iconSize * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.arc(cx2, topY + r, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // Ícono de teléfono (auricular)
+  const drawPhoneIcon = (x: number, cy: number) => {
+    const cx2 = x + iconSize / 2;
+    ctx.save();
+    const r = iconSize * 0.17;
+    // Pieza superior (auricular)
+    const earX = cx2 + iconSize * 0.18;
+    const earY = cy - iconSize * 0.28;
+    // Pieza inferior (micrófono)
+    const mouthX = cx2 - iconSize * 0.18;
+    const mouthY = cy + iconSize * 0.28;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(earX, earY, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(mouthX, mouthY, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = iconSize * 0.13;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(earX, earY);
+    ctx.bezierCurveTo(earX, cy, mouthX, cy, mouthX, mouthY);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // Ícono de email (sobre)
+  const drawMailIcon = (x: number, cy: number) => {
+    const topY = cy - iconSize * 0.38;
+    const bH = iconSize * 0.62;
+    ctx.save();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = iconSize * 0.09;
+    ctx.lineJoin = 'round';
+    ctx.strokeRect(x, topY, iconSize, bH);
+    ctx.beginPath();
+    ctx.moveTo(x, topY);
+    ctx.lineTo(x + iconSize / 2, topY + bH * 0.52);
+    ctx.lineTo(x + iconSize, topY);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // Construir items según empresa
+  const items: { type: string; text: string }[] = [];
+  if (empresa !== 'ME' && empresaData.direccion) {
+    items.push({ type: 'location', text: empresaData.direccion });
+  }
+  if (empresaData.telefono) {
+    items.push({ type: empresa === 'ME' ? 'whatsapp' : 'phone', text: empresaData.telefono });
+  }
+  if (empresaData.email) {
+    items.push({ type: 'mail', text: empresaData.email });
+  }
+
+  // Medir ancho total para centrar
+  ctx.font = 'bold 38px Arial';
+  let totalW = 0;
+  items.forEach((item, i) => {
+    totalW += iconSize + iconTextGap + ctx.measureText(item.text).width;
+    if (i < items.length - 1) totalW += itemGap;
+  });
+
+  let currentX = (width - totalW) / 2;
+  items.forEach((item) => {
+    if (item.type === 'location') drawPinIcon(currentX, textY);
+    else if (item.type === 'phone' || item.type === 'whatsapp') drawPhoneIcon(currentX, textY);
+    else if (item.type === 'mail') drawMailIcon(currentX, textY);
+    currentX += iconSize + iconTextGap;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 38px Arial';
+    ctx.fillText(item.text, currentX, textY);
+    currentX += ctx.measureText(item.text).width + itemGap;
+  });
+};
+
 // Generar certificado como IMAGEN
 // Generar certificado como IMAGEN
 export const generarCertificadoImagen = async (
@@ -664,69 +887,11 @@ export const generarCertificadoImagen = async (
     const ctx = canvas.getContext("2d");
     console.log("✅ Canvas creado");
 
-    // Fondo blanco
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
-
     // ========================================
-    // LOGO EN LA PARTE SUPERIOR CENTRAL
+    // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    console.log("🖼️ Buscando logo en:", logoPath);
-    console.log("Logo existe?", fs.existsSync(logoPath));
-
-    if (fs.existsSync(logoPath)) {
-      try {
-        console.log("📥 Cargando logo...");
-        const logo = await loadImage(logoPath);
-        console.log("✅ Logo cargado correctamente");
-
-        // Tamaño del logo (más pequeño y ajustado)
-        let logoWidth = 500;
-        let logoY = 150;
-
-        if (usuario.empresa === "AP" || usuario.empresa === "AT") {
-          logoWidth = 500;
-          logoY = 150;
-        } else if (usuario.empresa === "ME") {
-          logoWidth = 500;
-          logoY = 250; // Bajar más para ME
-        }
-
-        const logoHeight = (logo.height / logo.width) * logoWidth;
-        const logoX = (width - logoWidth) / 2;
-
-        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
-        console.log("✅ Logo dibujado en canvas");
-      } catch (logoError) {
-        console.error("❌ Error al cargar/dibujar logo:", logoError);
-      }
-    } else {
-      console.warn("⚠️ Logo no encontrado, continuando sin logo");
-    }
-
-    // ========================================
-    // MARCA DE AGUA DEL LOGO (transparente, centrada en el fondo)
-    // ========================================
-    if (fs.existsSync(logoPath)) {
-      try {
-        console.log("💧 Agregando marca de agua...");
-        ctx.save();
-        ctx.globalAlpha = 0.05; // Muy transparente para marca de agua
-        
-        const logo = await loadImage(logoPath);
-        const watermarkSize = 2000; // Logo gigante como marca de agua
-        const watermarkHeight = (logo.height / logo.width) * watermarkSize;
-        const watermarkX = (width - watermarkSize) / 2;
-        const watermarkY = (height - watermarkHeight) / 2;
-
-        ctx.drawImage(logo, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-        ctx.restore();
-        console.log("✅ Marca de agua agregada");
-      } catch (watermarkError) {
-        console.error("❌ Error al agregar marca de agua:", watermarkError);
-      }
-    }
+    const empresa = usuario.empresa || 'AP';
+    const headerBottomY = await drawLetterhead(ctx, width, height, empresaData, empresa);
 
     // ========================================
     // TÍTULO "CERTIFICADO LABORAL" - MÁS PEQUEÑO
@@ -854,25 +1019,10 @@ export const generarCertificadoImagen = async (
       }
 
       // Contacto centrado - MUCHO MÁS ABAJO
-      const contactoY = height - 150; // Casi al borde inferior
-      const iconSize = 50;
-      ctx.font = "36px Arial";
-      
-      const iconPhonePath = path.join(__dirname, "../../public/phone.svg");
-      if (empresaData.telefono && fs.existsSync(iconPhonePath)) {
-        try {
-          const iconPhone = await loadImage(iconPhonePath);
-          const textWidth = ctx.measureText(empresaData.telefono).width;
-          const totalWidth = iconSize + 10 + textWidth;
-          const startX = width / 2 - totalWidth / 2;
-          
-          ctx.drawImage(iconPhone, startX, contactoY - 35, iconSize, iconSize);
-          ctx.textAlign = "left";
-          ctx.fillText(empresaData.telefono, startX + iconSize + 10, contactoY);
-        } catch (err) {
-          console.warn("Error al cargar icono teléfono:", err);
-        }
-      }
+      // ========================================
+      // PIE DE PÁGINA ME (barra dorada con iconos)
+      // ========================================
+      await drawFooterBar(ctx, width, height, empresaData, empresa);
     } else {
       // ========================================
       // FIRMA IZQUIERDA - GERENTE GENERAL (AP/AT)
@@ -902,75 +1052,9 @@ export const generarCertificadoImagen = async (
       ctx.fillText("Gerente General", firmaIzqX, firmaY + 100);
 
       // ========================================
-      // INFORMACIÓN DE CONTACTO - MUCHO MÁS ABAJO (AP/AT)
+      // PIE DE PÁGINA (barra coloreada con iconos)
       // ========================================
-      const contactoY = height - 150; // Casi al borde inferior
-      const iconSize = 50;
-      ctx.font = "36px Arial";
-      ctx.fillStyle = "#000000";
-
-      const iconPaths = {
-        location: path.join(__dirname, "../../public/map-pin.svg"),
-        phone: path.join(__dirname, "../../public/phone.svg"),
-        email: path.join(__dirname, "../../public/mail.svg")
-      };
-
-      ctx.textAlign = "left";
-      let totalWidth = 0;
-      
-      if (empresaData.direccion) {
-        totalWidth += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-      }
-      if (empresaData.telefono) {
-        totalWidth += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-      }
-      if (empresaData.email) {
-        totalWidth += iconSize + 10 + ctx.measureText(empresaData.email).width;
-      }
-
-      const startX = (width - totalWidth) / 2;
-      let currentX = startX;
-
-      if (empresaData.direccion) {
-        try {
-          if (fs.existsSync(iconPaths.location)) {
-            const iconLocation = await loadImage(iconPaths.location);
-            ctx.drawImage(iconLocation, currentX, contactoY - 35, iconSize, iconSize);
-          }
-          ctx.textAlign = "left";
-          ctx.fillText(empresaData.direccion, currentX + iconSize + 10, contactoY);
-          currentX += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-        } catch (err) {
-          console.warn("Error al cargar icono ubicación:", err);
-        }
-      }
-
-      if (empresaData.telefono) {
-        try {
-          if (fs.existsSync(iconPaths.phone)) {
-            const iconPhone = await loadImage(iconPaths.phone);
-            ctx.drawImage(iconPhone, currentX, contactoY - 35, iconSize, iconSize);
-          }
-          ctx.textAlign = "left";
-          ctx.fillText(empresaData.telefono, currentX + iconSize + 10, contactoY);
-          currentX += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-        } catch (err) {
-          console.warn("Error al cargar icono teléfono:", err);
-        }
-      }
-
-      if (empresaData.email) {
-        try {
-          if (fs.existsSync(iconPaths.email)) {
-            const iconEmail = await loadImage(iconPaths.email);
-            ctx.drawImage(iconEmail, currentX, contactoY - 35, iconSize, iconSize);
-          }
-          ctx.textAlign = "left";
-          ctx.fillText(empresaData.email, currentX + iconSize + 10, contactoY);
-        } catch (err) {
-          console.warn("Error al cargar icono email:", err);
-        }
-      }
+      await drawFooterBar(ctx, width, height, empresaData, empresa);
 
       // ========================================
       // FIRMA DERECHA - LÍDER DE GESTIÓN HUMANA (AP/AT)
@@ -1242,38 +1326,10 @@ const generarCanvasCesantias = async (
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // Fondo blanco
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, width, height);
-
   // ========================================
-  // MARCA DE AGUA DEL LOGO (fondo)
+  // MEMBRETE: fondo + stripe + watermark + logo
   // ========================================
-  const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-  if (fs.existsSync(logoPath)) {
-    ctx.save();
-    ctx.globalAlpha = 0.05;
-    
-    const logoWatermark = await loadImage(logoPath);
-    const watermarkSize = 2000;
-    const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
-    const watermarkX = (width - watermarkSize) / 2;
-    const watermarkY = (height - watermarkHeight) / 2;
-
-    ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-    ctx.restore();
-  }
-
-  // ========================================
-  // LOGO EN LA PARTE SUPERIOR
-  // ========================================
-  if (fs.existsSync(logoPath)) {
-    const logo = await loadImage(logoPath);
-    const logoWidth = 500;
-    const logoHeight = (logo.height / logo.width) * logoWidth;
-    const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
-    ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
-  }
+  await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
 
   // Fecha
   ctx.font = "44px 'Helvetica'";
@@ -1428,80 +1484,9 @@ const generarCanvasCesantias = async (
   }
 
   // ========================================
-  // ICONOS DE CONTACTO EN EL PIE DE PÁGINA
+  // PIE DE PÁGINA (barra coloreada con iconos)
   // ========================================
-  const footerY = height - 120;
-  const iconSize = 45;
-  
-  const iconPaths = {
-    location: path.join(__dirname, "../../public/map-pin.svg"),
-    phone: path.join(__dirname, "../../public/phone.svg"),
-    email: path.join(__dirname, "../../public/mail.svg")
-  };
-
-  ctx.font = "36px 'Helvetica'";
-  
-  let totalWidth = 0;
-  if (empresaData.direccion) {
-    totalWidth += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-  }
-  if (empresaData.telefono) {
-    totalWidth += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-  }
-  if (empresaData.email) {
-    totalWidth += iconSize + 10 + ctx.measureText(empresaData.email).width;
-  }
-
-  let currentX = (width - totalWidth) / 2;
-
-  if (empresaData.direccion) {
-    try {
-      if (fs.existsSync(iconPaths.location)) {
-        const iconLocation = await loadImage(iconPaths.location);
-        ctx.drawImage(iconLocation, currentX, footerY - 32, iconSize, iconSize);
-      }
-      ctx.textAlign = "left";
-      ctx.fillText(empresaData.direccion, currentX + iconSize + 10, footerY);
-      currentX += iconSize + 10 + ctx.measureText(empresaData.direccion).width + 60;
-    } catch (err) {
-      console.warn("Error al cargar icono ubicación:", err);
-    }
-  }
-
-  if (empresaData.telefono) {
-    try {
-      if (fs.existsSync(iconPaths.phone)) {
-        const iconPhone = await loadImage(iconPaths.phone);
-        ctx.drawImage(iconPhone, currentX, footerY - 32, iconSize, iconSize);
-      }
-      ctx.textAlign = "left";
-      ctx.fillText(empresaData.telefono, currentX + iconSize + 10, footerY);
-      currentX += iconSize + 10 + ctx.measureText(empresaData.telefono).width + 60;
-    } catch (err) {
-      console.warn("Error al cargar icono teléfono:", err);
-    }
-  }
-
-  if (empresaData.email) {
-    try {
-      if (fs.existsSync(iconPaths.email)) {
-        const iconEmail = await loadImage(iconPaths.email);
-        ctx.drawImage(iconEmail, currentX, footerY - 32, iconSize, iconSize);
-      }
-      ctx.textAlign = "left";
-      ctx.fillText(empresaData.email, currentX + iconSize + 10, footerY);
-    } catch (err) {
-      console.warn("Error al cargar icono email:", err);
-    }
-  }
-
-  if (empresaData.nit && empresaData.nit.trim() !== '') {
-    const nitY = footerY + 60;
-    ctx.font = "bold 38px 'Helvetica'";
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#000000";
-    ctx.fillText(empresaData.nit, width / 2, nitY);
-  }
+  await drawFooterBar(ctx, width, height, empresaData, empresaSeleccionada);
 
   return canvas;
 };
@@ -1531,9 +1516,9 @@ export const generarCertificadoCesantias = async (
       nombreCompleto: (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`,
       cedula: (req.query.cedula as string) || usuario.documentoIdentificacion,
       fondoCesantias: (req.query.fondoCesantias as string) || usuario.fondoCesantias || 'PORVENIR',
-      tipoRetiro: (req.query.tipoRetiro as string) || 'RETIRO TOTAL',
-      conceptoRetiro: (req.query.conceptoRetiro as string) || 'TERMINACIÓN DEL CONTRATO DE TRABAJO',
       valorAutorizado: (req.query.valorAutorizado as string) || 'RETIRO TOTAL',
+      tipoRetiro: (req.query.tipoRetiro as string) || (req.query.valorAutorizado as string) || 'RETIRO TOTAL',
+      conceptoRetiro: (req.query.conceptoRetiro as string) || 'TERMINACIÓN DEL CONTRATO DE TRABAJO',
       causa: (req.query.causa as string) || 'RETIRO CON INJUSTA CAUSA',
       fechaRetiroCesantias: (req.query.fechaRetiroCesantias as string) || '',
     };
@@ -1585,37 +1570,10 @@ const generarCanvasTerminacion = async (
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, width, height);
-
   // ========================================
-  // MARCA DE AGUA DEL LOGO (fondo)
+  // MEMBRETE: fondo + stripe + watermark + logo
   // ========================================
-  const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-  if (fs.existsSync(logoPath)) {
-    ctx.save();
-    ctx.globalAlpha = 0.05;
-    
-    const logoWatermark = await loadImage(logoPath);
-    const watermarkSize = 2000;
-    const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
-    const watermarkX = (width - watermarkSize) / 2;
-    const watermarkY = (height - watermarkHeight) / 2;
-
-    ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-    ctx.restore();
-  }
-
-  // ========================================
-  // LOGO EN LA PARTE SUPERIOR
-  // ========================================
-  if (fs.existsSync(logoPath)) {
-    const logo = await loadImage(logoPath);
-    const logoWidth = 500;
-    const logoHeight = (logo.height / logo.width) * logoWidth;
-    const logoY = empresaSeleccionada === 'ME' ? 250 : 150;
-    ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoHeight);
-  }
+  await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
 
   // Título
   ctx.font = "bold 95px 'Helvetica'";
@@ -1716,6 +1674,11 @@ const generarCanvasTerminacion = async (
     ctx.fillText("Gerente General", firmaX, firmaY + 105);
     ctx.fillText(empresaData.nit || `CC: ${empresaData.cedulaGerente}`, firmaX, firmaY + 150);
   }
+
+  // ========================================
+  // PIE DE PÁGINA (barra coloreada con iconos)
+  // ========================================
+  await drawFooterBar(ctx, width, height, empresaData, empresaSeleccionada);
 
   return canvas;
 };
@@ -1885,50 +1848,25 @@ export const generarDesprendiblePago = async (
     const margin = 150;
     const contentWidth = width - margin * 2;
 
-    // Determinar empresa
-    let empresaData: any = {};
-    if (usuario.empresa === "ME") {
-      empresaData = {
-        nombre: "MARIA EVANGELINA AGUDELO GIL",
-        nit: "NIT 42094435",
-        logo: "Logo3.png"
-      };
-    } else if (usuario.empresa === "AP") {
-      empresaData = {
-        nombre: "ANDRÉS PUBLICIDAD TG SAS",
-        nit: "NIT 901.458.142-2",
-        logo: "Logo2.png"
-      };
-    } else { // AT
-      empresaData = {
-        nombre: "ANDRÉS TOBÓN",
-        nit: "CC 1088254149",
-        logo: "Logo1.png"
-      };
-    }
+    // Determinar empresa (usando datos globales)
+    const empresaDesprendible = (usuario.empresa as string) || 'AP';
+    const empresaData = { ...empresasData[empresaDesprendible] };
 
-    // Cargar logo
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    let logo: any = null;
-    if (fs.existsSync(logoPath)) {
-      logo = await loadImage(logoPath);
-    }
-
-    // Dibujar logo (esquina superior izquierda)
-    if (logo) {
-      const logoSize = 300;
-      ctx.drawImage(logo, margin, margin, logoSize, logoSize);
-    }
+    // ========================================
+    // MEMBRETE: fondo + stripe + watermark + logo
+    // ========================================
+    await drawLetterhead(ctx, width, height, empresaData, empresaDesprendible);
+    await drawFooterBar(ctx, width, height, empresaData, empresaDesprendible);
 
     // Encabezado - Empresa
     ctx.fillStyle = "#000000";
     ctx.font = "bold 48px Helvetica";
     ctx.textAlign = "center";
-    const headerY = margin + 100;
+    const headerY = 650;
     ctx.fillText(empresaData.nombre, width / 2, headerY);
     
     ctx.font = "42px Helvetica";
-    ctx.fillText(empresaData.nit, width / 2, headerY + 60);
+    if (empresaData.nit) ctx.fillText(empresaData.nit, width / 2, headerY + 60);
     
     ctx.font = "bold 46px Helvetica";
     ctx.fillText("LIQUIDACION DE NOMINA", width / 2, headerY + 140);
@@ -2189,45 +2127,15 @@ export const generarCertificadoVacaciones = async (
     const margin = 200;
     const contentWidth = width - margin * 2;
 
-    // Determinar empresa
-    let empresaData: any = {};
-    if (usuario.empresa === "ME") {
-      empresaData = {
-        nombre: "MARIA EVANGELINA AGUDELO GIL",
-        nit: "NIT 42094435",
-        logo: "Logo3.png"
-      };
-    } else if (usuario.empresa === "AP") {
-      empresaData = {
-        nombre: "ANDRÉS PUBLICIDAD TG SAS",
-        nit: "NIT 901.458.142-2",
-        logo: "Logo2.png"
-      };
-    } else {
-      empresaData = {
-        nombre: "ANDRÉS TOBÓN",
-        nit: "CC 1088254149",
-        logo: "Logo1.png"
-      };
-    }
+    // Determinar empresa (usando datos globales)
+    const empresaVacaciones = (usuario.empresa as string) || 'AP';
+    const empresaData = { ...empresasData[empresaVacaciones] };
 
     // ========================================
-    // MARCA DE AGUA DEL LOGO (fondo) - SIN LOGO PRINCIPAL
+    // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    if (fs.existsSync(logoPath)) {
-      ctx.save();
-      ctx.globalAlpha = 0.05; // Muy transparente para marca de agua
-      
-      const logoWatermark = await loadImage(logoPath);
-      const watermarkSize = 1800;
-      const watermarkHeight = (logoWatermark.height / logoWatermark.width) * watermarkSize;
-      const watermarkX = (width - watermarkSize) / 2;
-      const watermarkY = (height - watermarkHeight) / 2;
-
-      ctx.drawImage(logoWatermark, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-      ctx.restore();
-    }
+    await drawLetterhead(ctx, width, height, empresaData, empresaVacaciones);
+    await drawFooterBar(ctx, width, height, empresaData, empresaVacaciones);
 
     // ========================================
     // TÍTULO - CENTRADO Y MÁS ARRIBA
@@ -2373,15 +2281,6 @@ export const generarCertificadoVacaciones = async (
     
     ctx.font = "42px Helvetica";
     
-    // Pie de página con línea decorativa - más abajo
-    const footerY = height - 240;
-    ctx.strokeStyle = "#FFD600";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(margin, footerY);
-    ctx.lineTo(width - margin, footerY);
-    ctx.stroke();
-    
     ctx.font = "36px Helvetica";
     ctx.fillStyle = "#666666";
 
@@ -2449,71 +2348,18 @@ export const generarNotificacionVacaciones = async (
     const margin = 200;
     const contentWidth = width - margin * 2;
 
-    // Determinar empresa
-    let empresaData: any = {};
-    if (usuario.empresa === "ME") {
-      empresaData = {
-        nombre: "MARIA EVANGELINA AGUDELO GIL",
-        nit: "CC. 42094435",
-        logo: "Logo3.png"
-      };
-    } else if (usuario.empresa === "AP") {
-      empresaData = {
-        nombre: "ANDRÉS PUBLICIDAD TG SAS",
-        nit: "NIT 901.458.142-2",
-        logo: "Logo2.png"
-      };
-    } else {
-      empresaData = {
-        nombre: "ANDRÉS TOBÓN",
-        nit: "CC 1088254149",
-        logo: "Logo1.png"
-      };
-    }
+    // Determinar empresa (usando datos globales)
+    const empresaNotif = (usuario.empresa as string) || 'AP';
+    const empresaData = { ...empresasData[empresaNotif] };
 
     // ========================================
-    // LOGO EN LA PARTE SUPERIOR IZQUIERDA
+    // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    let logoHeight = 0;
-    if (fs.existsSync(logoPath)) {
-      try {
-        const logo = await loadImage(logoPath);
-        let logoWidth = 350;
-        let logoY = 120;
-        
-        logoHeight = (logo.height / logo.width) * logoWidth;
-        const logoX = margin;
-        
-        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
-      } catch (logoError) {
-        console.error("Error al cargar logo:", logoError);
-      }
-    }
+    await drawLetterhead(ctx, width, height, empresaData, empresaNotif);
+    await drawFooterBar(ctx, width, height, empresaData, empresaNotif);
 
     // ========================================
-    // MARCA DE AGUA
-    // ========================================
-    if (fs.existsSync(logoPath)) {
-      try {
-        ctx.save();
-        ctx.globalAlpha = 0.05;
-        
-        const logo = await loadImage(logoPath);
-        const watermarkSize = 1800;
-        const watermarkHeight = (logo.height / logo.width) * watermarkSize;
-        const watermarkX = (width - watermarkSize) / 2;
-        const watermarkY = (height - watermarkHeight) / 2;
-
-        ctx.drawImage(logo, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-        ctx.restore();
-      } catch (err) {
-        console.error("Error al agregar marca de agua:", err);
-      }
-    }
-
-    // ========================================
-    // CIUDAD Y FECHA (arriba a la DERECHA, al lado del logo)
+    // CIUDAD Y FECHA (arriba a la DERECHA)
     // ========================================
     ctx.fillStyle = "#000000";
     ctx.font = "44px Arial";
@@ -2769,17 +2615,6 @@ export const generarNotificacionVacaciones = async (
     ctx.font = "44px Arial";
     ctx.fillText(`C.C. ${usuario.documentoIdentificacion}`, firmaDerX, firmaY + 190);
 
-    // ========================================
-    // FOOTER CON DATOS DE CONTACTO
-    // ========================================
-    const footerY = height - 120;
-    ctx.font = "38px Arial";
-    ctx.textAlign = "center";
-    
-    if (usuario.empresa === "AP") {
-      ctx.fillText("📍 Pereira, Risaralda - Colombia     ☎ (+57) 324 234 1917     ✉ andrespublicidadtg@gmail.com", width / 2, footerY);
-    }
-
     // Enviar como PDF usando helper
     await sendCanvasAsPdf(res, canvas, `notificacion_vacaciones_${Uid}_${fechaInicio.replace(/\//g, '-')}`);
 
@@ -2831,67 +2666,15 @@ export const generarCertificadoDiaFamilia = async (
     const margin = 200;
     const contentWidth = width - margin * 2;
 
-    // Determinar empresa
-    let empresaData: any = {};
-    if (usuario.empresa === "ME") {
-      empresaData = {
-        nombre: "MARIA EVANGELINA AGUDELO GIL",
-        nit: "CC. 42094435",
-        logo: "Logo3.png"
-      };
-    } else if (usuario.empresa === "AP") {
-      empresaData = {
-        nombre: "ANDRÉS PUBLICIDAD TG SAS",
-        nit: "NIT 901.458.142-2",
-        logo: "Logo2.png"
-      };
-    } else {
-      empresaData = {
-        nombre: "ANDRÉS TOBÓN",
-        nit: "CC 1088254149",
-        logo: "Logo1.png"
-      };
-    }
+    // Determinar empresa (usando datos globales)
+    const empresaDiaFamilia = (usuario.empresa as string) || 'AP';
+    const empresaData = { ...empresasData[empresaDiaFamilia] };
 
     // ========================================
-    // LOGO EN LA PARTE SUPERIOR
+    // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    const logoPath = path.join(__dirname, "../../public", empresaData.logo);
-    if (fs.existsSync(logoPath)) {
-      try {
-        const logo = await loadImage(logoPath);
-        let logoWidth = 400;
-        let logoY = 120;
-        
-        const logoHeight = (logo.height / logo.width) * logoWidth;
-        const logoX = (width - logoWidth) / 2;
-        
-        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
-      } catch (logoError) {
-        console.error("Error al cargar logo:", logoError);
-      }
-    }
-
-    // ========================================
-    // MARCA DE AGUA
-    // ========================================
-    if (fs.existsSync(logoPath)) {
-      try {
-        ctx.save();
-        ctx.globalAlpha = 0.05;
-        
-        const logo = await loadImage(logoPath);
-        const watermarkSize = 1800;
-        const watermarkHeight = (logo.height / logo.width) * watermarkSize;
-        const watermarkX = (width - watermarkSize) / 2;
-        const watermarkY = (height - watermarkHeight) / 2;
-
-        ctx.drawImage(logo, watermarkX, watermarkY, watermarkSize, watermarkHeight);
-        ctx.restore();
-      } catch (err) {
-        console.error("Error al agregar marca de agua:", err);
-      }
-    }
+    await drawLetterhead(ctx, width, height, empresaData, empresaDiaFamilia);
+    await drawFooterBar(ctx, width, height, empresaData, empresaDiaFamilia);
 
     // ========================================
     // TÍTULO
