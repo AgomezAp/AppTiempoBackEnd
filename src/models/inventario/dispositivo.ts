@@ -331,7 +331,7 @@ DetalleActa.belongsTo(Dispositivo, { foreignKey: 'dispositivoId', as: 'dispositi
 Dispositivo.hasMany(DetalleActa, { foreignKey: 'dispositivoId' });
 
 ActaEntrega.hasMany(TokenFirma, { foreignKey: 'actaId', as: 'tokens' });
-TokenFirma.belongsTo(ActaEntrega, { foreignKey: 'actaId' });
+TokenFirma.belongsTo(ActaEntrega, { foreignKey: 'actaId', as: 'acta' });
 
 Dispositivo.hasMany(MovimientoDispositivo, { foreignKey: 'dispositivoId', as: 'movimientos' });
 
