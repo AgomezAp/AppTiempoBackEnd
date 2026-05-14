@@ -223,7 +223,7 @@ TokenFirma.init(
     {
         sequelize: sequelizeInventario,
         tableName: 'tokens_firma',
-        timestamps: false
+        timestamps: true
     }
 );
 

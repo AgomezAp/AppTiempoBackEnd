@@ -205,22 +205,57 @@ export const rechazarActaConToken = async (req: Request, res: Response): Promise
 };
 
 export const reenviarCorreoFirma = async (req: Request, res: Response): Promise<void> => {
+  const transaction = await sequelizeInventario.transaction();
   try {
     const { id } = req.params;
-    const tokenFirma = await TokenFirma.findOne({
+
+    // Buscar token pendiente existente
+    let tokenFirma = await TokenFirma.findOne({
       where: { actaId: Number(id), estado: 'pendiente' },
-      include: [{ model: ActaEntrega, as: 'acta', include: [{ model: DetalleActa, as: 'detalles', include: [{ model: Dispositivo, as: 'dispositivo' }] }] }]
+      include: [{ model: ActaEntrega, as: 'acta', include: [{ model: DetalleActa, as: 'detalles', include: [{ model: Dispositivo, as: 'dispositivo' }] }] }],
+      transaction
     });
-    if (!tokenFirma) { res.status(404).json({ msg: 'No hay solicitud de firma pendiente para esta acta' }); return; }
-    const acta = (tokenFirma as any).acta;
+
+    let acta: any;
+    let token: string;
+
+    if (!tokenFirma) {
+      // No hay token pendiente: el envío inicial falló sin crear token.
+      // Crear uno nuevo igual que enviarSolicitudFirma.
+      acta = await ActaEntrega.findByPk(Number(id), {
+        include: [{ model: DetalleActa, as: 'detalles', include: [{ model: Dispositivo, as: 'dispositivo' }] }],
+        transaction
+      });
+      if (!acta) { await transaction.rollback(); res.status(404).json({ msg: 'Acta no encontrada' }); return; }
+      if (!acta.correoReceptor) { await transaction.rollback(); res.status(400).json({ msg: 'El acta no tiene correo de receptor' }); return; }
+      if (!['pendiente_firma', 'rechazada'].includes(acta.estado)) {
+        await transaction.rollback();
+        res.status(400).json({ msg: `No se puede reenviar el correo para un acta en estado "${acta.estado}"` });
+        return;
+      }
+
+      token = uuidv4();
+      await TokenFirma.create({
+        token, actaId: acta.id, correoReceptor: acta.correoReceptor,
+        estado: 'pendiente', fechaEnvio: new Date()
+      }, { transaction });
+      await acta.update({ estado: 'pendiente_firma' }, { transaction });
+    } else {
+      acta = (tokenFirma as any).acta;
+      token = tokenFirma.token;
+      await tokenFirma.update({ fechaEnvio: new Date() }, { transaction });
+    }
+
     const dispositivos = acta?.detalles?.map((d: any) => ({
       tipo: d.dispositivo?.categoria || 'Dispositivo', marca: d.dispositivo?.marca || '',
       modelo: d.dispositivo?.modelo || '', serial: d.dispositivo?.serial || 'N/A'
     })) || [];
-    await enviarCorreoFirma(acta.correoReceptor, acta.nombreReceptor, tokenFirma.token, dispositivos, acta.observacionesEntrega);
-    await tokenFirma.update({ fechaEnvio: new Date() });
+
+    await enviarCorreoFirma(acta.correoReceptor, acta.nombreReceptor, token, dispositivos, acta.observacionesEntrega);
+    await transaction.commit();
     res.json({ msg: 'Correo reenviado correctamente', correo: acta.correoReceptor });
   } catch (error: any) {
+    await transaction.rollback();
     console.error('Error al reenviar correo:', error);
     res.status(500).json({ msg: error.message || 'Error al reenviar el correo' });
   }
