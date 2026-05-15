@@ -681,7 +681,14 @@ const drawLetterhead = async (
         ctx.rect(wmX, wmY, wmSize, wmH * 0.62);
         ctx.clip();
       }
-      ctx.drawImage(wm, wmX, wmY, wmSize, wmH);
+      // Para AP: ligera rotación a la izquierda de la marca de agua
+      if (empresa === 'AP') {
+        ctx.translate(width / 2, height / 2);
+        ctx.rotate(-12 * Math.PI / 180);
+        ctx.drawImage(wm, -wmSize / 2, -wmH / 2, wmSize, wmH);
+      } else {
+        ctx.drawImage(wm, wmX, wmY, wmSize, wmH);
+      }
       ctx.restore();
     } catch (err) {
       console.error('Error watermark:', err);
@@ -698,16 +705,7 @@ const drawLetterhead = async (
       const logoH = (logo.height / logo.width) * logoWidth;
       const logoY = empresa === 'ME' ? 120 : 100;
 
-      if (empresa === 'AP') {
-        // Logo de AP con ligera rotación
-        const centerX = width / 2;
-        const centerY = logoY + logoH / 2;
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(8 * Math.PI / 180);
-        ctx.drawImage(logo, -logoWidth / 2, -logoH / 2, logoWidth, logoH);
-        ctx.restore();
-      } else if (empresa === 'ME') {
+      if (empresa === 'ME') {
         // Logo de ME con colores invertidos
         const offCanvas = createCanvas(Math.round(logoWidth), Math.round(logoH));
         const offCtx = offCanvas.getContext('2d');
