@@ -697,7 +697,35 @@ const drawLetterhead = async (
       const logoWidth = empresa === 'ME' ? 550 : 500;
       const logoH = (logo.height / logo.width) * logoWidth;
       const logoY = empresa === 'ME' ? 120 : 100;
-      ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoH);
+
+      if (empresa === 'AP') {
+        // Logo de AP con ligera rotación
+        const centerX = width / 2;
+        const centerY = logoY + logoH / 2;
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(8 * Math.PI / 180);
+        ctx.drawImage(logo, -logoWidth / 2, -logoH / 2, logoWidth, logoH);
+        ctx.restore();
+      } else if (empresa === 'ME') {
+        // Logo de ME con colores invertidos
+        const offCanvas = createCanvas(Math.round(logoWidth), Math.round(logoH));
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.drawImage(logo, 0, 0, Math.round(logoWidth), Math.round(logoH));
+        const imageData = offCtx.getImageData(0, 0, Math.round(logoWidth), Math.round(logoH));
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          data[i]     = 255 - data[i];
+          data[i + 1] = 255 - data[i + 1];
+          data[i + 2] = 255 - data[i + 2];
+          // Alpha (data[i+3]) sin cambio
+        }
+        offCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(offCanvas, (width - logoWidth) / 2, logoY, logoWidth, logoH);
+      } else {
+        ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoH);
+      }
+
       logoBottomY = logoY + logoH;
     } catch (err) {
       console.error('Error logo:', err);
@@ -958,30 +986,30 @@ export const generarCertificadoImagen = async (
     // SI ES ME: DOS FIRMAS (GERENTE + LÍDER)
     // ========================================
     if (usuario.empresa === "ME") {
-      // FIRMA IZQUIERDA - MARÍA EVANGELINA
+      // FIRMA CENTRADA - MARÍA EVANGELINA
       const firmaMEPath = path.join(__dirname, "../../public/Firma3.jpeg");
       if (fs.existsSync(firmaMEPath)) {
         try {
           const firmaMEImg = await loadImage(firmaMEPath);
           const firmaWidth = 350;
           const firmaHeight = (firmaMEImg.height / firmaMEImg.width) * firmaWidth;
-          ctx.drawImage(firmaMEImg, firmaIzqX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+          ctx.drawImage(firmaMEImg, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
         } catch (err) {
           console.warn("Error al cargar Firma3.jpeg:", err);
         }
       }
 
       ctx.beginPath();
-      ctx.moveTo(firmaIzqX - 300, firmaY);
-      ctx.lineTo(firmaIzqX + 300, firmaY);
+      ctx.moveTo(firmaCentroX - 300, firmaY);
+      ctx.lineTo(firmaCentroX + 300, firmaY);
       ctx.stroke();
 
       ctx.font = "bold 40px Arial";
       ctx.textAlign = "center";
       ctx.fillStyle = "#000000";
-      ctx.fillText(empresaData.gerente, firmaIzqX, firmaY + 55);
+      ctx.fillText(empresaData.gerente, firmaCentroX, firmaY + 55);
       ctx.font = "36px Arial";
-      ctx.fillText("Gerente General", firmaIzqX, firmaY + 100);
+      ctx.fillText("Gerente General", firmaCentroX, firmaY + 100);
 
       // Contacto centrado - MUCHO MÁS ABAJO
       // ========================================
@@ -990,7 +1018,7 @@ export const generarCertificadoImagen = async (
       await drawFooterBar(ctx, width, height, empresaData, empresa);
     } else {
       // ========================================
-      // FIRMA IZQUIERDA - GERENTE GENERAL (AP/AT)
+      // FIRMA CENTRADA - GERENTE GENERAL (AP/AT)
       // ========================================
       const firmaIzqPath = path.join(__dirname, "../../public/Firma2.jpg");
       if (fs.existsSync(firmaIzqPath)) {
@@ -998,23 +1026,23 @@ export const generarCertificadoImagen = async (
           const firmaIzqImg = await loadImage(firmaIzqPath);
           const firmaWidth = 350;
           const firmaHeight = (firmaIzqImg.height / firmaIzqImg.width) * firmaWidth;
-          ctx.drawImage(firmaIzqImg, firmaIzqX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+          ctx.drawImage(firmaIzqImg, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
         } catch (err) {
           console.warn("Error al cargar Firma2.jpg:", err);
         }
       }
 
       ctx.beginPath();
-      ctx.moveTo(firmaIzqX - 300, firmaY);
-      ctx.lineTo(firmaIzqX + 300, firmaY);
+      ctx.moveTo(firmaCentroX - 300, firmaY);
+      ctx.lineTo(firmaCentroX + 300, firmaY);
       ctx.stroke();
 
       ctx.font = "bold 40px Arial";
       ctx.textAlign = "center";
       ctx.fillStyle = "#000000";
-      ctx.fillText(empresaData.gerente, firmaIzqX, firmaY + 55);
+      ctx.fillText(empresaData.gerente, firmaCentroX, firmaY + 55);
       ctx.font = "36px Arial";
-      ctx.fillText("Gerente General", firmaIzqX, firmaY + 100);
+      ctx.fillText("Gerente General", firmaCentroX, firmaY + 100);
 
       // ========================================
       // PIE DE PÁGINA (barra coloreada con iconos)
