@@ -681,11 +681,11 @@ const drawLetterhead = async (
         ctx.rect(wmX, wmY, wmSize, wmH * 0.62);
         ctx.clip();
       }
-      // Para AP: ligera rotación a la izquierda de la marca de agua
+      // Para AP: rotación a la derecha y más grande
       if (empresa === 'AP') {
         ctx.translate(width / 2, height / 2);
-        ctx.rotate(-12 * Math.PI / 180);
-        ctx.drawImage(wm, -wmSize / 2, -wmH / 2, wmSize, wmH);
+        ctx.rotate(12 * Math.PI / 180);
+        ctx.drawImage(wm, -wmSize * 0.65, -wmH * 0.65, wmSize * 1.3, wmH * 1.3);
       } else {
         ctx.drawImage(wm, wmX, wmY, wmSize, wmH);
       }
