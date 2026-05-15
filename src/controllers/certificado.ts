@@ -391,6 +391,31 @@ export const generarCertificadoLaboral = async (
   }
 };
 
+// Helper: elimina el fondo blanco de una imagen (JPG/JPEG sin transparencia)
+async function drawImageTransparent(
+  ctx: any,
+  imgPath: string,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+  threshold = 230
+): Promise<void> {
+  const img = await loadImage(imgPath);
+  const off = createCanvas(Math.round(dw), Math.round(dh));
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(img, 0, 0, Math.round(dw), Math.round(dh));
+  const imageData = offCtx.getImageData(0, 0, Math.round(dw), Math.round(dh));
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] >= threshold && d[i + 1] >= threshold && d[i + 2] >= threshold) {
+      d[i + 3] = 0; // píxel casi blanco → transparente
+    }
+  }
+  offCtx.putImageData(imageData, 0, 0);
+  ctx.drawImage(off, dx, dy, dw, dh);
+}
+
 // Función auxiliar para escribir texto con wrapping
 function wrapText(
   ctx: any,
@@ -681,11 +706,11 @@ const drawLetterhead = async (
         ctx.rect(wmX, wmY, wmSize, wmH * 0.62);
         ctx.clip();
       }
-      // Para AP: rotación a la derecha y más grande
+      // Para AP: desplazada a la izquierda y rotada a la derecha
       if (empresa === 'AP') {
-        ctx.translate(width / 2, height / 2);
+        ctx.translate(width * 0.35, height / 2);
         ctx.rotate(12 * Math.PI / 180);
-        ctx.drawImage(wm, -wmSize * 0.65, -wmH * 0.65, wmSize * 1.3, wmH * 1.3);
+        ctx.drawImage(wm, -wmSize * 0.65, -wmH * 0.65, wmSize * 1.8, wmH * 1.8);
       } else {
         ctx.drawImage(wm, wmX, wmY, wmSize, wmH);
       }
@@ -985,15 +1010,15 @@ export const generarCertificadoImagen = async (
     // ========================================
     if (usuario.empresa === "ME") {
       // FIRMA CENTRADA - MARÍA EVANGELINA
-      const firmaMEPath = path.join(__dirname, "../../public/Firma3.jpeg");
+      const firmaMEPath = path.join(__dirname, "../../public/F- (3).png");
       if (fs.existsSync(firmaMEPath)) {
         try {
-          const firmaMEImg = await loadImage(firmaMEPath);
           const firmaWidth = 350;
+          const firmaMEImg = await loadImage(firmaMEPath);
           const firmaHeight = (firmaMEImg.height / firmaMEImg.width) * firmaWidth;
-          ctx.drawImage(firmaMEImg, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+          await drawImageTransparent(ctx, firmaMEPath, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
         } catch (err) {
-          console.warn("Error al cargar Firma3.jpeg:", err);
+          console.warn("Error al cargar F- (3).png:", err);
         }
       }
 
@@ -1018,15 +1043,15 @@ export const generarCertificadoImagen = async (
       // ========================================
       // FIRMA CENTRADA - GERENTE GENERAL (AP/AT)
       // ========================================
-      const firmaIzqPath = path.join(__dirname, "../../public/Firma2.jpg");
+      const firmaIzqPath = path.join(__dirname, "../../public/F- (2).png");
       if (fs.existsSync(firmaIzqPath)) {
         try {
           const firmaIzqImg = await loadImage(firmaIzqPath);
           const firmaWidth = 350;
           const firmaHeight = (firmaIzqImg.height / firmaIzqImg.width) * firmaWidth;
-          ctx.drawImage(firmaIzqImg, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+          await drawImageTransparent(ctx, firmaIzqPath, firmaCentroX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
         } catch (err) {
-          console.warn("Error al cargar Firma2.jpg:", err);
+          console.warn("Error al cargar F- (2).png:", err);
         }
       }
 
@@ -1364,14 +1389,14 @@ const generarCanvasCesantias = async (
     // FIRMA DEL GERENTE (IZQUIERDA) - 20% del ancho
     const firmaGerenteX = width * 0.20;
     
-    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'F- (3).png' : 'F- (2).png';
     const firmaPath = path.join(__dirname, "../../public", firmaFileName);
     
     if (fs.existsSync(firmaPath)) {
       const firmaImg = await loadImage(firmaPath);
       const firmaWidth = 350;
       const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-      ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+      await drawImageTransparent(ctx, firmaPath, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
     }
 
     ctx.strokeStyle = "#000000";
@@ -1401,14 +1426,14 @@ const generarCanvasCesantias = async (
     // SOLO FIRMA DEL GERENTE (CENTRADA)
     const firmaX = width / 2;
     
-    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'F- (3).png' : 'F- (2).png';
     const firmaPath = path.join(__dirname, "../../public", firmaFileName);
     
     if (fs.existsSync(firmaPath)) {
       const firmaImg = await loadImage(firmaPath);
       const firmaWidth = 350;
       const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-      ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+      await drawImageTransparent(ctx, firmaPath, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
     }
 
     ctx.strokeStyle = "#000000";
@@ -1561,14 +1586,14 @@ const generarCanvasTerminacion = async (
     // FIRMA DEL GERENTE (IZQUIERDA)
     const firmaGerenteX = width * 0.20;
     
-    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'F- (3).png' : 'F- (2).png';
     const firmaPath = path.join(__dirname, "../../public", firmaFileName);
     
     if (fs.existsSync(firmaPath)) {
       const firmaImg = await loadImage(firmaPath);
       const firmaWidth = 350;
       const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-      ctx.drawImage(firmaImg, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+      await drawImageTransparent(ctx, firmaPath, firmaGerenteX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
     }
 
     ctx.strokeStyle = "#000000";
@@ -1596,14 +1621,14 @@ const generarCanvasTerminacion = async (
     // SOLO FIRMA DEL GERENTE (CENTRADA)
     const firmaX = width / 2;
     
-    const firmaFileName = empresaSeleccionada === 'ME' ? 'Firma3.jpeg' : 'Firma2.jpg';
+    const firmaFileName = empresaSeleccionada === 'ME' ? 'F- (3).png' : 'F- (2).png';
     const firmaPath = path.join(__dirname, "../../public", firmaFileName);
     
     if (fs.existsSync(firmaPath)) {
       const firmaImg = await loadImage(firmaPath);
       const firmaWidth = 350;
       const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-      ctx.drawImage(firmaImg, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
+      await drawImageTransparent(ctx, firmaPath, firmaX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
     }
 
     ctx.strokeStyle = "#000000";
@@ -2512,14 +2537,13 @@ export const generarNotificacionVacaciones = async (
     // ========================================
     // FIRMA IZQUIERDA - Representante Legal CON FIRMA IMAGEN
     // ========================================
-    const firmaRepresentantePath = path.join(__dirname, "../../public/Firma2.jpg");
+    const firmaRepresentantePath = path.join(__dirname, "../../public/F- (2).png");
     if (fs.existsSync(firmaRepresentantePath)) {
       try {
         const firmaImg = await loadImage(firmaRepresentantePath);
         const firmaWidth = 500;
         const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
-        // Posicionar la firma ENCIMA de la línea
-        ctx.drawImage(firmaImg, firmaIzqX - firmaWidth/2, firmaY - firmaHeight + 30, firmaWidth, firmaHeight);
+        await drawImageTransparent(ctx, firmaRepresentantePath, firmaIzqX - firmaWidth/2, firmaY - firmaHeight + 30, firmaWidth, firmaHeight);
       } catch (err) {
         console.warn("Error al cargar firma representante:", err);
       }
