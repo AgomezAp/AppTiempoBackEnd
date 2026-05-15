@@ -730,24 +730,7 @@ const drawLetterhead = async (
       const logoH = (logo.height / logo.width) * logoWidth;
       const logoY = empresa === 'ME' ? 120 : 100;
 
-      if (empresa === 'ME') {
-        // Logo de ME con colores invertidos
-        const offCanvas = createCanvas(Math.round(logoWidth), Math.round(logoH));
-        const offCtx = offCanvas.getContext('2d');
-        offCtx.drawImage(logo, 0, 0, Math.round(logoWidth), Math.round(logoH));
-        const imageData = offCtx.getImageData(0, 0, Math.round(logoWidth), Math.round(logoH));
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          data[i]     = 255 - data[i];
-          data[i + 1] = 255 - data[i + 1];
-          data[i + 2] = 255 - data[i + 2];
-          // Alpha (data[i+3]) sin cambio
-        }
-        offCtx.putImageData(imageData, 0, 0);
-        ctx.drawImage(offCanvas, (width - logoWidth) / 2, logoY, logoWidth, logoH);
-      } else {
-        ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoH);
-      }
+      ctx.drawImage(logo, (width - logoWidth) / 2, logoY, logoWidth, logoH);
 
       logoBottomY = logoY + logoH;
     } catch (err) {
@@ -1300,7 +1283,7 @@ const generarCanvasCesantias = async (
   // ========================================
   // MEMBRETE: fondo + stripe + watermark + logo
   // ========================================
-  await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
+  const logoBottomCes = await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
 
   // Fecha
   ctx.font = "44px 'Helvetica'";
@@ -1312,8 +1295,7 @@ const generarCanvasCesantias = async (
     fechaRetiroFormateada = `${day}/${month}/${year}`;
   }
   
-  let fechaY = 700;
-  if (empresaSeleccionada === 'ME') fechaY = 800;
+  const fechaY = logoBottomCes + 100;
   ctx.fillText(`Pereira, ${fechaRetiroFormateada}`, 200, fechaY);
 
   let yPos = fechaY + 170;
@@ -1544,15 +1526,14 @@ const generarCanvasTerminacion = async (
   // ========================================
   // MEMBRETE: fondo + stripe + watermark + logo
   // ========================================
-  await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
+  const logoBottomLab = await drawLetterhead(ctx, width, height, empresaData, empresaSeleccionada);
 
   // Título
   ctx.font = "bold 95px 'Helvetica'";
   ctx.fillStyle = "#000000";
   ctx.textAlign = "center";
   
-  let tituloY = 900;
-  if (empresaSeleccionada === 'ME') tituloY = 950;
+  const tituloY = logoBottomLab + 120;
   
   ctx.fillText("CERTIFICADO LABORAL", width / 2, tituloY);
 
@@ -1826,14 +1807,14 @@ export const generarDesprendiblePago = async (
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    await drawLetterhead(ctx, width, height, empresaData, empresaDesprendible);
+    const logoBottomNom = await drawLetterhead(ctx, width, height, empresaData, empresaDesprendible);
     await drawFooterBar(ctx, width, height, empresaData, empresaDesprendible);
 
     // Encabezado - Empresa
     ctx.fillStyle = "#000000";
     ctx.font = "bold 48px Helvetica";
     ctx.textAlign = "center";
-    const headerY = 650;
+    const headerY = logoBottomNom + 80;
     ctx.fillText(empresaData.nombre, width / 2, headerY);
     
     ctx.font = "42px Helvetica";
@@ -2105,16 +2086,16 @@ export const generarCertificadoVacaciones = async (
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    await drawLetterhead(ctx, width, height, empresaData, empresaVacaciones);
+    const logoBottomVac = await drawLetterhead(ctx, width, height, empresaData, empresaVacaciones);
     await drawFooterBar(ctx, width, height, empresaData, empresaVacaciones);
 
     // ========================================
-    // TÍTULO - CENTRADO Y MÁS ARRIBA
+    // TÍTULO - CENTRADO DEBAJO DEL LOGO
     // ========================================
     ctx.fillStyle = "#000000";
     ctx.font = "bold 70px Helvetica";
     ctx.textAlign = "center";
-    const tituloY = 250; // Posición del título
+    const tituloY = logoBottomVac + 120; // Posición del título, debajo del logo
     const tituloPDF = tipoVacaciones === 'solo-pagos'
       ? "Solicitud de días pagos de vacaciones"
       : "Solicitud de Vacaciones";
@@ -2326,11 +2307,11 @@ export const generarNotificacionVacaciones = async (
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    await drawLetterhead(ctx, width, height, empresaData, empresaNotif);
+    const logoBottomNotif = await drawLetterhead(ctx, width, height, empresaData, empresaNotif);
     await drawFooterBar(ctx, width, height, empresaData, empresaNotif);
 
     // ========================================
-    // CIUDAD Y FECHA (arriba a la DERECHA)
+    // CIUDAD Y FECHA (debajo del logo)
     // ========================================
     ctx.fillStyle = "#000000";
     ctx.font = "44px Arial";
@@ -2338,10 +2319,10 @@ export const generarNotificacionVacaciones = async (
     
     const ciudadTexto = ciudad || "Pereira";
     const fechaNot = fechaNotificacion || new Date().toLocaleDateString('es-CO');
-    ctx.fillText(`${ciudadTexto}, ${fechaNot}`, width - margin, 180);
+    ctx.fillText(`${ciudadTexto}, ${fechaNot}`, width - margin, logoBottomNotif + 80);
     
-    // Posición Y - BAJAR TODO EL CONTENIDO SIGNIFICATIVAMENTE
-    let yPos = 650; // Empezar mucho más abajo
+    // Posición Y - Debajo del logo
+    let yPos = logoBottomNotif + 180;
 
     // ========================================
     // TÍTULO
@@ -2643,13 +2624,13 @@ export const generarCertificadoDiaFamilia = async (
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
     // ========================================
-    await drawLetterhead(ctx, width, height, empresaData, empresaDiaFamilia);
+    const logoBottomFam = await drawLetterhead(ctx, width, height, empresaData, empresaDiaFamilia);
     await drawFooterBar(ctx, width, height, empresaData, empresaDiaFamilia);
 
     // ========================================
     // TÍTULO
     // ========================================
-    let yPos = 850;
+    let yPos = logoBottomFam + 120;
     ctx.fillStyle = "#000000";
     ctx.font = "bold 80px Arial";
     ctx.textAlign = "center";
