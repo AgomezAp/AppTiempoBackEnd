@@ -296,8 +296,6 @@ const empresasData: any = {
     nit: "NIT 901.458.142-2",
     gerente: "Carlos Andrés Tobón Agudelo",
     cedulaGerente: "1088254149",
-    lider: "Yessica De La Rosa",
-    cargoLider: "Líder de Gestión Humana",
     direccion: "Pereira, Risaralda - Colombia",
     telefono: "(+57) 300 392 1721",
     email: "andrespublicidad@andrespublicidadtg.com",
@@ -311,8 +309,6 @@ const empresasData: any = {
     nit: "",
     gerente: "Carlos Andrés Tobón Agudelo",
     cedulaGerente: "1088254149",
-    lider: "Yessica De La Rosa",
-    cargoLider: "Líder de Gestión Humana",
     direccion: "Pereira, Risaralda - Colombia",
     telefono: "(+57) 300 392 1721",
     email: "andres.tobonag87@gmail.com",
@@ -326,8 +322,6 @@ const empresasData: any = {
     nit: "CC. 42094435",
     gerente: "María Evangelina Agudelo Gil",
     cedulaGerente: "42094435",
-    lider: "Yessica De La Rosa",
-    cargoLider: "Líder de Gestión Humana",
     direccion: "",
     telefono: "(+57) 300 392 1721",
     email: "maria.eva.agudelo@hotmail.com",
@@ -377,8 +371,6 @@ export const generarCertificadoLaboral = async (
       salarioEnPalabras: salarioEnPalabras,
       fechaCertificado: formatDateSpanish(new Date()),
       gerente: empresaData.gerente,
-      lider: empresaData.lider,
-      cargoLider: empresaData.cargoLider,
       direccion: empresaData.direccion,
       telefono: empresaData.telefono,
       email: empresaData.email,
@@ -991,33 +983,6 @@ export const generarCertificadoImagen = async (
       ctx.font = "36px Arial";
       ctx.fillText("Gerente General", firmaIzqX, firmaY + 100);
 
-      // FIRMA DERECHA - YESSICA DE LA ROSA
-      if (empresaData.lider) {
-        const firmaYessicaPath = path.join(__dirname, "../../public/Firma1.jpg");
-        if (fs.existsSync(firmaYessicaPath)) {
-          try {
-            const firmaYessicaImg = await loadImage(firmaYessicaPath);
-            const firmaWidth = 350;
-            const firmaHeight = (firmaYessicaImg.height / firmaYessicaImg.width) * firmaWidth;
-            ctx.drawImage(firmaYessicaImg, firmaDerX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-          } catch (err) {
-            console.warn("Error al cargar Firma1.jpg:", err);
-          }
-        }
-
-        ctx.beginPath();
-        ctx.moveTo(firmaDerX - 300, firmaY);
-        ctx.lineTo(firmaDerX + 300, firmaY);
-        ctx.stroke();
-
-        ctx.font = "bold 40px Arial";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#000000";
-        ctx.fillText(empresaData.lider, firmaDerX, firmaY + 55);
-        ctx.font = "36px Arial";
-        ctx.fillText(empresaData.cargoLider, firmaDerX, firmaY + 100);
-      }
-
       // Contacto centrado - MUCHO MÁS ABAJO
       // ========================================
       // PIE DE PÁGINA ME (barra dorada con iconos)
@@ -1056,34 +1021,6 @@ export const generarCertificadoImagen = async (
       // ========================================
       await drawFooterBar(ctx, width, height, empresaData, empresa);
 
-      // ========================================
-      // FIRMA DERECHA - LÍDER DE GESTIÓN HUMANA (AP/AT)
-      // ========================================
-      if (empresaData.lider) {
-        const firmaDerPath = path.join(__dirname, "../../public/Firma1.jpg");
-        if (fs.existsSync(firmaDerPath)) {
-          try {
-            const firmaDerImg = await loadImage(firmaDerPath);
-            const firmaWidth = 350;
-            const firmaHeight = (firmaDerImg.height / firmaDerImg.width) * firmaWidth;
-            ctx.drawImage(firmaDerImg, firmaDerX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-          } catch (err) {
-            console.warn("Error al cargar Firma1.jpg:", err);
-          }
-        }
-
-        ctx.beginPath();
-        ctx.moveTo(firmaDerX - 300, firmaY);
-        ctx.lineTo(firmaDerX + 300, firmaY);
-        ctx.stroke();
-
-        ctx.font = "bold 40px Arial";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#000000";
-        ctx.fillText(empresaData.lider, firmaDerX, firmaY + 55);
-        ctx.font = "36px Arial";
-        ctx.fillText(empresaData.cargoLider, firmaDerX, firmaY + 100);
-      }
     }
 
     // Enviar como PDF usando helper
@@ -1267,23 +1204,6 @@ export const generarCertificadoHTML = async (
               : ""
           }
         </div>
-        
-        ${
-          empresaData.lider
-            ? `
-        <div class="firma">
-          <div class="linea-firma"></div>
-          <p class="firma-nombre">${empresaData.lider}</p>
-          <p class="firma-cargo">${empresaData.cargoLider}</p>
-          ${
-            usuario.empresa === "ME" && empresaData.telefono
-              ? `<p class="firma-contacto">${empresaData.telefono}</p>`
-              : ""
-          }
-        </div>
-        `
-            : ""
-        }
       </div>
     </body>
     </html>
@@ -2835,29 +2755,6 @@ export const generarCertificadoDiaFamilia = async (
     ctx.font = "bold 44px Arial";
     ctx.textAlign = "center";
     ctx.fillText("Firma del colaborador", firmaIzqX, firmaY + 70);
-    
-    // Firma derecha - Gestión Humana
-    ctx.beginPath();
-    ctx.moveTo(firmaDerX - 300, firmaY);
-    ctx.lineTo(firmaDerX + 300, firmaY);
-    ctx.stroke();
-
-    // Agregar firma de Yessica
-    const firmaYessicaPath = path.join(__dirname, "../../public/Firma1.jpg");
-    if (fs.existsSync(firmaYessicaPath)) {
-      try {
-        const firmaYessicaImg = await loadImage(firmaYessicaPath);
-        const firmaWidth = 350;
-        const firmaHeight = (firmaYessicaImg.height / firmaYessicaImg.width) * firmaWidth;
-        ctx.drawImage(firmaYessicaImg, firmaDerX - firmaWidth/2, firmaY - firmaHeight - 20, firmaWidth, firmaHeight);
-      } catch (err) {
-        console.warn("Error al cargar firma de Gestión Humana:", err);
-      }
-    }
-
-    ctx.font = "bold 44px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("Firma de Gestión Humana", firmaDerX, firmaY + 70);
 
     // ========================================
     // CONVERTIR Y ENVIAR
