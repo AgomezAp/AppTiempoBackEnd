@@ -415,9 +415,31 @@ export const generarPdfFirmado = async (req: Request, res: Response): Promise<an
             const page = pages[pageIndex];
             const { width, height } = page.getSize();
 
+            const mimeMatch = campo.firma.match(/^data:image\/(\w+);base64,/);
+            const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'png';
             const base64Data = campo.firma.replace(/^data:image\/\w+;base64,/, '');
             const firmaBuffer = Buffer.from(base64Data, 'base64');
-            const firmaImage = await pdfDoc.embedPng(firmaBuffer);
+
+            let firmaImage;
+            try {
+                firmaImage = (mimeType === 'jpeg' || mimeType === 'jpg')
+                    ? await pdfDoc.embedJpg(firmaBuffer)
+                    : await pdfDoc.embedPng(firmaBuffer);
+            } catch (embedErr: any) {
+                // Fallback: convertir a PNG via canvas para formatos no soportados (webp, gif, etc.)
+                try {
+                    const { loadImage: loadImg, createCanvas: makeCanvas } = require('canvas');
+                    const img = await loadImg(campo.firma);
+                    const cvs = makeCanvas(img.width, img.height);
+                    cvs.getContext('2d').drawImage(img, 0, 0);
+                    firmaImage = await pdfDoc.embedPng(cvs.toBuffer('image/png'));
+                } catch {
+                    const firmante = campo.nombreFirmante || campo.emailFirmante || 'firmante desconocido';
+                    return res.status(422).json({
+                        msg: `La firma de "${firmante}" tiene un formato de imagen no soportado (${mimeType || 'desconocido'}). Solo se permiten PNG y JPEG. Solicite al firmante que vuelva a firmar usando una imagen PNG o JPG.`
+                    });
+                }
+            }
 
             const x = (campo.posX / 100) * width;
             const y = height - ((campo.posY / 100) * height) - ((campo.alto / 100) * height);
@@ -438,8 +460,15 @@ export const generarPdfFirmado = async (req: Request, res: Response): Promise<an
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${(documento as any).titulo}_firmado.pdf"`);
         return res.send(buffer);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error al generar PDF firmado:', error);
-        return res.status(500).json({ msg: 'Error al generar el PDF firmado' });
+        const mensaje = error?.message || '';
+        if (mensaje.includes('PNG') || mensaje.includes('JPEG') || mensaje.includes('Unknown image') || mensaje.includes('image format')) {
+            return res.status(422).json({ msg: 'Una de las firmas contiene un formato de imagen no soportado. Solo se permiten PNG y JPEG.' });
+        }
+        if (mensaje.includes('not found') || mensaje.includes('ENOENT')) {
+            return res.status(404).json({ msg: 'El archivo PDF original no fue encontrado en el servidor.' });
+        }
+        return res.status(500).json({ msg: 'Error al generar el PDF firmado. Intente de nuevo o contacte al administrador.' });
     }
 };

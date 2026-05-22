@@ -108,9 +108,15 @@ export const generarEntregaEppPDF = async (
 
         if (firma.firma && firma.firmado) {
           try {
-            const firmaBase64 = firma.firma.includes('base64,')
+            let firmaBase64 = firma.firma.includes('base64,')
               ? firma.firma
               : `data:image/png;base64,${firma.firma}`;
+            // pdfmake solo soporta PNG y JPEG; si el MIME es otro, forzar PNG
+            const mimeMatch = firmaBase64.match(/^data:image\/(\w+);base64,/);
+            const mime = mimeMatch ? mimeMatch[1].toLowerCase() : 'png';
+            if (mime !== 'png' && mime !== 'jpeg' && mime !== 'jpg') {
+              firmaBase64 = firmaBase64.replace(/^data:image\/\w+;base64,/, 'data:image/png;base64,');
+            }
             firmaContent = {
               image: firmaBase64,
               width: 80,

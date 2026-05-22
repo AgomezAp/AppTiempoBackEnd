@@ -1687,6 +1687,9 @@ export const generarCertificadoTerminacion = async (
       case 'terminacion-justa-causa':
         textoTerminacion = `laboró en nuestra empresa como ${cargo} desde el ${fechaIngreso} hasta el ${fechaSalida}, con un contrato ${textoContrato}, devengando un salario bruto mensual de ${salarioFormateado} (${salarioEnPalabras} pesos), terminando la relación laboral por justa causa.`;
         break;
+      case 'terminacion-contrato':
+        textoTerminacion = `laboró en nuestra empresa como ${cargo} desde el ${fechaIngreso} hasta el ${fechaSalida}, con un contrato ${textoContrato}, devengando un salario bruto mensual de ${salarioFormateado} (${salarioEnPalabras} pesos), terminando la relación laboral por terminación de contrato.`;
+        break;
     }
 
     const params = {

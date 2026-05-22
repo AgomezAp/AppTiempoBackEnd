@@ -84,10 +84,15 @@ export const generarActaPDF = async (
           firmaContent = { text: 'N/A', alignment: 'center', fontSize: 8, color: '#9e9e9e', margin: [2, 4, 2, 4] } as TableCell;
         } else if (p.firma && p.firmado) {
           try {
-            // Asegurar que la firma tenga el formato correcto
-            const firmaBase64 = p.firma.includes('base64,') 
-              ? p.firma 
+            let firmaBase64 = p.firma.includes('base64,')
+              ? p.firma
               : `data:image/png;base64,${p.firma}`;
+            // pdfmake solo soporta PNG y JPEG; si el MIME es otro, forzar PNG
+            const mimeMatch = firmaBase64.match(/^data:image\/(\w+);base64,/);
+            const mime = mimeMatch ? mimeMatch[1].toLowerCase() : 'png';
+            if (mime !== 'png' && mime !== 'jpeg' && mime !== 'jpg') {
+              firmaBase64 = firmaBase64.replace(/^data:image\/\w+;base64,/, 'data:image/png;base64,');
+            }
             firmaContent = {
               image: firmaBase64,
               width: 80,
