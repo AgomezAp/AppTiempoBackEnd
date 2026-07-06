@@ -38,11 +38,6 @@ export const obtenerActas = async (req: Request, res: Response) => {
         { cargoReceptor: { [Op.iLike]: `%${busqueda}%` } },
         { cedulaReceptor: { [Op.iLike]: `%${busqueda}%` } }
       ];
-    } else {
-        // QA OPTIMIZATION: Si no buscan nada en especifico, mostrar max los ultimos 2 meses para no romper RAM
-        const fechaLimite = new Date();
-        fechaLimite.setMonth(fechaLimite.getMonth() - 2);
-        where.fechaEntrega = { [Op.gte]: fechaLimite };
     }
 
     const customLimit = limite ? parseInt(limite as string) : 200; // Máximo 200 actas por default

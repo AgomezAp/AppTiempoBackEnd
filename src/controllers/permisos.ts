@@ -10,6 +10,8 @@ import { User } from '../models/user';
 import { Area } from '../models/area';
 import { sendMail } from '../utils/mailer';
 import { appendPermisoToSheet } from '../utils/googleSheets';
+import { DestinatarioPermiso } from '../models/destinatarioPermiso';
+import { TipoPermiso } from '../models/tipoPermiso';
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage }).single('soporte');
@@ -20,7 +22,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       return res.status(500).json({ msg: 'Error al subir el archivo', error: err });
     }
 
-    const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, fechaFin, tipo, horaEntrada, horaSalida, observaciones, diasLaborales } = req.body;
+    const { emailPersonal, emailLider, nombre, numeroDocumento, fecha, fechaFin, tipo, horaEntrada, horaSalida, observaciones, diasLaborales, diasPagos: diasPagosRaw } = req.body;
     const soporte = req.file ? req.file.buffer : null;
     const Uid = parseInt(req.body.Uid, 10);
     const novedad = false;
@@ -30,10 +32,18 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       return res.status(400).json({ msg: 'Todos los campos obligatorios deben estar presentes' });
     }
 
-    // Validar soporte obligatorio para Vacaciones y Día de la familia
-    const tiposConSoporteObligatorio = ['Vacaciones', 'Día de la familia'];
-    if (tiposConSoporteObligatorio.some(t => t.toLowerCase() === tipo.trim().toLowerCase()) && !soporte) {
-      return res.status(400).json({ msg: 'El soporte es obligatorio para este tipo de permiso (Vacaciones / Día de la familia)' });
+    // Validar soporte obligatorio leyendo configuración desde DB (fallback a lista hardcodeada)
+    let tipoConfig: TipoPermiso | null = null;
+    try {
+      tipoConfig = await TipoPermiso.findOne({ where: { nombre: tipo.trim(), activo: true } });
+    } catch (_e) { /* tabla puede no existir aún en arranque inicial */ }
+
+    const soporteObligatorio = tipoConfig
+      ? tipoConfig.requiere_soporte
+      : ['Vacaciones', 'Día de la familia'].some(t => t.toLowerCase() === tipo.trim().toLowerCase());
+
+    if (soporteObligatorio && !soporte) {
+      return res.status(400).json({ msg: 'El soporte es obligatorio para este tipo de permiso' });
     }
 
     // Verificar si el usuario existe
@@ -50,8 +60,22 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       // Determinar si es un permiso de rango (varios días)
       const esPermisoRango = fechaFin && fechaFin !== fecha;
 
-      // Validar días mínimos de vacaciones según área
-      if (tipo.trim().toLowerCase() === 'vacaciones' && esPermisoRango) {
+      // Validar días mínimos según configuración de DB (fallback a valores hardcodeados)
+      if (esPermisoRango && tipoConfig && (tipoConfig.minimo_dias_general || tipoConfig.minimo_dias_gestion_admin)) {
+        const diasSolicitados = parseInt(diasLaborales, 10) || 0;
+        const areaNombre: string = (user as any).area?.Aname?.toLowerCase() || '';
+        const esGestionAdministrativa = areaNombre.includes('gestión administrativa') || areaNombre.includes('gestion administrativa');
+        const minimoRequerido = esGestionAdministrativa
+          ? (tipoConfig.minimo_dias_gestion_admin ?? tipoConfig.minimo_dias_general ?? 0)
+          : (tipoConfig.minimo_dias_general ?? 0);
+
+        if (minimoRequerido > 0 && diasSolicitados < minimoRequerido) {
+          return res.status(400).json({
+            msg: `El mínimo de días laborales para este permiso ${esGestionAdministrativa ? 'en Gestión Administrativa' : ''} es ${minimoRequerido}`,
+          });
+        }
+      } else if (tipo.trim().toLowerCase() === 'vacaciones' && esPermisoRango) {
+        // Fallback si la tabla de tipos no existe aún
         const diasSolicitados = parseInt(diasLaborales, 10) || 0;
         const areaNombre: string = (user as any).area?.Aname?.toLowerCase() || '';
         const esGestionAdministrativa = areaNombre.includes('gestión administrativa') || areaNombre.includes('gestion administrativa');
@@ -65,7 +89,23 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
       }
       const fechaInicioDate = new Date(fecha + 'T12:00:00');
       const fechaFinDate = esPermisoRango ? new Date(fechaFin + 'T12:00:00') : fechaInicioDate;
-      
+
+      // Validar días pagos para "Vacaciones más pagos"
+      let diasPagos: number | null = null;
+      if (tipo.trim().toLowerCase() === 'vacaciones más pagos') {
+        diasPagos = parseInt(diasPagosRaw, 10);
+        const diasSolicitados = parseInt(diasLaborales, 10) || 0;
+        if (!diasPagos || diasPagos < 1) {
+          return res.status(400).json({ msg: 'Debe indicar la cantidad de días pagos a disfrutar.' });
+        }
+        if (diasPagos > 9) {
+          return res.status(400).json({ msg: 'Los días pagos a disfrutar no pueden superar 9 días.' });
+        }
+        if (diasSolicitados > 0 && diasPagos > diasSolicitados) {
+          return res.status(400).json({ msg: `Los días pagos (${diasPagos}) no pueden superar los días de vacaciones solicitados (${diasSolicitados}).` });
+        }
+      }
+
       // Crear permiso asociado al usuario
       const newPermiso = await Permiso.create({
         emailPersonal,
@@ -80,6 +120,7 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
         soporte,
         novedad,
         Uid,
+        ...(diasPagos !== null ? { diasPagos } : {}),
       });
 
       // Agregar permiso a Google Sheets (hoja principal - TODOS los permisos)
@@ -95,47 +136,69 @@ export const createPermiso = async (req: Request, res: Response): Promise<any> =
 
       await appendPermisoToSheet(permisoSheetData);
 
-      // Tipos específicos para correo filtrado
-      const tiposFiltrados = [
-        'Cita médica',
-        'Cita odontológica',
-        'Vacaciones',
-        'Incapacidad médica',
-        'Incapacidad laboral',
-      ];
-
       const tipoNormalizado = tipo.trim();
 
-      // Enviar correo electrónico al líder (solo UNA VEZ)
+      // Construir asunto y cuerpo del correo
       const subject = 'Nuevo Permiso Solicitado';
       let text = `Se ha solicitado un nuevo permiso para ${nombre}.\n\n Tipo de permiso: ${tipo}.`;
-      
+
       if (esPermisoRango) {
         text += `\n Fecha de inicio: ${fecha}.\n Fecha de fin: ${fechaFin}.`;
         if (diasLaborales) {
           text += `\n Días laborales: ${diasLaborales}.`;
         }
+        if (diasPagos !== null) {
+          text += `\n Días pagos a disfrutar: ${diasPagos}.`;
+        }
       } else {
         text += `\n Fecha: ${fecha}.`;
       }
-      
+
       if (horaSalida) text += `\n Hora de salida: ${horaSalida}.`;
       if (horaEntrada) text += `\n Hora de regreso: ${horaEntrada}.`;
       text += `\n\n Observaciones: ${observaciones}`;
-      
-      const fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
 
-      // Para tipos filtrados, agregar FILTERED_RECIPIENTS como CC en el mismo correo
-      const filteredRecipients = process.env.FILTERED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
-      const mainRecipients = [...fixedRecipients, emailLider, emailPersonal];
-      const mainSet = new Set(mainRecipients.map(e => e.trim().toLowerCase()));
-      const filteredSinDuplicados = filteredRecipients.filter(e => !mainSet.has(e.toLowerCase()));
-
+      // Leer destinatarios desde DB; fallback a env vars si la tabla está vacía
+      let fixedRecipients: string[] = [];
       let ccRecipients: string[] = [];
-      if (filteredSinDuplicados.length > 0 && tiposFiltrados.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
-        ccRecipients = filteredSinDuplicados;
+
+      try {
+        const destinatariosDB = await DestinatarioPermiso.findAll({ where: { activo: true } });
+
+        if (destinatariosDB.length > 0) {
+          // Destinatarios fijos: siempre incluidos como destinatario principal
+          const fijos = destinatariosDB.filter(d => d.tipo === 'fijo' && !d.es_cc);
+          const fijosCC = destinatariosDB.filter(d => d.tipo === 'fijo' && d.es_cc);
+          fixedRecipients = fijos.map(d => d.email);
+
+          // Destinatarios filtrados: solo si el tipo de permiso está en su lista
+          const filtrados = destinatariosDB.filter(d => d.tipo === 'filtrado');
+          const ccFiltrados = filtrados.filter(d => {
+            const tiposList: string[] = d.tipos_permiso || [];
+            return tiposList.length === 0 || tiposList.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase());
+          });
+
+          const mainSet = new Set([...fixedRecipients, ...fijosCC.map(d => d.email), emailLider, emailPersonal].map(e => e.toLowerCase()));
+          ccRecipients = [
+            ...fijosCC.map(d => d.email),
+            ...ccFiltrados.map(d => d.email).filter(e => !mainSet.has(e.toLowerCase())),
+          ];
+        } else {
+          // Fallback a variables de entorno
+          fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
+          const filteredEnv = process.env.FILTERED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
+          const tiposFiltradosFallback = ['Cita médica', 'Cita odontológica', 'Vacaciones', 'Incapacidad médica', 'Incapacidad laboral'];
+          if (tiposFiltradosFallback.some(t => t.toLowerCase() === tipoNormalizado.toLowerCase())) {
+            const mainSet = new Set([...fixedRecipients, emailLider, emailPersonal].map(e => e.toLowerCase()));
+            ccRecipients = filteredEnv.filter(e => !mainSet.has(e.toLowerCase()));
+          }
+        }
+      } catch (_dbErr) {
+        // Si la tabla aún no existe, usar env vars
+        fixedRecipients = process.env.FIXED_RECIPIENTS?.split(',').map(e => e.trim()).filter(e => e) || [];
       }
 
+      const mainRecipients = [...fixedRecipients, emailLider, emailPersonal];
       await sendMail(mainRecipients, subject, text, soporte, ccRecipients);
 
       res.status(200).json({

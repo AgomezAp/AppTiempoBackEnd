@@ -7,6 +7,7 @@ import PdfPrinter from 'pdfmake';
 import path from "path";
 import fs from "fs";
 import NominaConfig from "../models/nominaConfig";
+import { ConfigEmpresa } from "../models/configEmpresa";
 
 // Función para formatear números a pesos colombianos
 const formatCurrency = (amount: number): string => {
@@ -153,7 +154,7 @@ const sendCanvasAsPdf = async (res: Response, canvas: any, filenameBase: string)
 };
 
 // Helper: convierte múltiples canvas en un solo PDF de varias páginas
-const sendMultipleCanvasAsPdf = async (res: Response, canvases: any[], filenameBase: string) => {
+export const sendMultipleCanvasAsPdf = async (res: Response, canvases: any[], filenameBase: string) => {
   try {
     console.log(`📄 Generando PDF múltiple con ${canvases.length} páginas...`);
     
@@ -332,6 +333,29 @@ const empresasData: any = {
   },
 };
 
+// Obtiene la config de empresa desde DB; si falla o no existe, usa el objeto hardcodeado
+export async function getEmpresaConfig(codigoEmpresa: string): Promise<any> {
+  try {
+    const dbConfig = await ConfigEmpresa.findOne({ where: { codigo: codigoEmpresa } });
+    if (dbConfig) {
+      return {
+        nombre: dbConfig.nombre,
+        nit: dbConfig.nit,
+        gerente: dbConfig.gerente,
+        cedulaGerente: dbConfig.cedula_gerente,
+        direccion: dbConfig.direccion,
+        telefono: dbConfig.telefono,
+        email: dbConfig.email,
+        logo: dbConfig.logo_url,
+        watermark: dbConfig.watermark_url,
+        headerColor: dbConfig.header_color,
+        accentColor: dbConfig.accent_color,
+      };
+    }
+  } catch (_e) { /* tabla puede no existir en arranque inicial */ }
+  return empresasData[codigoEmpresa] || empresasData['AP'];
+}
+
 // Generar certificado laboral (JSON)
 export const generarCertificadoLaboral = async (
   req: Request,
@@ -350,7 +374,7 @@ export const generarCertificadoLaboral = async (
       });
     }
 
-    const empresaData = empresasData[usuario.empresa || "AP"];
+    const empresaData = await getEmpresaConfig(usuario.empresa || "AP");
 
     const salarioFormateado = formatCurrency(usuario.salario || 0);
     const salarioEnPalabras = numberToWords(Math.floor(usuario.salario || 0));
@@ -392,7 +416,7 @@ export const generarCertificadoLaboral = async (
 };
 
 // Helper: elimina el fondo blanco de una imagen (JPG/JPEG sin transparencia)
-async function drawImageTransparent(
+export async function drawImageTransparent(
   ctx: any,
   imgPath: string,
   dx: number,
@@ -417,7 +441,7 @@ async function drawImageTransparent(
 }
 
 // Función auxiliar para escribir texto con wrapping
-function wrapText(
+export function wrapText(
   ctx: any,
   text: string,
   x: number,
@@ -447,7 +471,7 @@ function wrapText(
 }
 
 // Función auxiliar para escribir texto justificado
-function wrapTextJustified(
+export function wrapTextJustified(
   ctx: any,
   text: string,
   x: number,
@@ -641,7 +665,7 @@ function calcularDiasLaborales(fechaInicio: Date, fechaFin: Date): number {
 // HELPER: DIBUJAR MEMBRETE COMPLETO (fondo, stripe, watermark, logo)
 // Retorna la posición Y inferior del área de encabezado
 // ==========================================
-const drawLetterhead = async (
+export const drawLetterhead = async (
   ctx: any,
   width: number,
   height: number,
@@ -744,7 +768,7 @@ const drawLetterhead = async (
 // ==========================================
 // HELPER: DIBUJAR BARRA DE PIE DE PÁGINA
 // ==========================================
-const drawFooterBar = async (
+export const drawFooterBar = async (
   ctx: any,
   width: number,
   height: number,
@@ -892,7 +916,7 @@ export const generarCertificadoImagen = async (
     console.log("✅ Usuario encontrado:", usuario.name, usuario.lastName);
     console.log("Empresa:", usuario.empresa);
 
-    const empresaData = empresasData[usuario.empresa || "AP"];
+    const empresaData = await getEmpresaConfig(usuario.empresa || "AP");
     console.log("Datos empresa:", empresaData);
 
     const salarioFormateado = formatCurrency(usuario.salario || 0);
@@ -1089,7 +1113,7 @@ export const generarCertificadoHTML = async (
       });
     }
 
-    const empresaData = empresasData[usuario.empresa || "AP"];
+    const empresaData = await getEmpresaConfig(usuario.empresa || "AP");
     const salarioFormateado = formatCurrency(usuario.salario || 0);
     const salarioEnPalabras = numberToWords(Math.floor(usuario.salario || 0));
     const fechaCertificado = formatDateSpanish(new Date());
@@ -1463,7 +1487,7 @@ export const generarCertificadoCesantias = async (
     }
 
     const empresaSeleccionada = (empresa as string) || usuario.empresa || "AP";
-    const empresaData = empresasData[empresaSeleccionada];
+    const empresaData = await getEmpresaConfig(empresaSeleccionada);
     
     const params = {
       nombreCompleto: (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`,
@@ -1654,7 +1678,7 @@ export const generarCertificadoTerminacion = async (
     }
 
     const empresaSeleccionada = (empresa as string) || usuario.empresa || "AP";
-    const empresaData = empresasData[empresaSeleccionada];
+    const empresaData = await getEmpresaConfig(empresaSeleccionada);
     
     const nombreCompleto = (req.query.nombreCompleto as string) || `${usuario.name} ${usuario.lastName}`;
     const cedula = (req.query.cedula as string) || usuario.documentoIdentificacion;
@@ -1805,7 +1829,7 @@ export const generarDesprendiblePago = async (
 
     // Determinar empresa (usando datos globales)
     const empresaDesprendible = (usuario.empresa as string) || 'AP';
-    const empresaData = { ...empresasData[empresaDesprendible] };
+    const empresaData = { ...await getEmpresaConfig(empresaDesprendible) };
 
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
@@ -2084,7 +2108,7 @@ export const generarCertificadoVacaciones = async (
 
     // Determinar empresa (usando datos globales)
     const empresaVacaciones = (usuario.empresa as string) || 'AP';
-    const empresaData = { ...empresasData[empresaVacaciones] };
+    const empresaData = { ...await getEmpresaConfig(empresaVacaciones) };
 
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
@@ -2305,7 +2329,7 @@ export const generarNotificacionVacaciones = async (
 
     // Determinar empresa (usando datos globales)
     const empresaNotif = (usuario.empresa as string) || 'AP';
-    const empresaData = { ...empresasData[empresaNotif] };
+    const empresaData = { ...await getEmpresaConfig(empresaNotif) };
 
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo
@@ -2622,7 +2646,7 @@ export const generarCertificadoDiaFamilia = async (
 
     // Determinar empresa (usando datos globales)
     const empresaDiaFamilia = (usuario.empresa as string) || 'AP';
-    const empresaData = { ...empresasData[empresaDiaFamilia] };
+    const empresaData = { ...await getEmpresaConfig(empresaDiaFamilia) };
 
     // ========================================
     // MEMBRETE: fondo + stripe + watermark + logo

@@ -109,6 +109,7 @@ export class Consumible extends Model {
     public activo!: boolean;
     public observaciones?: string;
     public Uid?: number;
+    public atributosExtra?: Record<string, any>;
 }
 
 Consumible.init(
@@ -132,7 +133,8 @@ Consumible.init(
         foto: { type: DataTypes.TEXT },
         activo: { type: DataTypes.BOOLEAN, defaultValue: true },
         observaciones: { type: DataTypes.TEXT },
-        Uid: { type: DataTypes.INTEGER }
+        Uid: { type: DataTypes.INTEGER },
+        atributosExtra: { type: DataTypes.JSONB, defaultValue: {} },
     },
     {
         sequelize: sequelizeInventario,

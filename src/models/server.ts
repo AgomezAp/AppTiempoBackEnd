@@ -38,6 +38,11 @@ import RContratos from '../routes/contratos';
 import RHojaVida from '../routes/hojaVida';
 import REvaluaciones from '../routes/evaluaciones';
 import RRoles from '../routes/roles';
+import RDestinatariosPermiso from '../routes/destinatarioPermiso';
+import RTipoPermiso from '../routes/tipoPermiso';
+import RConfigEmpresa from '../routes/configEmpresa';
+import RPlantillaInventario from '../routes/plantillaInventario';
+import RPlantillaCertificado from '../routes/plantillaCertificado';
 
 // ---- Rutas módulo Inventario ----
 import RInvDispositivo from '../routes/inventario/dispositivo';
@@ -51,6 +56,9 @@ import RInvActaDevolucion from '../routes/inventario/actaDevolucion';
 import RInvFirmaMobiliario from '../routes/inventario/firmaMobiliario';
 import RInvTipoInventario from '../routes/inventario/tipoInventario';
 import RInvAnalista from '../routes/inventario/analista';
+import RInvAdmin from '../routes/inventario/inventarioAdmin';
+import sequelizeInventario from '../database/connection-inventario';
+import CampoTipoInventario from '../models/inventario/campoTipoInventario';
 
 // ---- Modelos de api_inventario (horarios) ----
 import { Area } from './area';
@@ -120,6 +128,11 @@ class Server{
         this.app.use('/api/hoja-vida', RHojaVida);
         this.app.use('/api/evaluaciones', REvaluaciones);
         this.app.use('/api/roles', RRoles);
+        this.app.use('/api/destinatarios-permiso', RDestinatariosPermiso);
+        this.app.use('/api/tipos-permiso', RTipoPermiso);
+        this.app.use('/api/config-empresas', RConfigEmpresa);
+        this.app.use('/api/plantillas-inventario', RPlantillaInventario);
+        this.app.use('/api/plantillas-certificado', RPlantillaCertificado);
 
         // ---- Rutas módulo Inventario ----
         this.app.use('/api/inventario/dispositivos', RInvDispositivo);
@@ -133,6 +146,7 @@ class Server{
         this.app.use('/api/inventario/firma-mobiliario', RInvFirmaMobiliario);
         this.app.use('/api/inventario/tipos-inventario', RInvTipoInventario);
         this.app.use('/api/inventario/analistas', RInvAnalista);
+        this.app.use('/api/inventario-admin', RInvAdmin);
     }
     middlewares(){
         const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
@@ -293,6 +307,36 @@ class Server{
             // Sincronizar tabla de permisos de módulos por rol
             const { RoleModulo } = await import('./roleModulo');
             await RoleModulo.sync({ alter: false });
+
+            // Sincronizar nuevos modelos configurables (P4, P5, P3, P1)
+            const { DestinatarioPermiso } = await import('./destinatarioPermiso');
+            await DestinatarioPermiso.sync({ alter: false });
+
+            const { TipoPermiso } = await import('./tipoPermiso');
+            await TipoPermiso.sync({ alter: false });
+
+            const { ConfigEmpresa } = await import('./configEmpresa');
+            await ConfigEmpresa.sync({ alter: false });
+
+            const { PlantillaInventario, ItemPlantilla, InventarioUsuario } = await import('./plantillaInventario');
+            await PlantillaInventario.sync({ alter: false });
+            await ItemPlantilla.sync({ alter: false });
+            await InventarioUsuario.sync({ alter: false });
+
+            const { PlantillaCertificado } = await import('./plantillaCertificado');
+            await PlantillaCertificado.sync({ alter: false });
+
+            // Poblar tablas nuevas con datos iniciales si están vacías
+            const { runSeeds } = await import('../database/seeds');
+            await runSeeds();
+
+            // Migración inventario_general: agregar columnas nuevas sin romper datos existentes
+            try {
+              await sequelizeInventario.query('ALTER TABLE consumibles ADD COLUMN IF NOT EXISTS "atributosExtra" JSONB DEFAULT \'{}\'');
+              await CampoTipoInventario.sync({ alter: false });
+            } catch (e) {
+              console.warn('[Migración inventario] No se pudo ejecutar migración:', e);
+            }
 
             console.log('Conexión establecida correctamente');
         }catch (error){

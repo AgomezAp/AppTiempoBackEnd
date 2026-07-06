@@ -21,6 +21,7 @@ export class Permiso extends Model {
   public soporte?: Buffer;
   public Uid!: number; // Foreign key to User
   public cancelado!: boolean; // Para marcar permisos no tomados
+  public diasPagos?: number;
 }
 
 Permiso.init(
@@ -82,6 +83,10 @@ Permiso.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,
+    },
+    diasPagos: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     Uid: {
       type: DataTypes.INTEGER,
