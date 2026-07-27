@@ -679,11 +679,12 @@ export const drawLetterhead = async (
   // 2. Barra lateral izquierda vertical (AT y AP)
   if (empresa === 'AP' || empresa === 'AT') {
     const stripeW = 38;
-    ctx.fillStyle = empresa === 'AT' ? '#0d2a35' : '#111111';
+    const defaultStripe = empresa === 'AT' ? '#0d2a35' : '#111111';
+    ctx.fillStyle = empresaData.headerColor || defaultStripe;
     ctx.fillRect(0, 0, stripeW, height);
     if (empresa === 'AP') {
       // Sección amarilla al fondo de la barra (estilo AndresPublicidad)
-      ctx.fillStyle = '#FFCC00';
+      ctx.fillStyle = empresaData.accentColor || '#FFCC00';
       ctx.fillRect(0, height - 260, stripeW, 260);
     }
   }
@@ -777,9 +778,10 @@ export const drawFooterBar = async (
 ): Promise<void> => {
   const footerH = 138;
   const footerY = height - footerH;
-  let bgColor = '#111111'; // AP: negro
-  if (empresa === 'AT') bgColor = '#0d2a35';
-  if (empresa === 'ME') bgColor = empresaData.accentColor || '#C9A053';
+  const defaultBg = empresa === 'AT' ? '#0d2a35' : empresa === 'ME' ? '#C9A053' : '#111111';
+  const bgColor = empresa === 'ME'
+    ? (empresaData.accentColor || defaultBg)
+    : (empresaData.headerColor || defaultBg);
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, footerY, width, footerH);
 
