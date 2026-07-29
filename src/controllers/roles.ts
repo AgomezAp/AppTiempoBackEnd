@@ -4,9 +4,17 @@ import { RoleModulo, MODULOS_SISTEMA } from '../models/roleModulo';
 import { User } from '../models/user';
 import { validateAdmin } from './archivo';
 
-// Inicializa módulos para un rol recién creado (todos deshabilitados por defecto)
+// Módulos que todo rol debe poder ver desde su creación, sin configuración manual:
+// Horas y Registro, Novedades, Permisos, y Recursos (incluye Mi Certificado, Mi Inventario,
+// Gestión de Archivos, Compensación de Horas, Reservas de Salas). El resto de módulos
+// (admin, RRHH, inventario por categoría, SSGT, etc.) siguen quedando deshabilitados
+// hasta que un admin los habilite explícitamente para ese rol.
+const MODULOS_BASE = ['horas', 'novedades', 'permisos', 'recursos'];
+
+// Inicializa módulos para un rol (solo crea las filas que falten: no pisa configuración
+// ya guardada para un rol existente, gracias al índice único en (Rid, modulo)).
 async function inicializarModulos(Rid: number) {
-  const rows = MODULOS_SISTEMA.map(m => ({ Rid, modulo: m.key, habilitado: false }));
+  const rows = MODULOS_SISTEMA.map(m => ({ Rid, modulo: m.key, habilitado: MODULOS_BASE.includes(m.key) }));
   await RoleModulo.bulkCreate(rows, { ignoreDuplicates: true });
 }
 

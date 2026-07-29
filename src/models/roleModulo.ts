@@ -41,6 +41,9 @@ RoleModulo.init(
     sequelize,
     tableName: 'role_modulos',
     timestamps: false,
+    // Evita duplicar la fila de un módulo para el mismo rol (ver migración manual
+    // en server.ts que crea este índice también en bases ya existentes).
+    indexes: [{ unique: true, fields: ['Rid', 'modulo'], name: 'role_modulos_rid_modulo_key' }],
   }
 );
 

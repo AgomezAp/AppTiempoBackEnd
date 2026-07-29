@@ -307,6 +307,14 @@ class Server{
             // Sincronizar tabla de permisos de módulos por rol
             const { RoleModulo } = await import('./roleModulo');
             await RoleModulo.sync({ alter: false });
+            // Migración manual: índice único (Rid, modulo) — evita que se dupliquen filas
+            // cada vez que se abre/crea un rol. Requiere que la tabla ya esté libre de
+            // duplicados (se depuró manualmente en producción antes de este despliegue).
+            try {
+              await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS role_modulos_rid_modulo_key ON role_modulos ("Rid", modulo);');
+            } catch (e) {
+              console.warn('[Migración role_modulos] No se pudo crear índice único (puede haber duplicados pendientes):', e);
+            }
 
             // Sincronizar nuevos modelos configurables (P4, P5, P3, P1)
             const { DestinatarioPermiso } = await import('./destinatarioPermiso');
